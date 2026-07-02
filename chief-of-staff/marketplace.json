@@ -1,0 +1,25 @@
+{
+  "name": "lucas-consulting-agents",
+  "owner": {
+    "name": "Lucas Zhu",
+    "email": "you@example.com"
+  },
+  "plugins": [
+    {
+      "name": "chief-of-staff",
+      "source": ".",
+      "description": "Your personal chief of staff — runs your day and week from your local wiki-brain knowledge base, Google Workspace (email + calendar), Discord, and Linear. Use when you want a daily/weekly briefing, proposals on what to focus on, to schedule or draft from natural instructions, to manage your to-do list, or to recall people you've met.",
+      "version": "0.4.0",
+      "category": "productivity",
+      "keywords": [
+        "chief-of-staff",
+        "productivity",
+        "linear",
+        "calendar",
+        "crm",
+        "briefing",
+        "discord"
+      ]
+    }
+  ]
+}

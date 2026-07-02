@@ -1,0 +1,87 @@
+{
+  "_note": "The shop's back room. Workshop participants build the locked baseline, then add shelf items à la carte. Edit this file to change the shelf — the studio reads it live on each open. tier drives the price-tag colour: free=no keys, one=one integration, many=several.",
+  "baseline": {
+    "title": "Your baseline",
+    "subtitle": "Everyone builds this — same spine for the whole room",
+    "items": [
+      {
+        "id": "wiki-brain",
+        "name": "wiki-brain spine",
+        "what": "The agent's memory — a folder of plain-markdown notes it reads and writes. Everything else reads from here.",
+        "cost": { "label": "local · no keys", "tier": "free" }
+      },
+      {
+        "id": "cos-shell",
+        "name": "chief-of-staff shell",
+        "what": "The agent itself: its identity, your voice, and the read–decide–act loop. Capable, but does nothing special yet.",
+        "cost": { "label": "local · no keys", "tier": "free" }
+      }
+    ]
+  },
+  "shelf": {
+    "title": "On the shelf",
+    "subtitle": "Add what you want — read the price tag before you do",
+    "items": [
+      {
+        "id": "crm",
+        "name": "CRM",
+        "what": "Records and recalls the people you meet — who they are, what they do, how you're connected, and your history with them.",
+        "deliverable": "people pages in your wiki",
+        "cost": { "label": "local wiki · no keys", "tier": "free" },
+        "requires": [],
+        "needs_skills": [],
+        "brief": "CRM — record and recall the people I meet as pages in my local wiki: identity, what they do, how we're connected, give/get, and our interaction history. One-hop network traversal. No external keys."
+      },
+      {
+        "id": "briefing",
+        "name": "Daily debrief",
+        "what": "A morning brief that sweeps your inbox, calendar and queues and tells you what to actually focus on today.",
+        "deliverable": "a daily brief",
+        "cost": { "label": "needs Google", "tier": "one" },
+        "requires": ["google"],
+        "needs_skills": [],
+        "brief": "Daily debrief — each morning, sweep my Gmail, Google Calendar and any queues, then write me a skimmable brief with proposed priorities. Warm to me; draft anything for sending in my own voice."
+      },
+      {
+        "id": "scheduling",
+        "name": "Scheduling & email",
+        "what": "Turn 'set up a call with Sam next week' into a drafted invite and email. You approve; it sends.",
+        "deliverable": "calendar holds + email drafts",
+        "cost": { "label": "needs Google", "tier": "one" },
+        "requires": ["google"],
+        "needs_skills": ["crm"],
+        "brief": "Scheduling & email — interpret natural instructions like 'find time with Sam next week', resolve the person from my CRM, and draft the calendar hold and email in my voice. Propose, never auto-send."
+      },
+      {
+        "id": "tasks",
+        "name": "Task list",
+        "what": "A to-do list it manages for you — capture from chat, prioritise, and tick off, without you touching the tool.",
+        "deliverable": "a managed task list",
+        "cost": { "label": "needs Linear", "tier": "one" },
+        "requires": ["linear"],
+        "needs_skills": [],
+        "brief": "Task list — capture tasks I mention in conversation into Linear, list what's on my plate, reprioritise, and mark things done. Act immediately, then tell me what you did."
+      },
+      {
+        "id": "intake",
+        "name": "Image intake",
+        "what": "Send it a screenshot; it reads it, works out what it is, and files it to the right place.",
+        "deliverable": "routed screenshots",
+        "cost": { "label": "local · no keys", "tier": "free" },
+        "requires": [],
+        "needs_skills": ["tasks", "crm"],
+        "brief": "Image intake — when I send a screenshot, view it, classify what it is (a task, a person, something to remember, or a question), and propose where to file it. Propose, don't file, until I confirm."
+      },
+      {
+        "id": "drain",
+        "name": "Inbox drain",
+        "what": "Watches a channel and turns every message into a tracked item, on its own, every few minutes.",
+        "deliverable": "a continuously-drained inbox",
+        "cost": { "label": "Discord + Linear + cron", "tier": "many" },
+        "requires": ["discord", "linear", "scheduler"],
+        "needs_skills": ["intake", "tasks", "crm", "scheduling"],
+        "brief": "Inbox drain — every few minutes, read new messages in my Discord inbox channel and turn each into a tracked Linear issue, mirroring replies back. Runs headless on a schedule. This is the agent's continuous spine."
+      }
+    ]
+  }
+}

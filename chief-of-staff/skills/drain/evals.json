@@ -1,0 +1,10 @@
+[
+  { "query": "drain my inbox", "should_trigger": true },
+  { "query": "drain my agent queue", "should_trigger": true },
+  { "query": "work my queue", "should_trigger": true },
+  { "query": "process my channels", "should_trigger": true },
+  { "query": "process my Discord channels into Linear", "should_trigger": true },
+  { "query": "work through my agent queue", "should_trigger": true },
+  { "query": "What's my day look like?", "should_trigger": false },
+  { "query": "What's the capital of France?", "should_trigger": false }
+]

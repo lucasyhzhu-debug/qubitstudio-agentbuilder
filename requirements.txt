@@ -1,0 +1,16 @@
+# Deliverable-generation tooling for consulting agents
+python-pptx>=1.0.2     # PowerPoint decks
+python-docx>=1.1.2     # Word memos
+openpyxl>=3.1.5        # Excel models
+pandas>=2.2.3          # tabular analysis behind models/decks
+
+# agent-studio (P1) — local design GUI backend
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pytest>=8
+pytest-asyncio>=0.23
+
+# chief-of-staff v0.6.0 Phase A — one-time Google OAuth consent (scripts/google-consent.py)
+google-auth-oauthlib>=1.2.0
+# chief-of-staff v0.8.0 — service-account DWD token minter (scripts/mint-sa-token.py)
+google-auth>=2.0

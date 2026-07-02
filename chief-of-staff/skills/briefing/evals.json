@@ -1,0 +1,7 @@
+[
+  { "query": "what are my meetings today", "should_trigger": true },
+  { "query": "brief me", "should_trigger": true },
+  { "query": "what's tomorrow look like", "should_trigger": true },
+  { "query": "set up a meeting with Sarah Thursday", "should_trigger": false },
+  { "query": "here are my notes from the X meeting", "should_trigger": false }
+]

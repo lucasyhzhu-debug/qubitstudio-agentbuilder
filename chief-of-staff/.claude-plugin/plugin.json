@@ -1,0 +1,20 @@
+{
+  "name": "chief-of-staff",
+  "description": "Your personal chief of staff — runs your day and week from your local wiki-brain knowledge base, Google Workspace (email + calendar), Discord, and Linear. Use when you want a daily/weekly briefing, proposals on what to focus on, to schedule meetings from natural instructions (confirm-gated calendar write), to manage your to-do list, or to recall people you've met.",
+  "version": "0.8.0",
+  "author": {
+    "name": "Lucas Zhu",
+    "email": "you@example.com"
+  },
+  "license": "UNLICENSED",
+  "category": "productivity",
+  "keywords": [
+    "chief-of-staff",
+    "productivity",
+    "linear",
+    "calendar",
+    "crm",
+    "briefing",
+    "discord"
+  ]
+}

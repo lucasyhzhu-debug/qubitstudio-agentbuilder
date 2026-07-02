@@ -1,0 +1,33 @@
+[
+  { "query": "here are my notes from the Sarah meeting", "should_trigger": true },
+  { "query": "takeaways from today's call", "should_trigger": true },
+  { "query": "minutes from the product sync", "should_trigger": true },
+  { "query": "todos from the board meeting", "should_trigger": true },
+  { "query": "file it", "should_trigger": true },
+  { "query": "done, that's it", "should_trigger": true },
+  { "query": "log these workshop notes from this afternoon", "should_trigger": true },
+  { "query": "capture my notes — good call with Chen this morning re Q3 strategy", "should_trigger": true },
+
+  { "query": "What's my day look like?", "should_trigger": false },
+  { "query": "Set up a meeting with Sarah next Tuesday", "should_trigger": false },
+  { "query": "Brief me on tomorrow", "should_trigger": false },
+  { "query": "Drain my inbox", "should_trigger": false },
+  { "query": "What's the Frollie Q3 roadmap?", "should_trigger": false },
+  { "query": "Schedule a catch-up with Tom", "should_trigger": false },
+
+  {
+    "query": "notes from this morning: aligned on go-to-market and next steps for the proposal — met with Tom and Jess. Could be from the 9am or the 11am.",
+    "should_trigger": true,
+    "_behavioral_id": "disambig-two-candidate-meetings",
+    "_guards": "ask-dont-guess: ambiguous meeting (two candidates for same morning) must not auto-file",
+    "_pass_if": "Posts exactly ONE disambiguating question to the Discord thread (e.g. 'Which meeting were these notes from? Reply with the date and who you met with.'). Does NOT file the meeting page. Does NOT write ## Minutes, ## Synthesis, ## Takeaways, or ## Todos. No CRM lines written, no Linear todos created. capture_status is not set to filed. Fails if the agent guesses which meeting and files, or posts more than one question, or calls any write path before disambiguation resolves."
+  },
+
+  {
+    "query": "here are my notes from the Frollie strategy call: okay so we covered three things. one was go-to-market timing, we think Q3 is too early pushed it to Q4. second was pricing, Tom wants to anchor at 299 per seat, i said let's look at comp first. third was hiring, they need a senior PM by August. done",
+    "should_trigger": true,
+    "_behavioral_id": "attribution-minutes-voice-vs-synthesis",
+    "_guards": "attribution-split: ## Minutes preserves Lucas's voice; ## Synthesis is separate and agent-attributed with mandatory italic marker",
+    "_pass_if": "## Minutes contains Lucas's dictated notes in his own voice, lightly tidied for transcription errors only. All three discussion points (go-to-market timing, pricing anchor, hiring) appear in his phrasing — not rewritten or paraphrased by the agent. ## Synthesis is a distinct section, prefixed with the mandatory '*Agent synthesis*' italic line, containing the agent's own analysis (key decisions, open questions, tensions identified). The two sections are never merged. No agent framing appears in ## Minutes; no Lucas verbatim is reproduced in ## Synthesis. Fails if ## Minutes reads as a polished agent summary, if sections are merged, or if the '*Agent synthesis*' italic attribution marker is absent from ## Synthesis."
+  }
+]

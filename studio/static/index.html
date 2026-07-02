@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>agent-studio</title>
+<link rel="stylesheet" href="/static/styles.css">
+<link rel="stylesheet" href="/static/shelf.css"></head>
+<body>
+  <header><b>agent-studio</b> <span id="status">starting…</span>
+    <button id="shelfbtn" title="Browse the skill shelf, add capabilities, and build your installable agent">Skill shelf ▦<span class="count">0</span></button>
+    <input id="loadfile" type="file" accept="application/json" hidden>
+    <button id="load">Load spec.json</button>
+    <button id="download" disabled>Download spec.json</button>
+    <label id="evalstoggle" title="M3 evals fan out many nested claude runs and are slow. Off → grade 'validated'; on → 'verified'.">
+      <input id="runevals" type="checkbox"> evals</label>
+    <button id="export" disabled>Export .plugin ▶</button></header>
+  <main>
+    <section id="chat"><div id="log"></div>
+      <form id="composer"><textarea id="msg" rows="2" placeholder="Describe the agent you want…"></textarea>
+      <button type="submit">Send</button></form></section>
+    <aside id="blueprint"><div class="empty">The blueprint fills in as you chat.</div></aside>
+    <div id="buildpanel" hidden>
+      <div id="stepper"></div>
+      <div id="components"></div>
+      <pre id="buildlog"></pre>
+      <div id="buildresult"></div>
+    </div>
+  </main>
+
+  <!-- ── Skill Shelf drawer ── -->
+  <div id="shelf-backdrop" hidden></div>
+  <aside id="shelf-drawer" hidden aria-label="Skill shelf">
+    <div class="shelf-head">
+      <div class="eyebrow">The shop's back room</div>
+      <h2>Skill shelf</h2>
+      <p>Same spine for everyone — then add the muscle you want.</p>
+      <button class="shelf-close" aria-label="Close shelf">✕</button>
+    </div>
+    <div class="shelf-body"></div>
+    <div class="shelf-foot"></div>
+  </aside>
+
+  <script src="/static/vendor/marked.min.js"></script>
+  <script src="/static/vendor/purify.min.js"></script>
+  <script src="/static/app.js"></script>
+  <script src="/static/shelf.js"></script>
+</body></html>

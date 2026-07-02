@@ -1,0 +1,21 @@
+{
+  "name": "agent-architect",
+  "description": "Interactively designs and scaffolds a complete, best-in-class Claude Code plugin from a short interview: it quizzes you on what your agent should do, proposes a better structure (which parts should be a skill vs subagent vs command vs MCP), and generates the verified plugin. Use this whenever someone says 'build me an agent/plugin for X', 'help me design an agent', 'scaffold a Claude Code plugin', or wants to turn a workflow into a reusable agent.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Lucas Zhu",
+    "email": "you@example.com"
+  },
+  "license": "UNLICENSED",
+  "category": "developer-tools",
+  "keywords": [
+    "plugin",
+    "agent",
+    "generator",
+    "scaffold",
+    "architect",
+    "skill",
+    "meta",
+    "claude-code"
+  ]
+}
