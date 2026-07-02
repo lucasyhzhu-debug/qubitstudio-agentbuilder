@@ -6,7 +6,7 @@
 
 /* page takeover: the document scrolls; the old panes hide; header stays */
 html.dossier, body.dossier { overflow: auto; height: auto; }
-body.dossier main { display: block; height: 0; overflow: visible; }
+body.dossier > main { display: block; height: 0; overflow: visible; }
 body.dossier #chat { display: none; }
 body.dossier .rightrail { display: none; }
 body.dossier #advanced { display: none; }  /* Load/Download/evals/Export → architect mode only (§4.4) */
