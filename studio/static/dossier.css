@@ -25,7 +25,8 @@ body.dossier.dz-dock-build .rightrail {
   box-shadow: var(--sh-lg); padding: 16px;
 }
 
-#dossier .dz-doc { max-width: 760px; margin: 0 auto; padding: 64px 32px 30vh;
+#dossier .dz-doc { display: block; overflow: visible; /* reset styles.css's bare `main` grid */
+  max-width: 760px; margin: 0 auto; padding: 64px 32px 30vh;
   position: relative; font-size: 17px; line-height: 1.55; }
 .dz-kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
   text-transform: uppercase; color: var(--ink-3); }
