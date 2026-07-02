@@ -9,6 +9,7 @@ fastapi>=0.115
 uvicorn[standard]>=0.30
 pytest>=8
 pytest-asyncio>=0.23
+httpx2>=0.1            # starlette TestClient backend (studio/tests)
 
 # chief-of-staff v0.6.0 Phase A — one-time Google OAuth consent (scripts/google-consent.py)
 google-auth-oauthlib>=1.2.0

@@ -49,6 +49,8 @@ them without checking the substrate is fully placeholder-form.
 | Launch the studio | `python -m studio` |
 | Preflight only (participant pre-work) | `python -m studio --doctor` |
 | Run studio tests | `.venv` python: `python -m pytest studio/tests` (pytest.ini in `studio/`) |
+| Take a phase from intent to a landed plan | `/spec-plan-pipeline <phase>` (alias `/spec-pipeline`) |
+| Review a spec or plan (Staff+Principal) | `/shipshape <doc-path>` |
 
 ## Conventions
 
@@ -59,7 +61,10 @@ them without checking the substrate is fully placeholder-form.
   `.mcp.json`), installed by `cd <dir> && claude` — NOT a plugin/marketplace install. See
   `docs/specs/2026-07-02-workshop-lean-distribution-design.md` §5.
 - Design specs live in `docs/specs/`; the roadmap in `docs/ROADMAP.md`. Spec-first for
-  non-trivial changes, matching the lifecycle the specs themselves followed.
+  non-trivial changes, matching the lifecycle the specs themselves followed. The lifecycle is
+  automated by `/spec-plan-pipeline` (spec → shipshape → plan → shipshape → land → handoff);
+  reviews land in `docs/reviews/`, plans in `docs/plans/`, execution handoffs in
+  `.claude/handoff/` (gitignored).
 - Windows + PowerShell is the reference dev environment, but everything participant-facing must be
   cross-platform (the launcher/doctor is the guard).
 
