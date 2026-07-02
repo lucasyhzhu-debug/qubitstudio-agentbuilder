@@ -4,6 +4,7 @@ let sessionId = null, currentSpec = null, agentLive = false;
 // ?mode=architect keeps the generic plugin-design interview reachable (spec §4.1/§4.7).
 const MODE = new URLSearchParams(location.search).get('mode') === 'architect' ? 'architect' : 'workshop';
 const SEED = MODE === 'architect' ? 'Begin the agent-architect interview.' : 'Begin the workshop interview.';
+if (MODE === 'architect') { const a = $('#advanced'); if (a) a.open = true; }
 
 function setStatus(text, live) {
   const el = $('#status');
@@ -18,6 +19,7 @@ async function start() {
   });
   sessionId = (await r.json()).session_id;
   setStatus('ready');
+  if (MODE === 'workshop') renderAgentPanel(null);
   send(SEED);  // seed the first turn
 }
 
@@ -73,6 +75,7 @@ async function send(message) {
       else if (ev.type === 'done') {
         if (ev.spec) renderBlueprint(ev.spec);
         if (ev.studio && typeof window.shelfSync === 'function') window.shelfSync(ev.studio);
+        if (MODE === 'workshop') renderAgentPanel(ev.studio);
       }
     }
   }
@@ -100,6 +103,42 @@ function renderBlueprint(spec) {
       card.classList.add('flash'); setTimeout(() => card.classList.remove('flash'), 900);
     });
   }
+}
+
+// ── "Your agent" panel (workshop mode) — the conversation's live mirror ──
+let catalogCache = null;
+async function getCatalog() {
+  if (!catalogCache) {
+    try { catalogCache = await (await fetch('/api/catalog')).json(); }
+    catch { catalogCache = { baseline: { items: [] }, shelf: { items: [] } }; }
+  }
+  return catalogCache;
+}
+
+async function renderAgentPanel(studio) {
+  const cat = await getCatalog();
+  const byId = new Map((cat.shelf?.items || []).map((i) => [i.id, i]));
+  const picks = (studio?.picks || []).map((id) => byId.get(id)).filter(Boolean);
+  const ints = [...new Set(picks.flatMap((i) => i.requires || []))];
+  const row = (name, tagLabel, locked) =>
+    `<div class="ya-row ${locked ? 'locked' : ''}"><span>${name}</span><span class="ya-tag">${tagLabel}</span></div>`;
+  $('#blueprint').innerHTML = DOMPurify.sanitize(`
+    <div class="bp-card ya">
+      <h3>Your agent</h3>
+      ${(cat.baseline?.items || []).map((b) => row(b.name, '🔒 baseline', true)).join('')}
+      ${picks.length
+        ? picks.map((p) => row(p.name, p.cost?.label || '', false)).join('')
+        : '<p class="ya-empty">Talk to the architect — your agent takes shape here.</p>'}
+      <h3>Integrations</h3>
+      <div class="ya-ints">${ints.length ? ints.map((i) => `<span class="int-chip">${i}</span>`).join('') : '<span class="ya-empty">none yet</span>'}</div>
+      <label class="kr-field">Agent name
+        <input id="ya-name" type="text" maxlength="60" value="${escAttr(studio?.name || '')}" placeholder="e.g. my-cos"></label>
+      <button type="button" id="ya-build" ${picks.length ? '' : 'disabled'}>Build my agent ▶</button>
+    </div>`);
+  const build = $('#ya-build');
+  if (build) build.addEventListener('click', () => {
+    if (typeof window.shelfBuild === 'function') window.shelfBuild($('#ya-name').value.trim());
+  });
 }
 
 $('#composer').addEventListener('submit', (e) => {

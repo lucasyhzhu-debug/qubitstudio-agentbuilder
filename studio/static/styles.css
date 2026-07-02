@@ -109,6 +109,15 @@ header button:hover { border-color: var(--sapphire); color: var(--sapphire); }
   cursor: not-allowed;
 }
 
+/* ── Advanced disclosure (architect-path controls demoted behind a toggle) ──
+   No margin-left: auto here — #shelfbtn (shelf.css) already carries the
+   header's brand-left/controls-right spacer, so #advanced just sits flush
+   right after it instead of splitting the free space into two gaps. */
+#advanced { position: relative; }
+#advanced summary { cursor: pointer; list-style: none; padding: 6px 10px; border-radius: var(--r-btn); }
+#advanced summary:hover { color: var(--sapphire); }
+#advanced[open] { display: flex; align-items: center; gap: 8px; }
+
 /* ── Main two-column grid ── */
 main {
   display: grid;
@@ -337,6 +346,15 @@ input:focus, textarea:focus { border-color: var(--sapphire); box-shadow: 0 0 0 3
   font-style: italic;
   font-size: 13px;
 }
+
+/* ── "Your agent" panel (workshop mode) ── */
+.ya-row { display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-top: 1px solid var(--rule); font-family: var(--body); color: var(--ink); }
+.ya-row .ya-tag { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); }
+.ya-empty { color: var(--ink-4); font-size: 13.5px; }
+#ya-build { background: var(--sapphire); color: #fff; border: none; width: 100%;
+  padding: 10px 0; margin-top: 10px; }
+#ya-build:disabled { background: var(--tint-2); color: var(--ink-4); }
 
 /* ── Export button ── */
 #export {

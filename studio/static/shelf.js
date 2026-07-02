@@ -105,6 +105,14 @@
     close();
   }
 
+  // Called by the Your-agent panel (app.js). Fills the drawer's name field if the
+  // panel supplied one, then runs the same buildAgent() path.
+  window.shelfBuild = function (name) {
+    const f = sel('.shelf-foot .shelf-name');
+    if (name && f && !f.value.trim()) f.value = name;
+    buildAgent();
+  };
+
   function open() {
     backdrop.hidden = false; drawer.hidden = false;
     requestAnimationFrame(() => { backdrop.classList.add('open'); drawer.classList.add('open'); });
