@@ -40,3 +40,7 @@ def test_json_fence_not_matched():
     # no ```json fallback — that fence belongs to the spec extractor
     text = '```json\n{"picks": ["crm"]}\n```'
     assert extract_studio(text, IDS) is None
+
+def test_duplicate_picks_deduped():
+    out = extract_studio(_block('{"picks": ["crm", "crm", "tasks"]}'), IDS)
+    assert out["picks"] == ["crm", "tasks"]

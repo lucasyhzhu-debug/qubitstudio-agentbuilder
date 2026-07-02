@@ -71,4 +71,4 @@ environment variable is needed or read.
 
 ## Fonts
 
-Fonts in studio/static/fonts/ are OFL-licensed (Bricolage Grotesque, Hanken Grotesk, JetBrains Mono, Crimson Pro), copied from the qubit-site repo.
+Fonts in studio/static/fonts/ are OFL-licensed (Bricolage Grotesque, Hanken Grotesk, JetBrains Mono, Crimson Pro), copied from the qubit-site repo. Per-family copyright notices and the full SIL OFL 1.1 license text are in `studio/static/fonts/LICENSES.md`.

@@ -4,7 +4,6 @@ from pathlib import Path
 from studio.chat_session import ChatSession
 from studio.system_prompt import write_system_prompt
 from studio.exporter import Exporter
-from studio.studio_extractor import extract_studio
 
 @pytest.mark.integration
 @pytest.mark.asyncio

@@ -122,6 +122,10 @@ async function renderAgentPanel(studio) {
   const ints = [...new Set(picks.flatMap((i) => i.requires || []))];
   const row = (name, tagLabel, locked) =>
     `<div class="ya-row ${locked ? 'locked' : ''}"><span>${name}</span><span class="ya-tag">${tagLabel}</span></div>`;
+  // A participant's typed-but-unsent name must survive the next re-render (each chat
+  // turn calls this fresh); only fall back to the agent's suggested name when the
+  // field is untouched. Mirrors shelf.js's renderBody() keep/restore idiom.
+  const keep = $('#ya-name')?.value?.trim();
   $('#blueprint').innerHTML = DOMPurify.sanitize(`
     <div class="bp-card ya">
       <h3>Your agent</h3>
@@ -132,7 +136,7 @@ async function renderAgentPanel(studio) {
       <h3>Integrations</h3>
       <div class="ya-ints">${ints.length ? ints.map((i) => `<span class="int-chip">${i}</span>`).join('') : '<span class="ya-empty">none yet</span>'}</div>
       <label class="kr-field">Agent name
-        <input id="ya-name" type="text" maxlength="60" value="${escAttr(studio?.name || '')}" placeholder="e.g. my-cos"></label>
+        <input id="ya-name" type="text" maxlength="60" value="${escAttr(keep || studio?.name || '')}" placeholder="e.g. my-cos"></label>
       <button type="button" id="ya-build" ${picks.length ? '' : 'disabled'}>Build my agent ▶</button>
     </div>`);
   const build = $('#ya-build');

@@ -106,11 +106,12 @@
     close();
   }
 
-  // Called by the Your-agent panel (app.js). Fills the drawer's name field if the
-  // panel supplied one, then runs the same buildAgent() path.
+  // Called by the Your-agent panel (app.js). An explicit panel-provided name wins
+  // over a stale auto-fill in the drawer (e.g. from an earlier shelfSync), so a
+  // non-empty name is set unconditionally; the no-name call path is unchanged.
   window.shelfBuild = function (name) {
     const f = sel('.shelf-foot .shelf-name');
-    if (name && f && !f.value.trim()) f.value = name;
+    if (name && f) f.value = name;
     buildAgent();
   };
 

@@ -24,6 +24,7 @@ def extract_studio(assistant_text: str, catalog_ids: set[str]) -> dict | None:
     if not isinstance(obj, dict) or not isinstance(obj.get("picks"), list):
         return None
     picks = [p for p in obj["picks"] if isinstance(p, str) and p in catalog_ids]
+    picks = list(dict.fromkeys(picks))  # dedupe, preserving first-seen order
     name = obj.get("name")
     if not isinstance(name, str) or not name.strip():
         name = None
