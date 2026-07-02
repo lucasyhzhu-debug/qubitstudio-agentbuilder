@@ -1,0 +1,138 @@
+/* ── The dossier — the workshop page as a living document (dossier spec §2/§4). ──
+   Lifted from docs/mockups/dossier-journey/v1b-dossier-journey.html + v1c-finale.html.
+   Every rule is scoped under body.dossier or a dz-/dossier class: architect mode and
+   ?ui=chat never activate any of this. Serif = the existing --wordmark token
+   (Crimson Pro, regular + italic faces already self-hosted). */
+
+/* page takeover: the document scrolls; the old panes hide; header stays */
+html.dossier, body.dossier { overflow: auto; height: auto; }
+body.dossier main { display: block; height: 0; overflow: visible; }
+body.dossier #chat { display: none; }
+body.dossier .rightrail { display: none; }
+body.dossier #advanced { display: none; }  /* Load/Download/evals/Export → architect mode only (§4.4) */
+body.dossier #dossier { display: block; }
+
+/* the C3 onboarding walk mounts as a floating dock above the document until D3 (§7.1).
+   body.dz-dock-build reuses the SAME dock for pre-D1c builds (gate-2 C2): the takeover
+   hides .rightrail, which contains #buildpanel — a drawer build would stream into a
+   display:none subtree. app.js adds the class when a build starts while #buildpanel
+   still lives in the rail; D1c's relocation into the closing chapter retires it. */
+body.dossier.onboarding .rightrail,
+body.dossier.dz-dock-build .rightrail {
+  display: flex; flex-direction: column; position: fixed; right: 24px; top: 86px;
+  width: 380px; max-height: calc(100vh - 120px); z-index: 40; overflow: auto;
+  background: var(--canvas); border: 1px solid var(--rule); border-radius: var(--r-card);
+  box-shadow: var(--sh-lg); padding: 16px;
+}
+
+#dossier .dz-doc { max-width: 760px; margin: 0 auto; padding: 64px 32px 30vh;
+  position: relative; font-size: 17px; line-height: 1.55; }
+.dz-kicker { font-family: var(--mono); font-size: 11px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink-3); }
+.dz-h1 { font-family: var(--display); font-weight: 640; font-size: 44px; line-height: 1.06;
+  letter-spacing: -.025em; color: var(--ink); margin: 10px 0 6px; }
+.dz-lede { font-size: 18px; color: var(--ink-3); margin: 0 0 56px; max-width: 52ch; }
+.dz-lede b { color: var(--ink-2); font-weight: 600; }
+
+/* ── journey rail (v1b .rail/.node) ── */
+.dz-rail { position: fixed; left: calc(50% - 380px - 52px); top: 10vh; bottom: 10vh;
+  width: 2px; background: var(--rule); }
+.dz-rail > i { position: absolute; top: 0; left: 0; width: 2px; height: 0;
+  background: var(--sapphire); transition: height .8s ease; }
+.dz-rail .node { position: absolute; left: -5.5px; cursor: pointer; }
+.dz-rail .node b { display: block; width: 11px; height: 11px; border-radius: 50%;
+  background: var(--canvas); border: 2px solid var(--ink-4); transition: all .3s ease; }
+.dz-rail .node span { position: absolute; right: 20px; top: -3px; white-space: nowrap;
+  font-family: var(--mono); font-size: 10px; letter-spacing: .13em; text-transform: uppercase;
+  color: var(--ink-4); transition: color .3s ease; }
+.dz-rail .node.done b { background: var(--sapphire); border-color: var(--sapphire); }
+.dz-rail .node.done span { color: var(--ink-3); }
+.dz-rail .node.now b { border-color: var(--sapphire);
+  box-shadow: 0 0 0 4px rgba(48,111,168,.16); animation: dz-ring 1.8s ease-in-out infinite; }
+.dz-rail .node.now span { color: var(--sapphire); font-weight: 500; }
+.dz-rail .node.stale b { border-color: var(--brass); background: var(--brass-tint);
+  box-shadow: none; animation: none; }
+.dz-rail .node.stale span { color: var(--brass); }
+@keyframes dz-ring { 50% { box-shadow: 0 0 0 7px rgba(48,111,168,.08); } }
+@media (max-width: 900px) { .dz-rail { display: none; } #dossier .dz-doc { padding-top: 40px; } }
+
+/* ── chapters (v1b section/.sec-head) ── */
+.dz-sec { margin: 0 0 60px; position: relative; transition: opacity .4s ease; }
+.dz-sec.settle { animation: dz-settle .5s ease both; }
+@keyframes dz-settle { from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; } }
+.dz-sec .sec-head { display: flex; align-items: baseline; gap: 14px;
+  border-bottom: 1px solid var(--rule-strong); padding-bottom: 10px; margin-bottom: 22px; }
+.dz-sec .sec-head .no { font-family: var(--mono); font-size: 12px; color: var(--brass); }
+.dz-sec h2 { font-family: var(--display); font-weight: 600; font-size: 24px;
+  letter-spacing: -.015em; color: var(--ink); margin: 0; }
+.dz-sec .sec-head .why { margin-left: auto; font-family: var(--mono); font-size: 11px;
+  color: var(--ink-4); letter-spacing: .08em; text-transform: uppercase; }
+.dz-prose { color: var(--ink-2); }
+.dz-prose p, #dz-live p { margin: 0 0 10px; }
+#dz-live { color: var(--ink-2); margin: 0 0 18px; }
+.dz-error { margin: 14px 0 0; padding: 10px 14px; border: 1px dashed var(--brass);
+  border-radius: 10px; background: var(--brass-tint); font-family: var(--mono);
+  font-size: 12px; color: var(--brass); }
+
+/* ── skill cards (v1b .cards/.card → dz-) ── */
+.dz-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 0 0 18px; }
+@media (max-width: 640px) { .dz-cards { grid-template-columns: 1fr; } }
+.dz-card { background: var(--canvas); border: 1px solid var(--rule);
+  border-radius: var(--r-card); box-shadow: var(--sh-sm); padding: 20px 22px; position: relative; }
+.dz-card .tag { position: absolute; top: 16px; right: 16px; font-family: var(--mono);
+  font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-4); }
+.dz-card h3 { font-family: var(--display); font-weight: 620; font-size: 18.5px;
+  color: var(--ink); margin: 0 0 6px; }
+.dz-card p { margin: 0; font-size: 15.5px; color: var(--ink-3); line-height: 1.5; }
+.dz-card .price { display: inline-block; margin-top: 12px; font-family: var(--mono);
+  font-size: 11px; padding: 3px 10px; border-radius: 999px;
+  background: var(--warn-t); color: var(--warn); }
+.dz-receipt { font-family: var(--mono); font-size: 11px; color: var(--ink-4); margin: 0 0 10px; }
+
+/* ── inline asks + choice cards (v1b .ask/.choices) ── */
+.dz-ask { margin: 26px 0 0; }
+.dz-ask .ask { padding-left: 18px; border-left: 3px solid var(--sapphire); }
+.dz-ask .who { font-family: var(--mono); font-size: 10.5px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--sapphire); margin-bottom: 6px; }
+.dz-ask .ask p { margin: 0; font-size: 17.5px; color: var(--ink); }
+.choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 18px 0 0 18px; }
+@media (max-width: 640px) { .choices { grid-template-columns: 1fr; } }
+.choice { background: var(--canvas); border: 1.5px solid var(--rule); border-radius: 12px;
+  padding: 14px 16px; cursor: pointer; text-align: left; font-family: var(--body);
+  transition: border-color .15s, box-shadow .15s, transform .15s; }
+.choice:hover { border-color: var(--sapphire); box-shadow: var(--sh-sm); transform: translateY(-2px); }
+.choice b { display: block; font-size: 15.5px; color: var(--ink); font-weight: 650; margin-bottom: 4px; }
+.choice span { font-size: 13.5px; color: var(--ink-3); line-height: 1.4; }
+.choice.picked { border-color: var(--sapphire); background: var(--tint);
+  box-shadow: 0 0 0 3px rgba(48,111,168,.12); }
+.choice.dim { opacity: .42; }
+.choice:disabled { cursor: default; }
+.dz-ask .or { margin: 12px 0 0 18px; font-family: var(--mono); font-size: 10.5px;
+  letter-spacing: .1em; text-transform: uppercase; color: var(--ink-4); }
+
+/* ── fossilized answers (v1b .answer) — the human is the serif ── */
+.answer { margin: 18px 0 0 18px; font-family: var(--wordmark); font-style: italic;
+  font-size: 21px; line-height: 1.5; color: var(--ink-2); position: relative; padding-right: 90px; }
+.answer::before { content: '— '; color: var(--brass); }
+
+/* ── the writing line (v1b .writeline) ── */
+.writeline { margin: 14px 0 0 18px; display: flex; align-items: flex-start; gap: 12px; }
+.writeline .bar { width: 3px; align-self: stretch; background: var(--brass);
+  border-radius: 2px; animation: dz-breathe 1.6s ease-in-out infinite; }
+@keyframes dz-breathe { 50% { opacity: .35; } }
+.writeline input { flex: 1; border: 0; outline: 0; background: transparent;
+  font-family: var(--wordmark); font-style: italic; font-size: 21px; color: var(--ink);
+  padding: 2px 0; border-bottom: 1px dashed var(--rule-strong); }
+.writeline input::placeholder { color: var(--ink-4); }
+.writeline input:focus { border-bottom-color: var(--brass); }
+.writeline.held { opacity: .45; }
+.writeline.held .bar { animation: none; opacity: .3; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dz-sec.settle { animation: none; }
+  .writeline .bar { animation: none; }
+  .dz-rail .node.now b { animation: none; }
+  .dz-rail > i { transition: none; }
+  .choice, .choice:hover { transition: none; transform: none; }
+}
