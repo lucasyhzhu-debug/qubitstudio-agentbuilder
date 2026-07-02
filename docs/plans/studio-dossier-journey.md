@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Replace the workshop chat with a **dossier** — a single scrolling document the architect writes chapter by chapter, where the participant's answers fossilize as serif quotations — and make the destination real first: the composer emits a raw-skills **agent home** (`cd <dir> && claude`), so the finale's sign → bind → assemble → **first breath** → launch-card sequence runs on a real agent.
+**Goal:** Replace the workshop chat with a **dossier** — a single scrolling document the architect writes chapter by chapter, where the participant's answers fossilize as serif quotations — and make the destination real first: the composer emits a raw-skills **agent home** (`cd <dir> ; claude` — the `;` form, see flagged deviation 11), so the finale's sign → bind → assemble → **first breath** → launch-card sequence runs on a real agent.
 
 **Architecture:** The existing ` ```studio ` block gains an optional `chapter` field (title + phase + typed `blocks`); `dossier.js` renders beats (one per `claude -p` turn) into numbered chapters with live-edge staging, a blended writing line, inline choice cards, and a journey rail. The server accumulates beats on `ChatSession` and replays them on reload. D0 rewrites `composer.py`'s output tree to the lean-spec §5 agent-home form, which `POST /api/first-breath` later boots for one real greeting turn. Architect mode and the `?ui=chat` escape hatch keep the old skins on the same backend.
 
@@ -13,18 +13,19 @@
 **Visual truth:** `docs/mockups/dossier-journey/v1b-dossier-journey.html` (journey) + `v1c-finale.html` (finale) — open both in a browser before touching `dossier.css`/`dossier.js`.
 **D0 design authority:** `docs/specs/2026-07-02-workshop-lean-distribution-design.md` §5.
 
-**Flagged deviations (deliberate, not omissions — each is a spec-vs-code truth found while grounding this plan):**
+**Flagged deviations (deliberate, not omissions — each is a spec-vs-code truth found while grounding this plan; adjudicated by the gate-2 review `docs/reviews/shipshape-studio-dossier-journey-plan-2026-07-03.md`, whose C/S/I/R resolutions are folded into the tasks below):**
 
 1. **Docs checkpoints ride each slice's landing PR** (spec §9), not tasks here — EXCEPT the substrate README/INSTALL rewrite (a D0 task, Task 4) and the FACILITATOR/SETUP + GUI install-copy updates (D1a tasks, Task 11), which the spec explicitly makes implementation work.
-2. **Vault default vs compose ordering.** Spec §7.0 wants the vault at the resolved `vault_dir` with `<home>/vault/` default. Reality: `server.py:166-169` defaults to a SIBLING `dist/<slug>-vault`, and `composer.compose` scaffolds the vault in the *generate* stage (composer.py:165) BEFORE the *package* stage `rmtree`s + moves `final` (composer.py:180-182) — a naïve in-home vault would be destroyed by its own build. Resolution (Task 3): when `vault_dir` is the in-home form, compose scaffolds into `staging/vault` so the vault rides the move; external vaults (the onboarding second brain) scaffold in place, unchanged. Event order is preserved (`component: vault` still first).
-3. **The reference-path invariant needs a rewrite pass.** Lean §5 left the mechanism open ("decided at plan time by reading what the SKILL.md files actually say"). Read: the substrate speaks in FOUR forms — `chief-of-staff/skills/<sk>/references/…` (briefing:110,126,141), `chief-of-staff/references/…` (briefing:203), bare `references/…` meaning *this* skill's dir (crm:40, drain:8), and the cross-skill shorthand `<sk>/references/…` (capture:164). Decision: the substrate keeps its layout; `copy_home` rewrites mentions in **copied SKILL.md files** to agent-home-root-relative via a deterministic regex pass (same class as `delucas()`), enforced by the invariant test (Task 1). (`capture` cross-references `crm`'s bare `references/…` in a way only correct in-place — harmless: `capture` is not on the shelf and its SKILL.md never ships.)
+2. **Vault default vs compose ordering.** Spec §7.0 wants the vault at the resolved `vault_dir` with `<home>/vault/` default. Reality: `server.py:166-169` defaults to a SIBLING `dist/<slug>-vault`, and `composer.compose` scaffolds the vault in the *generate* stage (composer.py:165) BEFORE the *package* stage `rmtree`s + moves `final` (composer.py:180-182) — a naïve in-home vault would be destroyed by its own build. Resolution (Task 3): when `vault_dir` is the in-home form, compose scaffolds into `staging/vault` so the vault rides the move; external vaults (the onboarding second brain) scaffold in place, unchanged. Event order is preserved (`component: vault` still first). **Gate-2 adjudication (I4 — ▸DECISION):** a REBUILD must not destroy the agent's memory either — the spec never accepted that data loss. Task 3 preserves the in-home vault across the package-stage `rmtree` (move aside → restore after the staging move, memories win over the fresh scaffold); a rebuild loses `.env` only (the already-documented consequence). Pinned by a test (vault content written post-build survives a rebuild) and surfaced in the execution handoff for Lucas's awareness.
+3. **The reference-path invariant needs a rewrite pass.** Lean §5 left the mechanism open ("decided at plan time by reading what the SKILL.md files actually say"). Read: the substrate speaks in FOUR forms — `chief-of-staff/skills/<sk>/references/…` (briefing:110,126,141), `chief-of-staff/references/…` (briefing:203), bare `references/…` meaning *this* skill's dir (crm:40, drain:8), and the cross-skill shorthand `<sk>/references/…` (capture:164). Decision: the substrate keeps its layout; `copy_home` rewrites mentions in **copied SKILL.md files AND copied `agents/*.md` files** (gate-2 I5 — `context-gatherer.md` carries the same `chief-of-staff/…` forms and is baseline machinery for briefing/drain; for agent files the bare `references/…` form already means the home root and is left alone) to agent-home-root-relative via a deterministic regex pass (same class as `delucas()`), enforced by the invariant test, which globs `.claude/skills/*/SKILL.md` and `.claude/agents/*.md` (Task 1). (`capture` cross-references `crm`'s bare `references/…` in a way only correct in-place — harmless: `capture` is not on the shelf and its SKILL.md never ships.)
 4. **Beat shape carries the user message.** Spec §4.1 defines a beat as `{prose, studio}`, but replay must restore the fossilized answers, which come from the participant's messages. Beats are `{user, prose, studio}` (Task 7); seed / `[studio event]` texts are suppressed at render time, `[card]` texts re-fossilize their answer part.
 5. **`wireKeyRow` gains an optional 4th arg.** The spec names the seam `wireKeyRow(rowEl, integration, tree)` (§7.2); both consumers also need the pass/fail outcome (wizard install-gate, dossier launch-card chips), so the extraction is `wireKeyRow(rowEl, integration, tree, onResult)` — the named 3-arg seam preserved, the callback additive (Task 17).
 6. **There is no explicit render throttle in app.js.** Spec §4.1/§11.4 says streaming "reuses the existing per-turn render throttle"; reality: `send()` re-renders on every SSE token event (app.js:134-137). The dossier does the same — same cost profile as the shipped chat, nothing new to build.
-7. **`FACILITATOR.md` does not exist yet.** Task 11 creates it at the repo root (the lean-spec §3 layout position). Root `README.md` carries no `/plugin` wording (grep-verified), so the "SETUP fix" reduces to the GUI `installLineHtml` copy + a README launch-line touch-up.
+7. **`studio/FACILITATOR.md` already exists** (the shared-infra provisioning runbook — Discord/Linear/Google pre-work). Gate-2 S5/R3 (▸DECISION): do NOT create a second `FACILITATOR.md` at the repo root (two facilitator files invite the wrong-file failure in the room) — Task 11 adds a **"Running the room" section to the EXISTING `studio/FACILITATOR.md`** (recovery moves: ⟳ regenerate, ↺ rewrite, reload/beats-replay, `?ui=chat` same-session resume, first-breath fallback). The lean-spec §3 root position is dropped in favor of one file, one room. Root `README.md` carries no `/plugin` wording (grep-verified), so the "SETUP fix" reduces to the GUI `installLineHtml` copy + a README launch-line touch-up.
 8. **`v1c-finale.html` shows integration chips green** — already flagged stale in the spec header; the launch card here renders chips **pending** and fills them as connect completes (Tasks 16/18).
 9. **"Byte-identical" architect mode** is enforced where the spec's tests enforce it: `build_system_prompt()` and its tests untouched, `?mode=architect` behavior unchanged. `index.html` does gain hidden, inert dossier nodes (exactly as the landed onboarding overlay did) — architect mode never activates them.
 10. **The finale's "identity organ"** maps to compose's `assemble` stage event (the `delucas` owner/vault substitution that actually runs at build time) — the spec's phrase "the tweak pass's identity/vault substitution stage" names the same substitution class; the tweak endpoint itself is the optional post-build voice form and emits nothing during the ceremony. Caption says only what runs: "owner + vault substitutions applied".
+11. **The `install` field is `cd <final> ; claude`, not lean §5's literal `&&`** (gate-2 S4 — ▸DECISION). `cd X && claude` is a **parse error in Windows PowerShell 5.1** — the reference platform's default shell, at the journey's climactic moment. The `;` separator parses in PS 5.1, pwsh, bash, and zsh alike; the GUI's `installLineHtml` renders it as two lines via the existing `' ; '` split (the same split the old plugin-form install line used), so participants see `cd <dir>` then `claude`. Docs (INSTALL/README) already teach the two-line form and are untouched by this deviation.
 
 ## Global Constraints
 
@@ -32,7 +33,7 @@
 - Repo is PUBLIC — no real keys/tokens/ids/emails/personal values in any commit. Placeholder-contract scan on every substrate-touching diff.
 - `chief-of-staff/` and `agent-architect/` are NOT touched by D1–D3. **D0's scoped substrate cleanup (Task 4: `.claude-plugin/`, `marketplace.json`, README/INSTALL install wording) is the sole, deliberate exception** (spec §7.0/§8). Commit order: composer stops reading those files first (Tasks 1–3), then the removal commit (Task 4); revert path is the reverse order.
 - Architect mode stays byte-identical: `build_system_prompt()` and its tests unchanged; `?mode=architect` renders the existing two-pane chat.
-- **`?ui=chat` is the same-journey escape hatch** (spec §1): the current workshop chat skin stays reachable on the same backend (same session, same extractor, same endpoints) until dossier parity is proven at a dress rehearsal. Do not remove any chat-skin code path in this plan.
+- **`?ui=chat` is the same-journey escape hatch** (spec §1): the current workshop chat skin stays reachable on the same backend (same session, same extractor, same endpoints) until dossier parity is proven at a dress rehearsal. "Same session" is literal (gate-2 C1): a chat-skin boot RESUMES the stored dossier session and replays its beats as plain bubbles — it never mints a new session while one is stored and alive. Do not remove any chat-skin code path in this plan.
 - No new deps, no build step — vanilla-JS IIFEs + CSS; stdlib-only server additions (existing FastAPI/pytest only).
 - Fence discipline: `chapter` lives INSIDE the existing ` ```studio ` block — no new fence; the spec/json/studio disjointness rules are untouched.
 - All pytest runs use the repo venv: `.venv/Scripts/python -m pytest studio/tests …` (Windows dev box; participant-facing code stays cross-platform — `pathlib`, forward-slash paths in generated files).
@@ -44,7 +45,7 @@
 
 # Slice D0 — raw-skills packaging (Tasks 1–4)
 
-**What ships at this cut:** the composer emits an agent home (`.claude/skills/`, `.claude/agents/`, root `.mcp.json`, generated `CLAUDE.md`, in-home default vault) instead of a plugin; `install` becomes `cd <dir> && claude`; the substrate loses its vestigial plugin manifests and its docs teach the new launch. Participants type `cd dist/<name>-cos && claude` and talk to what they built. **No frontend files are touched** (the stale GUI install copy is the accepted D0→D1a gap, spec §7.0). ROADMAP item 3 closes in this slice's landing PR.
+**What ships at this cut:** the composer emits an agent home (`.claude/skills/`, `.claude/agents/`, root `.mcp.json`, generated `CLAUDE.md`, in-home default vault) instead of a plugin; `install` becomes `cd <dir> ; claude` (flagged deviation 11 — PS 5.1-safe, rendered as two lines); the substrate loses its vestigial plugin manifests and its docs teach the new launch. Participants `cd dist/<name>-cos`, run `claude`, and talk to what they built. **No frontend files are touched** (the stale GUI install copy is the accepted D0→D1a gap, spec §7.0). ROADMAP item 3 closes in this slice's landing PR.
 
 ### Task 1: `composer.copy_home` — the agent-home tree + reference-path rewrite
 
@@ -54,7 +55,7 @@
 
 **Interfaces:**
 - Consumes: `_COS` / `_ALL_SKILLS` (composer.py:11,51 — unchanged).
-- Produces: `copy_home(tree: Path, picks: list[str]) -> None` (replaces `copy_plugin`) and `_rewrite_reference_paths(text: str, skill_id: str) -> str`. Task 3's `compose()` and Task 2's tests consume `copy_home`; the tree shape is: `.claude/skills/<pick>/SKILL.md`, `.claude/agents/context-gatherer.md`, root `.mcp.json`, root `references/`, `skills/<all>/references/`. NO `.claude-plugin/`, NO `marketplace.json`.
+- Produces: `copy_home(tree: Path, picks: list[str]) -> None` (replaces `copy_plugin`) and `_rewrite_reference_paths(text: str, skill_id: str | None) -> str` — `skill_id=None` is the agents/*.md mode (gate-2 I5): the bare `references/…` form already means the home root there and is left alone; all `chief-of-staff/…` prefixes are still dropped. Task 3's `compose()` and Task 2's tests consume `copy_home`; the tree shape is: `.claude/skills/<pick>/SKILL.md`, `.claude/agents/context-gatherer.md` (reference paths rewritten, I5), root `.mcp.json`, root `references/`, `skills/<all>/references/`. NO `.claude-plugin/`, NO `marketplace.json`.
 
 - [ ] **Step 1: Write the failing tests** — replace the body of `studio/tests/test_composer_copy.py` with:
 
@@ -98,20 +99,44 @@ def test_rewrite_reference_paths_forms():
     assert "`skills/briefing/references/meeting-page.md`" in out
     assert "`.claude/skills/crm/SKILL.md`" in out
 
+def test_rewrite_reference_paths_agent_mode():
+    # skill_id=None (a copied agents/*.md — gate-2 I5): bare `references/…` already
+    # means the home root and must NOT be re-homed under skills/<sk>/; the
+    # chief-of-staff/ prefixes still drop.
+    out = composer._rewrite_reference_paths(
+        "mint per `chief-of-staff/references/google-auth.md`; see `references/google-auth.md` "
+        "and `chief-of-staff/skills/drain/references/linear-api.md` "
+        "and `skills/drain/references/drain-state.md`.", None)
+    assert out.count("`references/google-auth.md`") == 2
+    assert "`skills/drain/references/linear-api.md`" in out
+    assert "`skills/drain/references/drain-state.md`" in out
+    assert "chief-of-staff/" not in out
+
+def test_agent_files_rewritten_home_root_relative(tmp_path):
+    # gate-2 I5: context-gatherer.md is baseline machinery for briefing/drain — its
+    # substrate-form paths must be rewritten exactly like the SKILL.md files.
+    tree = tmp_path / "home"
+    composer.copy_home(tree, ["briefing"])
+    text = (tree / ".claude/agents/context-gatherer.md").read_text(encoding="utf-8")
+    assert "chief-of-staff/skills/" not in text
+    assert "chief-of-staff/references/" not in text
+
 _REF_RE = re.compile(r"(?:[\w.\-]+/)*references/(?:[\w.\-]+/)*[\w.\-]+\.md")
 
 def test_reference_path_invariant_all_shelf_picks(tmp_path):
-    """The lean §5 invariant: every reference mentioned in a shipped SKILL.md resolves
-    from the agent-home root."""
+    """The lean §5 invariant: every reference mentioned in a shipped SKILL.md — or in a
+    shipped .claude/agents/*.md (gate-2 I5) — resolves from the agent-home root."""
     picks = ["crm", "briefing", "scheduling", "tasks", "intake", "drain"]
     tree = tmp_path / "home"
     composer.copy_home(tree, picks)
     missing = []
-    for sk in picks:
-        text = (tree / ".claude/skills" / sk / "SKILL.md").read_text(encoding="utf-8")
+    shipped = [(sk, tree / ".claude/skills" / sk / "SKILL.md") for sk in picks]
+    shipped += [(f"agents/{p.name}", p) for p in sorted((tree / ".claude/agents").glob("*.md"))]
+    for label, path in shipped:
+        text = path.read_text(encoding="utf-8")
         for ref in sorted(set(_REF_RE.findall(text))):
             if not (tree / ref).exists():
-                missing.append(f"{sk}: {ref}")
+                missing.append(f"{label}: {ref}")
     assert not missing, f"unresolvable reference paths from the agent-home root: {missing}"
 ```
 
@@ -138,17 +163,21 @@ with:
 _ALL_SKILLS = ["briefing", "capture", "crm", "drain", "intake", "scheduling", "tasks"]
 
 
-def _rewrite_reference_paths(text: str, skill_id: str) -> str:
-    """Rewrite path mentions in a copied SKILL.md to be AGENT-HOME-ROOT-relative (the
-    lean spec §5 invariant). The substrate speaks in four forms (grep-verified):
-    `chief-of-staff/skills/<sk>/references/…`, `chief-of-staff/references/…`, bare
-    `references/…` meaning THIS skill's dir, and the cross-skill shorthand
-    `<sk>/references/…`. In the home, substrate refs live under `skills/<sk>/references/`
-    and shared refs under `references/`; SKILL.md bodies live under `.claude/skills/`.
-    Deterministic string pass — same class as delucas(). Order matters: the bare form
-    first (the lookbehind keeps it off the prefixed forms), prefixes after."""
-    # 1. bare `references/…` (start of a path) → this skill's substrate dir
-    text = re.sub(r"(?<![\w/\-.])references/", f"skills/{skill_id}/references/", text)
+def _rewrite_reference_paths(text: str, skill_id: str | None) -> str:
+    """Rewrite path mentions in a copied SKILL.md or agents/*.md to be
+    AGENT-HOME-ROOT-relative (the lean spec §5 invariant). The substrate speaks in four
+    forms (grep-verified): `chief-of-staff/skills/<sk>/references/…`,
+    `chief-of-staff/references/…`, bare `references/…` meaning THIS skill's dir, and the
+    cross-skill shorthand `<sk>/references/…`. In the home, substrate refs live under
+    `skills/<sk>/references/` and shared refs under `references/`; SKILL.md bodies live
+    under `.claude/skills/`. `skill_id=None` is the agents/*.md mode (gate-2 I5): an
+    agent file has no "this skill's dir", so its bare `references/…` already means the
+    home root and step 1 is skipped. Deterministic string pass — same class as
+    delucas(). Order matters: the bare form first (the lookbehind keeps it off the
+    prefixed forms), prefixes after."""
+    if skill_id:
+        # 1. bare `references/…` (start of a path) → this skill's substrate dir
+        text = re.sub(r"(?<![\w/\-.])references/", f"skills/{skill_id}/references/", text)
     # 2. cross-skill shorthand `briefing/references/…` → `skills/briefing/references/…`
     for sk in _ALL_SKILLS:
         text = re.sub(rf"(?<![\w/\-.]){sk}/references/", f"skills/{sk}/references/", text)
@@ -165,12 +194,16 @@ def copy_home(tree: Path, picks: list[str]) -> None:
     SKILL.md under .claude/skills/, agents under .claude/agents/, .mcp.json + shared
     references/ at the root. EVERY skill's references/ ships (inert markdown, kills the
     hard-dep class) at its unchanged `skills/<sk>/references/` location; only PICKED
-    skills' SKILL.md ship (what Claude actually triggers on), reference mentions
-    rewritten home-root-relative."""
+    skills' SKILL.md ship (what Claude actually triggers on). Reference mentions in
+    every shipped SKILL.md AND agents/*.md are rewritten home-root-relative (I5)."""
     tree = Path(tree)
     (tree / ".claude" / "skills").mkdir(parents=True, exist_ok=True)
     shutil.copy2(_COS / ".mcp.json", tree / ".mcp.json")
-    shutil.copytree(_COS / "agents", tree / ".claude" / "agents")
+    (tree / ".claude" / "agents").mkdir(parents=True, exist_ok=True)
+    for agent_md in sorted((_COS / "agents").glob("*.md")):
+        text = agent_md.read_text(encoding="utf-8")
+        (tree / ".claude" / "agents" / agent_md.name).write_text(
+            _rewrite_reference_paths(text, None), encoding="utf-8")
     shutil.copytree(_COS / "references", tree / "references")
     for sk in _ALL_SKILLS:
         refs = _COS / "skills" / sk / "references"
@@ -208,7 +241,7 @@ git commit -m "feat(studio): copy_home — agent-home tree + home-root reference
 - Test: `studio/tests/test_composer_package.py` (rewrite)
 
 **Interfaces:**
-- Produces: `write_claude_md(tree: Path, owner_name: str, vault_dir: Path, picks: list[str]) -> None` — deterministic per lean §5: identity, owner name, resolved vault path (forward-slash), picked-skill roster, **nothing more** (no personalization claim — review F10). And `assemble_manifests(tree: Path, integrations: set[str]) -> None` — ONLY the `.mcp.json` discord-trim survives. Task 3's `compose()` consumes both.
+- Produces: `write_claude_md(tree: Path, agent_name: str, owner: str, vault_dir: Path, picks: list[str]) -> None` — deterministic per lean §5: identity (slug from the **agent name**), the **owner's** name (a distinct argument — gate-2 I3: the participant's onboarding name, threaded by Task 3 with the agent name as fallback), resolved vault path (forward-slash), picked-skill roster, **nothing more** (no personalization claim — review F10). And `assemble_manifests(tree: Path, integrations: set[str]) -> None` — ONLY the `.mcp.json` discord-trim survives. Task 3's `compose()` consumes both.
 
 - [ ] **Step 1: Write the failing tests** — replace the body of `studio/tests/test_composer_package.py` with:
 
@@ -224,10 +257,11 @@ def _run(agen):
 
 def test_claude_md_carries_exactly_the_lean_fields(tmp_path):
     tree = tmp_path / "home"; tree.mkdir()
-    composer.write_claude_md(tree, "Sam Rivera", tmp_path / "vault", ["crm", "tasks"])
+    composer.write_claude_md(tree, "atlas", "Sam Rivera", tmp_path / "vault", ["crm", "tasks"])
     text = (tree / "CLAUDE.md").read_text(encoding="utf-8")
-    assert "sam-rivera-cos" in text                       # identity
-    assert "Sam Rivera" in text                           # owner name
+    assert "atlas-cos" in text                            # identity — slug from the AGENT name
+    assert "Sam Rivera" in text                           # owner — the PARTICIPANT (gate-2 I3)
+    assert "sam-rivera-cos" not in text                   # the owner never leaks into the slug
     assert str(tmp_path / "vault").replace("\\", "/") in text   # resolved vault path
     assert "crm" in text and "tasks" in text              # picked-skill roster
     assert "drain" not in text                            # roster is the PICKS, not the shelf
@@ -265,28 +299,30 @@ Expected: FAIL — `AttributeError: ... no attribute 'write_claude_md'` / `TypeE
 - [ ] **Step 3: Implement.** In `studio/composer.py`, replace `assemble_manifests` (lines 119–143, the version that `_edit_json`s `.claude-plugin/plugin.json` and `marketplace.json`) with:
 
 ```python
-def write_claude_md(tree: Path, owner_name: str, vault_dir: Path, picks: list[str]) -> None:
-    """The generated agent-home CLAUDE.md — deterministic per lean spec §5: identity,
-    owner name, resolved vault path, picked-skill roster, and NOTHING more. No
-    personalization claim — personalization lives in the tweak pass, not this file
-    (review F10). Absorbs plugin.json's identity role; greets with identity so a
-    correct `cd <home> && claude` launch is self-confirming."""
+def write_claude_md(tree: Path, agent_name: str, owner: str,
+                    vault_dir: Path, picks: list[str]) -> None:
+    """The generated agent-home CLAUDE.md — deterministic per lean spec §5: identity
+    (slug from the AGENT name), the OWNER's name (the participant — gate-2 I3: a
+    distinct argument, so "Owner: atlas" can never happen), resolved vault path,
+    picked-skill roster, and NOTHING more. No personalization claim — personalization
+    lives in the tweak pass, not this file (review F10). Absorbs plugin.json's identity
+    role; greets with identity so a correct launch is self-confirming."""
     cat = _catalog()
     by_id = {it["id"]: it for it in cat["shelf"]["items"]}
-    slug = f"{_slug(owner_name)}-cos"
+    slug = f"{_slug(agent_name)}-cos"
     roster = "\n".join(
         f"- **{p}** ({by_id[p]['name']}): {by_id[p]['what']}"
         for p in picks if p in by_id) or "- (baseline only)"
     vault = str(vault_dir).replace("\\", "/")
     (tree / "CLAUDE.md").write_text(f"""# {slug}
 
-You are **{slug}** — {owner_name}'s personal chief of staff, composed at the QubitStudio
+You are **{slug}** — {owner}'s personal chief of staff, composed at the QubitStudio
 workshop. This folder is your home: your skills live in `.claude/skills/`, their shared
 reference material under `skills/` and `references/`.
 
 ## Owner
 
-- {owner_name}
+- {owner}
 
 ## Your memory (the vault)
 
@@ -336,8 +372,8 @@ git commit -m "feat(studio): generated agent-home CLAUDE.md (lean §5 fields) + 
 - Test: `studio/tests/test_composer_package.py` (append), `studio/tests/test_server.py` (append)
 
 **Interfaces:**
-- Consumes: Task 1 `copy_home`, Task 2 `write_claude_md` / `assemble_manifests(tree, integrations)`.
-- Produces: `compose()`'s event stream gains `{"type": "component", "key": "shell", "status": "ok"}` (the finale's shell organ, spec §7.0/§6.3); `done.install == f"cd {final} && claude"`; an in-home `vault_dir` scaffolds into staging and rides the package move (flagged deviation 2). Server default vault becomes `dist/<slug>-cos/vault`. Tasks 14/16 consume `done.plugin_path`/`done.install`/`component` events.
+- Consumes: Task 1 `copy_home`, Task 2 `write_claude_md(tree, agent_name, owner, vault_dir, picks)` / `assemble_manifests(tree, integrations)`, `studio.onboarding.load_state` (lazy import — gate-2 I3).
+- Produces: `compose()`'s event stream gains `{"type": "component", "key": "shell", "status": "ok"}` (the finale's shell organ, spec §7.0/§6.3); `done.install == f"cd {final} ; claude"` (flagged deviation 11 — PS 5.1); an in-home `vault_dir` scaffolds into staging and rides the package move, and on a REBUILD the pre-existing in-home vault is preserved across the package `rmtree` (move aside → restore — gate-2 I4, flagged deviation 2); `_onboarding_owner()` threads the participant's onboarding name into `write_claude_md`'s `owner` (fallback: the agent name — gate-2 I3). Server default vault becomes `dist/<slug>-cos/vault`. Tasks 14/16 consume `done.plugin_path`/`done.install`/`component` events.
 
 - [ ] **Step 1: Write the failing tests.** Append to `studio/tests/test_composer_package.py`:
 
@@ -350,7 +386,8 @@ def test_compose_emits_shell_event_and_cd_install(tmp_path):
     assert keys[0] == "vault" and "shell" in keys and "skill:crm" in keys
     done = evs[-1]
     assert done["type"] == "done"
-    assert done["install"] == f"cd {done['plugin_path']} && claude"
+    assert done["install"] == f"cd {done['plugin_path']} ; claude"
+    assert "&&" not in done["install"]      # gate-2 S4: `&&` is a PS 5.1 parse error
     assert "/plugin" not in done["install"]
     out = Path(done["plugin_path"])
     assert (out / ".claude/skills/crm/SKILL.md").exists()
@@ -370,6 +407,21 @@ def test_compose_in_home_vault_survives_package(tmp_path):
     text = (home_vault / "meta/chief-of-staff/personality.md").read_text(encoding="utf-8")
     assert "Sam Rivera" in text
 
+def test_compose_rebuild_preserves_in_home_vault(tmp_path):
+    # gate-2 I4: the agent's MEMORY survives its own rebuild — vault content written
+    # AFTER a build (memories, lessons) is still there after building again; only the
+    # home's .env is lost (the documented consequence).
+    home = tmp_path / "dist" / "sam-rivera-cos"
+    home_vault = home / "vault"
+    _run(composer.compose(["crm"], "Sam Rivera", tmp_path / "dist", home_vault))
+    memory = home_vault / "meta" / "chief-of-staff" / "memories.md"
+    memory.write_text("Sam prefers Tuesday briefings.", encoding="utf-8")
+    (home / ".env").write_text("X=1\n", encoding="utf-8")
+    evs = _run(composer.compose(["crm"], "Sam Rivera", tmp_path / "dist", home_vault))
+    assert evs[-1]["type"] == "done"
+    assert memory.read_text(encoding="utf-8") == "Sam prefers Tuesday briefings."
+    assert not (home / ".env").exists()     # .env is the ONLY rebuild loss
+
 def test_compose_external_vault_unchanged(tmp_path):
     # The onboarding second brain stays an in-place scaffold outside the home.
     sb = tmp_path / "second-brain"
@@ -377,6 +429,23 @@ def test_compose_external_vault_unchanged(tmp_path):
     assert evs[-1]["type"] == "done"
     assert (sb / "meta/chief-of-staff/personality.md").exists()
     assert not (Path(evs[-1]["plugin_path"]) / "vault").exists()
+
+def test_compose_claude_md_owner_from_onboarding(tmp_path, monkeypatch):
+    # gate-2 I3: the participant's onboarding name is the CLAUDE.md owner; the agent
+    # name still drives the slug. (Monkeypatched — composer tests never read the real
+    # studio/.cache/onboarding.json.)
+    monkeypatch.setattr(composer, "_onboarding_owner", lambda: "Sam Rivera")
+    evs = _run(composer.compose(["crm"], "atlas", tmp_path / "dist", tmp_path / "vault"))
+    done = evs[-1]
+    assert done["type"] == "done" and done["plugin_path"].endswith("atlas-cos")
+    text = (Path(done["plugin_path"]) / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "atlas-cos" in text and "Sam Rivera" in text
+
+def test_compose_claude_md_owner_falls_back_to_agent_name(tmp_path, monkeypatch):
+    monkeypatch.setattr(composer, "_onboarding_owner", lambda: None)
+    evs = _run(composer.compose(["crm"], "atlas", tmp_path / "dist", tmp_path / "vault"))
+    text = (Path(evs[-1]["plugin_path"]) / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "## Owner\n\n- atlas" in text
 ```
 
 Append to `studio/tests/test_server.py` (below `test_compose_uses_second_brain_vault`):
@@ -402,9 +471,19 @@ def test_compose_default_vault_is_in_home(monkeypatch, tmp_path):
 Run: `.venv/Scripts/python -m pytest studio/tests/test_composer_package.py studio/tests/test_server.py -v`
 Expected: new tests FAIL (`KeyError: 'install'` / old `/plugin marketplace add` form / old sibling default); existing pass.
 
-- [ ] **Step 3: Implement.** In `studio/composer.py`, replace the body of `compose()` (lines 148–190) with:
+- [ ] **Step 3: Implement.** In `studio/composer.py`, replace the body of `compose()` (lines 148–190) with the following, adding the `_onboarding_owner` helper immediately above it:
 
 ```python
+def _onboarding_owner() -> str | None:
+    """The participant's onboarding name, if the walk ran (gate-2 I3). Lazy, guarded
+    import: composer keeps working standalone and tests monkeypatch this seam."""
+    try:
+        from studio import onboarding
+        return onboarding.load_state().get("name") or None
+    except Exception:
+        return None
+
+
 async def compose(picks, owner_name, outdir, vault_dir) -> AsyncIterator[dict]:
     outdir, vault_dir = Path(outdir), Path(vault_dir)
     try:
@@ -438,20 +517,37 @@ async def compose(picks, owner_name, outdir, vault_dir) -> AsyncIterator[dict]:
 
         yield _stage("assemble", "running")
         delucas(staging, owner_name, vault_dir)
-        write_claude_md(staging, owner_name, vault_dir, picks)
+        # gate-2 I3: CLAUDE.md's Owner is the PARTICIPANT (onboarding name); the agent
+        # name still drives the slug/identity. Fallback: the agent name.
+        write_claude_md(staging, owner_name, _onboarding_owner() or owner_name,
+                        vault_dir, picks)
         assemble_manifests(staging, res.integrations)
         yield _stage("assemble", "ok")
 
         yield _stage("package", "running")
         outdir.mkdir(parents=True, exist_ok=True)
+        kept_vault = None
         if final.exists():
-            # a rebuild rmtree's the home INCLUDING its .env — documented consequence (spec §6.1)
+            # gate-2 I4: a REBUILD must not destroy the agent's memory — the in-home
+            # vault moves aside, the home is rebuilt, then the vault rides back in
+            # (replacing the fresh staging scaffold: memories win). Only .env is lost
+            # on a rebuild — the documented consequence (spec §6.1).
+            if in_home and (final / "vault").exists():
+                kept_vault = _HERE / ".cache" / "compose" / f"{slug}-vault-keep"
+                if kept_vault.exists():
+                    shutil.rmtree(kept_vault, ignore_errors=True)
+                shutil.move(str(final / "vault"), str(kept_vault))
             shutil.rmtree(final, ignore_errors=True)
         shutil.move(str(staging), str(final))
+        if kept_vault is not None:
+            shutil.rmtree(str(final / "vault"), ignore_errors=True)
+            shutil.move(str(kept_vault), str(final / "vault"))
         yield _stage("package", "ok")
         yield {"type": "done", "grade": "composed", "plugin_path": str(final),
                "vault_path": str(vault_dir), "integrations": sorted(res.integrations),
-               "install": f"cd {final} && claude"}
+               # gate-2 S4 (flagged deviation 11): `;` parses in Windows PowerShell 5.1
+               # where `&&` is a parse error; the GUI splits ' ; ' into two lines.
+               "install": f"cd {final} ; claude"}
     except UnknownPickError as e:
         yield {"type": "error", "stage": "preflight", "message": str(e)}
     except Exception as e:  # filesystem etc. — never leave a half-agent silently
@@ -570,7 +666,7 @@ git commit -m "chore(substrate): drop vestigial plugin manifests + plugin-instal
 
 # Slice D1a — the dossier shell (Tasks 5–11)
 
-**What ships at this cut:** workshop mode renders as the dossier — numbered chapters with live-edge staging, fossilized serif answers, inline choice cards + the writing line (baton rules intact), the journey rail, picks-diff skill cards, brass error lines, and beats replay on reload — with `?ui=chat` as the same-backend escape hatch and the C3 onboarding walk mounted as a floating dock until D3. Building still happens through the kept shelf drawer (the signature close is D1c). `ready: true` is accepted and ignored by the renderer until Task 15. ROADMAP item 2 gets a status note in the landing PR.
+**What ships at this cut:** workshop mode renders as the dossier — numbered chapters with live-edge staging, fossilized serif answers, inline choice cards + the writing line (baton rules intact), the journey rail, picks-diff skill cards, brass error lines, and beats replay on reload — with `?ui=chat` as the same-SESSION escape hatch (a chat-skin boot resumes the stored dossier session and replays its beats as bubbles — gate-2 C1) and the C3 onboarding walk mounted as a floating dock until D3. Building still happens through the kept shelf drawer, its stream VISIBLE in the same floating-dock pattern (`body.dz-dock-build` — gate-2 C2; the takeover CSS would otherwise hide `#buildpanel`); the signature close is D1c. `ready: true` is accepted and ignored by the renderer until Task 15. ROADMAP item 2 gets a status note in the landing PR.
 
 ### Task 5: Extractor — `chapter` field + typed-blocks validation
 
@@ -856,7 +952,7 @@ git commit -m "feat(studio): workshop prompt writes the page — chapter contrac
 - Test: `studio/tests/test_chat_session.py` (append), `studio/tests/test_server.py` (append), `studio/tests/test_smoke_integration.py` (append)
 
 **Interfaces:**
-- Produces: `ChatSession.beats: list[dict]` — one entry per completed turn, appended at `done`: `{"user": str, "prose": str (raw, fences included), "studio": dict | None (the post-extract snapshot)}`. `GET /api/session/{session_id}/beats -> {"session_id", "beats"}`, unknown id → 404. The `done` SSE event already carries `chapter` transparently (it rides `session.studio`); a test pins that. Task 9's `tryReplay` consumes the endpoint; Task 10's `startWorkshopSession` stores the session id.
+- Produces: `ChatSession.beats: list[dict]` — one entry per completed turn, appended at `done`: `{"user": str, "prose": str (raw, fences included), "studio": dict | None (the post-extract snapshot)}`. `server.LAST_COMPOSE: dict | None` — this studio run's last successful compose `done` event (+ `picks`), captured by `compose_endpoint` (declared HERE so the beats payload can carry it — gate-2 S6; Task 14's first breath consumes it too). `GET /api/session/{session_id}/beats -> {"session_id", "beats", "last_compose"}` (`last_compose` = `LAST_COMPOSE` or null), unknown id → 404. The `done` SSE event already carries `chapter` transparently (it rides `session.studio`); a test pins that. Task 9's `tryReplay` consumes the endpoint (restoring `lastDone` from `last_compose`); Task 10's `startWorkshopSession` stores the session id.
 
 - [ ] **Step 1: Write the failing tests.** Append to `studio/tests/test_chat_session.py`:
 
@@ -923,7 +1019,7 @@ def test_beats_endpoint_unknown_session_404():
     c = TestClient(server.app)
     assert c.get("/api/session/not-a-session/beats").status_code == 404
 
-def test_beats_endpoint_returns_accumulated():
+def test_beats_endpoint_returns_accumulated_and_last_compose():
     c = TestClient(server.app)
     sid = c.post("/api/session/new").json()["session_id"]
     server.SESSIONS[sid].beats = [
@@ -936,12 +1032,36 @@ def test_beats_endpoint_returns_accumulated():
          "studio": {"picks": ["tasks"], "name": None, "ready": False, "ask": None,
                     "chapter": None}},
     ]
+    server.LAST_COMPOSE = None
     out = c.get(f"/api/session/{sid}/beats").json()
     assert out["session_id"] == sid and len(out["beats"]) == 2
     # prose + studio state sufficient to re-render the document (spec §10)
     assert "Welcome to the studio." in out["beats"][0]["prose"]
     assert out["beats"][0]["studio"]["chapter"]["phase"] == "welcome"
     assert out["beats"][1]["studio"]["picks"] == ["tasks"]
+    assert out["last_compose"] is None      # no build yet this studio run
+    # gate-2 S6: the payload piggybacks the server's last compose so a reload
+    # restores lastDone — replayed connect chapters keep their live key rows.
+    server.LAST_COMPOSE = {"plugin_path": "x", "install": "cd x ; claude",
+                           "integrations": ["linear"], "picks": ["tasks"]}
+    out = c.get(f"/api/session/{sid}/beats").json()
+    assert out["last_compose"]["install"] == "cd x ; claude"
+    server.LAST_COMPOSE = None              # leave the module global clean
+
+def test_compose_done_captured_for_replay_and_first_breath(monkeypatch, tmp_path):
+    # gate-2 S6: compose_endpoint records its own done event in LAST_COMPOSE — the
+    # beats payload (above) and Task 14's first breath both read it.
+    _ob(monkeypatch, tmp_path)
+    server.LAST_COMPOSE = None
+    async def fake_compose(picks, name, outdir, vault_dir):
+        yield {"type": "done", "grade": "composed", "plugin_path": str(tmp_path),
+               "vault_path": "v", "integrations": ["linear"], "install": "cd x ; claude"}
+    monkeypatch.setattr(server._composer, "compose", fake_compose)
+    c = TestClient(server.app)
+    with c.stream("POST", "/api/compose", json={"picks": ["tasks"], "name": "atlas"}) as r:
+        "".join(r.iter_text())
+    assert server.LAST_COMPOSE["plugin_path"] == str(tmp_path)
+    assert server.LAST_COMPOSE["picks"] == ["tasks"]
 
 def test_chat_done_carries_chapter_through_sse(monkeypatch):
     class _FakeChapterSession:
@@ -985,7 +1105,7 @@ async def test_real_workshop_turn_emits_chapter(tmp_path):
 - [ ] **Step 2: Run to verify failure**
 
 Run: `.venv/Scripts/python -m pytest studio/tests/test_chat_session.py studio/tests/test_server.py -v`
-Expected: `test_beats_accumulate_per_turn` FAILs (`AttributeError: 'ChatSession' object has no attribute 'beats'`); `test_beats_endpoint_*` FAIL with 404s; `test_chat_done_carries_chapter_through_sse` PASSES already (the studio dict rides the done event untouched) — it pins the contract.
+Expected: `test_beats_accumulate_per_turn` FAILs (`AttributeError: 'ChatSession' object has no attribute 'beats'`); `test_beats_endpoint_*` and `test_compose_done_captured_*` FAIL (404s / `AttributeError: module 'studio.server' has no attribute 'LAST_COMPOSE'`); `test_chat_done_carries_chapter_through_sse` PASSES already (the studio dict rides the done event untouched) — it pins the contract.
 
 - [ ] **Step 3: Implement.** In `studio/chat_session.py` `__init__` (after line 53 `self.studio: dict | None = None`) add:
 
@@ -1014,19 +1134,41 @@ to:
             yield {"type": "done", "spec": self.spec, "studio": self.studio}
 ```
 
-In `studio/server.py`, add below the `chat` endpoint (after line 109):
+In `studio/server.py`, add the module global below `_DISTILL_TASK` (line 43):
+
+```python
+LAST_COMPOSE: dict | None = None   # this studio run's last successful compose done event
+                                   # (+ picks) — piggybacked on the beats payload (gate-2
+                                   # S6) and consumed by the first-breath endpoint (D1c)
+```
+
+Capture it in `compose_endpoint`'s `stream()` — inside the `async for ev in _composer.compose(...)` loop (line 170-171):
+
+```python
+        async for ev in _composer.compose(picks, name, _composer._REPO / "dist", vault):
+            if ev.get("type") == "done":
+                global LAST_COMPOSE
+                LAST_COMPOSE = {**ev, "picks": list(picks)}
+            yield _sse(ev)
+```
+
+(Python requires the `global` declaration once in `stream()` — place `global LAST_COMPOSE` as the function's first line instead of inline if the linter complains; either form, the assignment must rebind the module global.)
+
+And add the endpoint below the `chat` endpoint (after line 109):
 
 ```python
 @app.get("/api/session/{session_id}/beats")
 async def session_beats(session_id: str) -> JSONResponse:
     """Beats replay (dossier spec §4.1): the accumulated turns of a live session so a
     page reload re-renders the whole document. Survives reloads, NOT studio restarts
-    (sessions are in-memory — spec §8 non-goal)."""
+    (sessions are in-memory — spec §8 non-goal). `last_compose` rides along (gate-2 S6)
+    so the page can restore its launch/connect state (`lastDone`) too."""
     session = SESSIONS.get(session_id)
     if session is None:
         return JSONResponse({"error": "unknown session"}, status_code=404)
     return JSONResponse({"session_id": session_id,
-                         "beats": getattr(session, "beats", [])})
+                         "beats": getattr(session, "beats", []),
+                         "last_compose": LAST_COMPOSE})
 ```
 
 - [ ] **Step 4: Run to verify pass**
@@ -1050,7 +1192,7 @@ git commit -m "feat(studio): beats — per-turn accumulation on ChatSession + re
 - Modify: `studio/static/index.html`
 
 **Interfaces:**
-- Produces: the `#dossier` root (rail + doc column + `#dz-chapters` + `#dz-live` staging + `#dz-writeline`); all dossier styling scoped under `body.dossier` / `dz-` classes so architect mode and `?ui=chat` render untouched. Class vocabulary lifted from `v1b-dossier-journey.html` (measurements preserved; `.card`/`.cards`/`.chip` renamed `dz-card`/`dz-cards`/`dz-chip` to avoid colliding with `cards.css`; the mockup's `--serif` is the repo's existing `--wordmark` token — Crimson Pro, both faces already self-hosted in `studio/static/fonts/`). Tasks 9/10 consume every id/class named here. No pytest — Task 10's checklist exercises it.
+- Produces: the `#dossier` root (rail + doc column + `#dz-chapters` + `#dz-live` staging + `#dz-writeline`); the floating-dock rule for `body.dossier.onboarding` (the C3 walk) AND `body.dossier.dz-dock-build` (pre-D1c builds — gate-2 C2, class added by Task 10); all dossier styling scoped under `body.dossier` / `dz-` classes so architect mode and `?ui=chat` render untouched. Class vocabulary lifted from `v1b-dossier-journey.html` (measurements preserved; `.card`/`.cards`/`.chip` renamed `dz-card`/`dz-cards`/`dz-chip` to avoid colliding with `cards.css`; the mockup's `--serif` is the repo's existing `--wordmark` token — Crimson Pro, both faces already self-hosted in `studio/static/fonts/`). Tasks 9/10 consume every id/class named here. No pytest — Task 10's checklist exercises it.
 
 - [ ] **Step 1: `index.html` — the dossier root + stylesheet + script slots.** Add the stylesheet link after the `cards.css` link (index.html:7):
 
@@ -1103,8 +1245,13 @@ body.dossier .rightrail { display: none; }
 body.dossier #advanced { display: none; }  /* Load/Download/evals/Export → architect mode only (§4.4) */
 body.dossier #dossier { display: block; }
 
-/* the C3 onboarding walk mounts as a floating dock above the document until D3 (§7.1) */
-body.dossier.onboarding .rightrail {
+/* the C3 onboarding walk mounts as a floating dock above the document until D3 (§7.1).
+   body.dz-dock-build reuses the SAME dock for pre-D1c builds (gate-2 C2): the takeover
+   hides .rightrail, which contains #buildpanel — a drawer build would stream into a
+   display:none subtree. app.js adds the class when a build starts while #buildpanel
+   still lives in the rail; D1c's relocation into the closing chapter retires it. */
+body.dossier.onboarding .rightrail,
+body.dossier.dz-dock-build .rightrail {
   display: flex; flex-direction: column; position: fixed; right: 24px; top: 86px;
   width: 380px; max-height: calc(100vh - 120px); z-index: 40; overflow: auto;
   background: var(--canvas); border: 1px solid var(--rule); border-radius: var(--r-card);
@@ -1253,8 +1400,8 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
 - Modify: `studio/static/dossier.js` (replace the Task 8 shell with the full engine)
 
 **Interfaces:**
-- Consumes: `window.renderMarkdown` / `window.stripSpec` / `window.queueSend` / `window.startWorkshopSession` / `window.resumeSession` / `window.shelfSync` (exposed by Task 10), `GET /api/session/{id}/beats` (Task 7), `GET /api/catalog`.
-- Produces: `window.dossier = { activate, tryReplay, onToken, onError, onDone }` — the exact hooks Task 10 routes `send()` events into. Internal state (`chapters`, `open`, `pendingTarget`, `lastStudio`, `lastDone`) is extended in-file by Tasks 13/15/16/18/20. No pytest (no JS runner — spec §10): `node --check` + backend guard here; the full **D1a manual checklist** runs in Task 10 once app.js routes to these hooks.
+- Consumes: `window.renderMarkdown` / `window.stripSpec` / `window.queueSend` / `window.startWorkshopSession` / `window.resumeSession` / `window.shelfSync` (exposed by Task 10), `GET /api/session/{id}/beats` (Task 7 — `{session_id, beats, last_compose}`; `last_compose` restores `lastDone`, gate-2 S6), `GET /api/catalog`.
+- Produces: `window.dossier = { activate, tryReplay, onToken, onError, onDone, renderPendingAsk }` — the exact hooks Task 10 routes `send()` events into (`activate` is async and resolves only once the catalog is loaded — gate-2 R7; `renderPendingAsk` renders a walk-suppressed ask on handback — gate-2 R6). Internal state (`chapters`, `open`, `pendingTarget`, `lastStudio`, `lastDone`, `busy`) is extended in-file by Tasks 13/15/16/18/20 (`busy` is the turn-in-flight flag the D1b verbs gate on — gate-2 I1; `replayBeat` is verb-aware so a reload after a D1b rewrite/regenerate re-renders faithfully — gate-2 C3). No pytest (no JS runner — spec §10): `node --check` + backend guard here; the full **D1a manual checklist** runs in Task 10 once app.js routes to these hooks.
 
 - [ ] **Step 1: Replace `studio/static/dossier.js` with the full engine**
 
@@ -1275,24 +1422,42 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
   let chapters = [];        // [{ n, title, phase, el, bodyEl }] in document order
   let open = null;          // the open (last) chapter record
   let prevPicks = [];       // previous beat's picks — drives the picks-diff (§4.1.1)
+  let pendingDiff = null;   // picks that arrived before the catalog (gate-2 R7)
   let lastStudio = null;    // last settled whole-state studio block
+  let lastDone = null;      // last compose done event — set by D1c builds (Task 15/16),
+                            // RESTORED on reload from the beats payload's last_compose
+                            // (gate-2 S6); Task 18's key-field blocks read it
   let catalog = null;
   let pendingAsk = null;    // the unanswered ask at the tail, if any
   let acc = '';             // this turn's accumulated raw prose (fences included)
   let replaying = false;
+  let busy = false;         // a turn is queued/in flight (gate-2 I1) — the D1b verbs gate on it
   // Set by the D1b revision verbs; consumed by exactly ONE settle (§5 pending-target
   // override): { rec, mode: 'append' | 'replace' }.
   let pendingTarget = null;
   let rwSettle = null;      // D1b: deferred re-settle to run on the rewrite beat's done
 
+  // The two seeds the studio ever sends (gate-2 S9: exact match, never a prefix guess —
+  // a participant's own line starting with "Begin " must fossilize).
+  const SEED_MSGS = ['Begin the workshop interview.', 'Begin onboarding.'];
+
+  // Every dossier-originated send marks the turn in flight the moment it QUEUES
+  // (gate-2 I1); onToken re-asserts it for turns other surfaces queue (shelf events,
+  // onboarding events). onDone/onError clear it.
+  const sendTurn = (msg) => { busy = true; return window.queueSend(msg); };
+
   // ── activation ──────────────────────────────────────────────────────────
-  function activate() {
+  async function activate() {
     window.dossierActive = true;
     document.documentElement.classList.add('dossier');
     document.body.classList.add('dossier');
     $('#dossier').hidden = false;
     buildRail();
-    getCatalog();
+    // gate-2 R7: the catalog must be in hand before the first done's picks-diff —
+    // start() awaits activate; a diff that somehow lands first parks in pendingDiff
+    // and re-runs here on arrival.
+    await getCatalog();
+    if (pendingDiff) { const p = pendingDiff; pendingDiff = null; diffPicks(p); }
   }
 
   async function getCatalog() {
@@ -1311,12 +1476,21 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
     let out;
     try {
       const r = await fetch(`/api/session/${sid}/beats`);
-      if (!r.ok) throw new Error('gone');
+      if (r.status === 404) {
+        // gate-2 I6: only a DEFINITIVE "no such session" (the studio restarted)
+        // forgets the id — a transient failure must leave it resumable.
+        sessionStorage.removeItem('dossier-session');
+        return false;
+      }
+      if (!r.ok) return false;      // transient server trouble — keep the id
       out = await r.json();
-    } catch { sessionStorage.removeItem('dossier-session'); return false; }
-    if (!out.beats || !out.beats.length) { sessionStorage.removeItem('dossier-session'); return false; }
+    } catch { return false; }       // network failure (server down) — keep the id; a
+                                    // reload after the server returns still resumes
+    if (!out.beats || !out.beats.length) return false;
     await getCatalog();
     window.resumeSession(sid);
+    if (out.last_compose) lastDone = out.last_compose;   // gate-2 S6: launch/connect
+                                                         // state survives the reload
     replaying = true;
     out.beats.forEach((b, i) => replayBeat(b, i === out.beats.length - 1));
     replaying = false;
@@ -1326,9 +1500,41 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
 
   function replayBeat(b, isLast) {
     const u = String(b.user || '');
-    // seeds and [studio event]s are the machine channel — never part of the record;
-    // a [card] message re-fossilizes its answer part (flagged deviation 4)
-    if (!/^\[studio event\]/.test(u) && !/^Begin /.test(u)) {
+    if (/^\[studio event\] rewrite — /.test(u)) {
+      // gate-2 C3: VERB-AWARE replay — re-apply the rewrite to the already-replayed
+      // document, mirroring live beginRewrite/finish: the OLD fossil (rendered by an
+      // earlier beat) becomes the NEW answer with the `rewritten ↺` chip, and this
+      // beat's prose routes to THAT chapter (one-beat pending target), so a retitled
+      // rewrite turn can never open a duplicate section on reload.
+      const m = u.match(/^\[studio event\] rewrite — question: "([\s\S]*?)" — previous answer: "([\s\S]*?)" — new answer: "([\s\S]*)"$/);
+      if (m) {
+        // match by the previous answer's text; prefer a data-q match when one exists
+        // (replayed [card] fossils carry no data-q — text alone must suffice)
+        const fossils = [...document.querySelectorAll('#dossier .answer')].filter((a) =>
+          ((a.firstChild && a.firstChild.textContent) || '').trim() === m[2]);
+        const oldFossil = fossils.find((a) => (a.dataset.q || '') === m[1]) || fossils[0];
+        if (oldFossil) {
+          const sec = oldFossil.closest('.dz-sec');
+          const rec = chapters.find((c) => c.el === sec);
+          const host = oldFossil.parentNode, before = oldFossil.nextSibling;
+          oldFossil.remove();
+          const saveOpen = open;
+          open = { bodyEl: host };           // retarget so the re-fossil lands in place
+          const a = fossilize(m[3], m[1], true);   // 3rd arg = the rewritten chip —
+          open = saveOpen;                         // added by Task 13's fossilize; a
+          host.insertBefore(a, before);            // 2-arg fossilize (pre-D1b) ignores
+          if (rec) pendingTarget = { rec, mode: 'append' };   // it (no verb beats exist then)
+        }
+      }
+    } else if (/^\[studio event\] regenerate chapter "/.test(u)) {
+      // gate-2 C3: the regenerate beat's prose REPLACES its chapter's replayed prose —
+      // never doubles it. norm-matched by title, exactly like live settle().
+      const m = u.match(/^\[studio event\] regenerate chapter "([\s\S]*?)"/);
+      const rec = m && chapters.find((c) => norm(c.title) === norm(m[1]));
+      if (rec) pendingTarget = { rec, mode: 'replace' };
+    } else if (!/^\[studio event\]/.test(u) && !SEED_MSGS.includes(u)) {
+      // seeds and [studio event]s are the machine channel — never part of the record;
+      // a [card] message re-fossilizes its answer part (flagged deviation 4)
       if (/^\[card\] /.test(u)) {
         const m = u.match(/^\[card\] [\s\S]* → ([\s\S]*)$/);
         fossilize((m ? m[1] : u.slice(7)).replace(/^\(custom\) /, ''));
@@ -1345,6 +1551,7 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
 
   // ── streaming: the live edge (§4.1) ─────────────────────────────────────
   function onToken(fullText) {
+    busy = true;                   // gate-2 I1: verbs stay inert while a turn streams
     acc = fullText;
     holdWriteline();
     $('#dz-live').innerHTML = window.renderMarkdown(window.stripSpec(fullText));
@@ -1354,10 +1561,15 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
   // §4.1 errors: a brass error line in the open chapter, the writing line re-arms,
   // any card-held baton releases — the participant can always continue.
   function onError(message) {
+    busy = false;
+    // gate-2 S1: claude-missing-at-boot is the likeliest room failure — with no open
+    // chapter the brass line needs a home that survives the staging wipe below, so
+    // the Welcome section opens FIRST.
+    if (!open) newSection({ title: 'Welcome', phase: 'welcome' });
     const line = document.createElement('div');
     line.className = 'dz-error';
     line.textContent = '⚠ ' + String(message || 'something went wrong — write to continue');
-    ((open && open.bodyEl) || $('#dz-live')).appendChild(line);
+    open.bodyEl.appendChild(line);
     $('#dz-live').innerHTML = '';
     acc = '';
     pendingTarget = null;          // a verb's target clears on its beat, success or error (§5)
@@ -1367,6 +1579,7 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
 
   // ── the settle: one done event = one beat (§4.1) ────────────────────────
   function onDone(ev, quiet) {
+    busy = false;
     const studio = (ev && ev.studio) || lastStudio || {};
     const rec = settle(studio.chapter);
     if (studio.chapter && studio.chapter.blocks && studio.chapter.blocks.length) {
@@ -1374,7 +1587,9 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
     }
     diffPicks(studio.picks || []);
     pendingAsk = studio.ask || null;
-    if (studio.ask && !quiet) renderAsk(studio.ask);
+    // gate-2 R6: ONE hot surface — while the C3 walk holds the page the ask parks in
+    // pendingAsk; renderPendingAsk renders it on handback (Task 10's baton hook).
+    if (studio.ask && !quiet && !window.onboardingActive) renderAsk(studio.ask);
     lastStudio = studio;
     if (rwSettle) { rwSettle(); rwSettle = null; }   // D1b: honest re-settle after a rewrite beat
     if (!quiet) armWriteline(pendingAsk, true);
@@ -1401,8 +1616,11 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
     }
     if (staged.innerHTML.trim()) {
       if (target.mode === 'replace') {
-        // regenerate (§5): agent prose only, in place — fossils/asks/cards untouched
-        target.rec.bodyEl.querySelectorAll('.dz-prose, .dz-error').forEach((n) => n.remove());
+        // regenerate (§5): agent prose only, in place — fossils/asks/cards untouched.
+        // .dz-stale-mark rides out with the prose it annotates (gate-2 R1): a
+        // regenerated chapter is fresh, its "written before your rewrite" mark stale.
+        target.rec.bodyEl.querySelectorAll('.dz-prose, .dz-error, .dz-stale-mark')
+          .forEach((n) => n.remove());
       }
       const prose = document.createElement('div');
       prose.className = 'dz-prose';
@@ -1444,6 +1662,7 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
   }
 
   function diffPicks(picks) {
+    if (!catalog) { pendingDiff = picks.slice(); return; }   // re-diffed on catalog arrival (gate-2 R7)
     const byId = shelfById();
     const added = picks.filter((id) => !prevPicks.includes(id) && byId.has(id));
     const removed = prevPicks.filter((id) => !picks.includes(id));
@@ -1499,9 +1718,12 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
     fossilize(text, ask.title);
     pendingAsk = null;
     holdWriteline();
-    window.queueSend(`[card] ${ask.title} → ${oid ? text : `(custom) ${text}`}`);
+    sendTurn(`[card] ${ask.title} → ${oid ? text : `(custom) ${text}`}`);
     nudgeScroll();
   }
+
+  // gate-2 R6: an ask that arrived while the C3 walk held the page renders on handback.
+  function renderPendingAsk() { if (pendingAsk) renderAsk(pendingAsk); }
 
   // ── fossilized answers: the human is the serif (§4.1.3) ─────────────────
   function fossilize(text, q) {
@@ -1538,7 +1760,7 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
     }
     fossilize(v);
     holdWriteline();
-    window.queueSend(v);
+    sendTurn(v);
     nudgeScroll();
   });
 
@@ -1573,7 +1795,7 @@ git commit -m "feat(studio): dossier skin — document column, rail, chapter/ans
     if (nearBottom) window.scrollTo({ top: document.body.scrollHeight, behavior: 'auto' });
   }
 
-  window.dossier = { activate, tryReplay, onToken, onError, onDone };
+  window.dossier = { activate, tryReplay, onToken, onError, onDone, renderPendingAsk };
 })();
 ```
 
@@ -1597,8 +1819,8 @@ git commit -m "feat(studio): dossier engine — live-edge staging, chapter settl
 - Modify: `studio/static/app.js`, `studio/static/shelf.js`
 
 **Interfaces:**
-- Consumes: `window.dossier.{activate, tryReplay, onToken, onError, onDone}` (Task 9), `/api/onboarding` (existing).
-- Produces: `const UI` (`'dossier'` in workshop mode unless `?ui=chat`; always `'chat'` in architect mode); `window.renderMarkdown` / `window.stripSpec` / `window.streamBuild` / `window.setStatus` / `window.resumeSession` exposed; `startWorkshopSession` stores the session id in `sessionStorage` for replay; shelf.js reports manual add/remove as `[studio event]`s (spec §4.4). Tasks 15/16/18 consume `streamBuild`/`setStatus`.
+- Consumes: `window.dossier.{activate, tryReplay, onToken, onError, onDone, renderPendingAsk}` (Task 9), `/api/onboarding` (existing), `GET /api/session/{id}/beats` (Task 7 — the chat-skin resume reads it too).
+- Produces: `const UI` (`'dossier'` in workshop mode unless `?ui=chat`; always `'chat'` in architect mode); `window.renderMarkdown` / `window.stripSpec` / `window.streamBuild` / `window.setStatus` / `window.resumeSession` exposed; `startWorkshopSession` stores the session id in `sessionStorage` for replay; `tryChatResume()` — the chat skin resumes the STORED dossier session and replays beats as plain bubbles, never minting a new session while one is alive (gate-2 C1); pre-D1c builds float `#buildpanel` as a fixed dock via `body.dz-dock-build` (gate-2 C2 — Task 8's CSS); `send()`'s dossier path routes THROWN errors to `dossier.onError` (gate-2 I6); after a successful replay with onboarding incomplete, boot resumes the walk (`dossier.resumeIntake` once Task 20 lands — gate-2 S3); shelf.js reports manual add/remove as `[studio event]`s (spec §4.4). Tasks 15/16/18 consume `streamBuild`/`setStatus`.
 
 - [ ] **Step 1: The UI switch + exposed helpers.** In `studio/static/app.js`, after the `MODE`/`SEED` block (lines 5–7) add:
 
@@ -1611,6 +1833,21 @@ const UI = (MODE === 'workshop' && new URLSearchParams(location.search).get('ui'
 ```
 
 After `renderMarkdown`'s definition (app.js:93-95) add `window.renderMarkdown = renderMarkdown;`; after `stripSpec` (app.js:111-117) add `window.stripSpec = stripSpec;`; after `setStatus` (app.js:52-56) add `window.setStatus = setStatus;`; after `streamBuild`'s closing brace (app.js:464) add `window.streamBuild = streamBuild;`.
+
+And at the TOP of `streamBuild`'s body (before `const statusMap = {};`, app.js:397) add the pre-D1c dock float (gate-2 C2):
+
+```js
+  // gate-2 C2: the dossier takeover hides .rightrail, which contains #buildpanel — a
+  // drawer build there would stream into a display:none subtree. Until D1c relocates
+  // the panel into the closing chapter, float the rail as a fixed dock (the Task 8
+  // onboarding-dock pattern). Self-retiring: D1c's beginBuild moves #buildpanel OUT of
+  // .rightrail before calling streamBuild, so the condition stops matching.
+  const bp = document.getElementById('buildpanel');
+  if (UI === 'dossier' && bp && bp.closest('.rightrail')) {
+    document.body.classList.add('dz-dock-build');
+    bp.hidden = false;
+  }
+```
 
 - [ ] **Step 2: Session id plumbing.** In `window.startWorkshopSession` (app.js:63-72), after `sessionId = (await r.json()).session_id;` add:
 
@@ -1632,55 +1869,100 @@ async function send(message) {
   const inDossier = UI === 'dossier';
   if (!inDossier && message !== lastSeed && !HIDDEN_MSG.test(message)) addBubble('user', message);
   const bubble = inDossier ? null : addBubble('assistant', '');
-  const r = await fetch('/api/chat', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: sessionId, message }),
-  });
-  const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = '', acc = '';
-  while (true) {
-    const { value, done } = await reader.read(); if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let i; while ((i = buf.indexOf('\n\n')) >= 0) {
-      const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
-      if (!line) continue;
-      const ev = JSON.parse(line);
-      if (ev.type === 'token') {
-        if (!agentLive) { agentLive = true; setStatus('agent live', true); }  // verifiable handshake
-        acc += ev.text;
-        if (inDossier) window.dossier.onToken(acc);
-        else { bubble.innerHTML = renderMarkdown(stripSpec(acc)); scrollLog(); }
-      }
-      else if (ev.type === 'error') {
-        if (inDossier) window.dossier.onError(ev.message);
-        else { acc += '\n\n**[error]** ' + ev.message; bubble.innerHTML = renderMarkdown(stripSpec(acc)); }
-      }
-      else if (ev.type === 'done') {
-        // The shelf drawer stays truthful in BOTH skins (§4.4: it's the kept overlay).
-        if (ev.studio && typeof window.shelfSync === 'function') window.shelfSync(ev.studio);
-        if (inDossier) {
-          window.dossier.onDone(ev);
-          continue;
+  let acc = '';
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, message }),
+    });
+    const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i; while ((i = buf.indexOf('\n\n')) >= 0) {
+        const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
+        if (!line) continue;
+        const ev = JSON.parse(line);
+        if (ev.type === 'token') {
+          if (!agentLive) { agentLive = true; setStatus('agent live', true); }  // verifiable handshake
+          acc += ev.text;
+          if (inDossier) window.dossier.onToken(acc);
+          else { bubble.innerHTML = renderMarkdown(stripSpec(acc)); scrollLog(); }
         }
-        // ?ui=chat / architect: the landed behavior, byte-for-byte.
-        if (ev.spec && !window.onboardingActive) renderBlueprint(ev.spec);
-        if (MODE === 'workshop' && !window.onboardingActive) renderAgentPanel(ev.studio);
-        if (ev.studio && ev.studio.ask) {
-          if (!window.onboardingActive) renderAskCard(ev.studio.ask);
-          else window._pendingAsk = ev.studio.ask;
+        else if (ev.type === 'error') {
+          if (inDossier) window.dossier.onError(ev.message);
+          else { acc += '\n\n**[error]** ' + ev.message; bubble.innerHTML = renderMarkdown(stripSpec(acc)); }
+        }
+        else if (ev.type === 'done') {
+          // The shelf drawer stays truthful in BOTH skins (§4.4: it's the kept overlay).
+          if (ev.studio && typeof window.shelfSync === 'function') window.shelfSync(ev.studio);
+          if (inDossier) {
+            window.dossier.onDone(ev);
+            continue;
+          }
+          // ?ui=chat / architect: the landed behavior, byte-for-byte.
+          if (ev.spec && !window.onboardingActive) renderBlueprint(ev.spec);
+          if (MODE === 'workshop' && !window.onboardingActive) renderAgentPanel(ev.studio);
+          if (ev.studio && ev.studio.ask) {
+            if (!window.onboardingActive) renderAskCard(ev.studio.ask);
+            else window._pendingAsk = ev.studio.ask;
+          }
         }
       }
     }
+  } catch (e) {
+    // gate-2 I6: server death mid-turn — queueSend's .catch(()=>{}) swallows the
+    // rejection, so the failure must surface HERE: the dossier gets its brass line +
+    // re-armed writing line; the chat skin gets an error bubble. The stored session id
+    // is NEVER touched on a network failure — only a beats 404 clears it (tryReplay),
+    // so a reload after the server returns still resumes the same session.
+    const msg = (e && e.message) || 'connection lost — is the studio still running?';
+    if (inDossier) window.dossier.onError(msg);
+    else if (bubble) { acc += '\n\n**[error]** ' + msg; bubble.innerHTML = renderMarkdown(stripSpec(acc)); }
   }
 }
 ```
 
-- [ ] **Step 4: Boot routing + the C3 dock.** Replace `start()` (app.js:74-88) with:
+- [ ] **Step 4: Boot routing — replay/resume in BOTH skins, the onboarding gate, the C3 dock.** Replace `start()` (app.js:74-88) with the following, adding `tryChatResume` directly above it:
 
 ```js
+// gate-2 C1: ?ui=chat is a SAME-SESSION escape hatch, not a restart — resume the
+// stored dossier session and replay its beats as plain bubbles. The stored id is
+// cleared only on a definitive 404 (gate-2 I6), never on a network failure.
+const SEED_MSGS = ['Begin the workshop interview.', 'Begin onboarding.'];
+async function tryChatResume() {
+  const sid = sessionStorage.getItem('dossier-session');
+  if (!sid) return false;
+  let out;
+  try {
+    const r = await fetch(`/api/session/${sid}/beats`);
+    if (r.status === 404) { sessionStorage.removeItem('dossier-session'); return false; }
+    if (!r.ok) return false;
+    out = await r.json();
+  } catch { return false; }
+  if (!out.beats || !out.beats.length) return false;
+  window.resumeSession(sid);
+  out.beats.forEach((b) => {
+    const u = String(b.user || '');
+    if (!HIDDEN_MSG.test(u) && !SEED_MSGS.includes(u)) addBubble('user', u);
+    addBubble('assistant', stripSpec(b.prose || ''));
+  });
+  const last = out.beats[out.beats.length - 1].studio;
+  if (last) {
+    if (typeof window.shelfSync === 'function') window.shelfSync(last);
+    renderAgentPanel(last);
+    if (last.ask && !window.onboardingActive) renderAskCard(last.ask);
+  }
+  return true;
+}
+
 async function start() {
+  let replayed = false;
   if (UI === 'dossier') {
-    window.dossier.activate();
-    if (await window.dossier.tryReplay()) return;   // reload mid-journey: document restored
+    await window.dossier.activate();                 // resolves once the catalog is in (R7)
+    replayed = await window.dossier.tryReplay();     // reload mid-journey: document restored
+  } else if (MODE === 'workshop') {
+    replayed = await tryChatResume();                // gate-2 C1: same session, plainer skin
   }
   // Onboarding gate: first launch (or ?onboard=1) hands the boot to the walk — it
   // creates the session and seeds the first turn itself. In dossier mode the C3 walk
@@ -1688,25 +1970,41 @@ async function start() {
   if (MODE === 'workshop') {
     const ob = await (await fetch('/api/onboarding')).json();
     const force = new URLSearchParams(location.search).get('onboard') === '1';
-    if ((force || !ob.completed) && window.onboardWalk) {
-      if (UI === 'dossier') document.body.classList.add('onboarding');
-      window.onboardWalk.begin(ob);
-      return;                          // the walk calls startWorkshopSession itself
+    if (!ob.completed || force) {
+      // gate-2 S3: a reload mid-intake must resume the walk on the SAME replayed
+      // session. Task 20 (D3) provides dossier.resumeIntake; until it lands, a
+      // replayed-but-incomplete boot continues on the document (the C3 overlay can't
+      // re-enter mid-flight — it would mint a NEW session) — the accepted D1a–D2
+      // window, closed by D3.
+      if (replayed && !force && UI === 'dossier' && window.dossier.resumeIntake) {
+        window.dossier.resumeIntake(ob);
+        return;
+      }
+      if (!replayed && window.onboardWalk) {
+        if (UI === 'dossier') document.body.classList.add('onboarding');
+        window.onboardWalk.begin(ob);
+        return;                          // the walk calls startWorkshopSession itself
+      }
     }
+    if (replayed) return;                // the resumed session continues; never re-seed (C1)
+    if (UI === 'chat' && !window.onboardingActive) renderAgentPanel(null);
   }
-  if (MODE === 'workshop' && UI === 'chat' && !window.onboardingActive) renderAgentPanel(null);
   return window.startWorkshopSession(SEED);
 }
 ```
 
-And extend the baton hook (app.js:25-29) so the dock retires when the walk hands back:
+And extend the baton hook (app.js:25-29) so the dock retires — and a walk-parked ask renders — when the walk hands back:
 
 ```js
 if (window.cards) {
   window.cards.onBaton((holder) => {
     $('#composer').classList.toggle('asleep', holder === 'card');
-    // dossier + C3: the floating dock retires when the walk hands the baton back
-    if (holder === 'composer' && !window.onboardingActive) document.body.classList.remove('onboarding');
+    if (holder === 'composer' && !window.onboardingActive) {
+      // dossier + C3: the floating dock retires when the walk hands the baton back;
+      // an ask that arrived mid-walk renders into the document now (gate-2 R6)
+      document.body.classList.remove('onboarding');
+      if (window.dossierActive && window.dossier.renderPendingAsk) window.dossier.renderPendingAsk();
+    }
   });
 }
 ```
@@ -1743,13 +2041,16 @@ Run: `.venv/Scripts/python -m pytest studio/tests -q -m "not integration"` → a
 5. **Inline ask + baton:** an agent ask renders choice cards in the open chapter + "or write your own"; clicking a card marks it picked, dims the others, fossilizes the label, and the writing line holds until the next turn settles; typing a custom answer into the line does the same; no `[card]` text ever renders.
 6. **Picks-diff:** a recommended skill renders its card at the top of the open chapter; talking the agent out of a pick folds the card to a receipt line; the shelf drawer badge mirrors both.
 7. **Shelf event sync:** open the shelf drawer, manually add a skill — the agent's next turn acknowledges it and re-asserts picks including it; remove it — same in reverse.
-8. **Forced error:** kill `claude` mid-turn (or disconnect network) — a brass error line renders in the open chapter, the writing line re-arms, a card-held baton releases, and the next message works.
-9. **Beats replay:** mid-journey, hard-reload the page — the whole document re-renders (chapters, fossils, cards) and the conversation continues in the same session.
-10. **`?ui=chat`:** renders the OLD workshop chat (bubbles, right panel, ask rail) on the same backend — complete a turn to prove the session works.
-11. **C3 dock:** with onboarding state cleared, the walk's overlay + cards run in the floating dock while the agent's narration writes the document behind it; after handback the dock disappears and the interview continues in the document.
-12. **Reduced motion:** DevTools emulate `prefers-reduced-motion` — no settle/breathe/ring animation.
-13. **`?mode=architect`:** the classic two-pane chat, blueprint, advanced controls — unchanged.
-14. **Legibility:** on a shared-screen zoom (~1280×800), body 17px / answers 21px / h2 24px read from the back of a room.
+8. **Forced error:** kill `claude` mid-turn (or disconnect network) — a brass error line renders in the open chapter, the writing line re-arms, a card-held baton releases, and the next message works. **Boot-time failure (gate-2 S1):** force the failure on the very FIRST turn (make `claude` unresolvable before launch) — the brass line opens a Welcome section on the otherwise-empty page, never a blank document; restoring `claude` and writing continues.
+9. **Beats replay:** mid-journey, hard-reload the page — the whole document re-renders (chapters, fossils, cards) and the conversation continues in the same session. **Server-down reload (gate-2 I6):** stop the server, reload (replay fails), restart the server, reload again — the SAME session resumes (the stored id survived the outage).
+10. **`?ui=chat` same-session resume (gate-2 C1):** mid-journey, open the same URL with `?ui=chat` — the OLD workshop chat (bubbles, right panel, ask rail) resumes the SAME session: prior beats replay as plain bubbles (seeds and bracketed machine messages suppressed), NO re-seed fires, and the next message continues the same conversation; a pending ask re-renders as a card. This is the FACILITATOR row's literal promise.
+11. **C3 dock:** with onboarding state cleared, the walk's overlay + cards run in the floating dock while the agent's narration writes the document behind it; after handback the dock disappears, a walk-parked ask renders into the document (gate-2 R6), and the interview continues in the document.
+12. **Drawer build visible (gate-2 C2):** open the shelf drawer and Build — `#buildpanel` floats up as a fixed dock over the document (same pattern as the C3 dock) and the stepper/log/result stream visibly; the wizard rows and install line are reachable in it.
+13. **Reduced motion:** DevTools emulate `prefers-reduced-motion` — no settle/breathe/ring animation.
+14. **`?mode=architect`:** the classic two-pane chat, blueprint, advanced controls — unchanged.
+15. **Legibility:** on a shared-screen zoom (~1280×800), body 17px / answers 21px / h2 24px read from the back of a room.
+
+> **R8 note (for this checklist and the dress rehearsal):** the welcome chapter's HEADING lands at the first `done`, not the first token — the first turn streams into the headless `#dz-live` staging block until its chapter settles. Read spec §4.4's replacement table ("first token" wording) accordingly; the visible handshake at first token is the header status chip flipping to "agent live".
 
 - [ ] **Step 8: Commit**
 
@@ -1760,11 +2061,10 @@ git commit -m "feat(studio): dossier routing — ?ui=chat escape hatch, event ho
 
 ---
 
-### Task 11: D1a docs checkpoints — FACILITATOR runbook + GUI install copy (deferred from D0)
+### Task 11: D1a docs checkpoints — "Running the room" section + GUI install copy (deferred from D0)
 
 **Files:**
-- Create: `FACILITATOR.md` (repo root — the lean §3 layout position)
-- Modify: `studio/static/app.js` (`installLineHtml`, lines 283-286), `README.md` (launch line)
+- Modify: `studio/FACILITATOR.md` (the EXISTING shared-infra runbook gains a "Running the room" section — gate-2 S5/R3, flagged deviation 7: NO new root FACILITATOR.md), `studio/static/app.js` (`installLineHtml`, lines 283-286), `README.md` (launch line)
 
 - [ ] **Step 1: Fix the GUI install copy.** In `studio/static/app.js`, replace `installLineHtml` (lines 283–286) — currently:
 
@@ -1779,66 +2079,71 @@ with:
 
 ```js
 function installLineHtml(ev) {
-  // D0's raw-skills form: one command, no marketplace, no restart (lean spec §5).
-  return `<pre class="install">${ev.install}</pre>
+  // D0's raw-skills form: no marketplace, no restart (lean spec §5). The install field
+  // is `cd <dir> ; claude` (gate-2 S4 — `;` parses in PS 5.1 where `&&` doesn't); the
+  // existing ' ; ' split renders it as two lines: cd, then claude.
+  return `<pre class="install">${ev.install.split(' ; ').join('\n')}</pre>
     <p>Your agent lives in that folder — run this in a terminal and talk to it.</p>`;
 }
 ```
 
-- [ ] **Step 2: Root README launch-line touch-up.** In `README.md`, find the journey description's final-step wording (search for `install` / `dist/`); ensure the participant-facing outcome line reads the raw-skills form, e.g. append/adjust to:
+(The `' ; '` split is deliberately KEPT — it is what turns the one-field command into the two-line rendering; only the caption changes.)
+
+- [ ] **Step 2: Root README launch-line touch-up.** In `README.md`, find the journey description's final-step wording (search for `install` / `dist/`); ensure the participant-facing outcome line reads the raw-skills form in the shell-safe two-line style, e.g. append/adjust to:
 
 ```markdown
-The journey ends with a working agent in `dist/<name>-cos/` — launch it with
-`cd dist/<name>-cos && claude`.
+The journey ends with a working agent in `dist/<name>-cos/` — launch it by running
+`claude` inside that folder (`cd dist/<name>-cos`, then `claude`).
 ```
 
-(If the README already says exactly this, no edit — it carries no `/plugin` wording as of this plan.)
+(If the README already says exactly this, no edit — it carries no `/plugin` wording as of this plan. Never document the `&&` join: it is a parse error in Windows PowerShell 5.1 — gate-2 S4.)
 
-- [ ] **Step 3: Create `FACILITATOR.md`** (repo root):
+- [ ] **Step 3: Add the "Running the room" section to the EXISTING `studio/FACILITATOR.md`** (gate-2 S5/R3 — the shared-infra runbook already exists; one facilitator file, one room, no second root file). Append at the end of the file (after the "Step 5 — pre-Friday checklist" section):
 
 ```markdown
-# FACILITATOR — running the room
+---
 
-The in-room runbook for the QubitStudio "Build Your Own Chief of Staff" workshop.
-Participant pre-work lives in `README.md`; this file is for whoever is driving the room.
+## Running the room (day-of) — the dossier journey's recovery moves
 
-## Recovery moves (dossier journey)
+Everything above is pre-work; this section is for whoever is driving the room live.
+Participant pre-work lives in the root `README.md`.
 
 | Symptom | Move |
 |---|---|
 | A chapter rendered mangled (broken markdown, wrong content) | Hover the chapter head → **⟳ regenerate** — the architect rewrites that chapter's prose in place; the participant's answers and cards are preserved. This is the "try that again" button. |
 | A participant answered wrong / changed their mind | Hover the answer → **↺ rewrite** — the answer melts back into the writing line; chapters below go stale until the architect re-settles. |
-| Page looks stuck / browser hiccup | **Reload the page.** The dossier replays its beats from the live server and re-renders fully (same session, nothing lost). A studio RESTART starts fresh — don't restart `python -m studio` unless the server itself is dead. |
-| The dossier misbehaves and the room can't wait | **`?ui=chat`** on the same URL — the classic workshop chat on the same session backend. Same journey, plainer skin. Kept until dossier parity is proven at a dress rehearsal. |
+| Page looks stuck / browser hiccup | **Reload the page.** The dossier replays its beats from the live server and re-renders the document — chapters, fossilized answers (answered choice-cards return as fossils, not re-armed cards), and the build/launch state. Error turns aren't part of the record and aren't replayed. A studio RESTART starts fresh — don't restart `python -m studio` unless the server itself is dead. |
+| The dossier misbehaves and the room can't wait | **`?ui=chat`** on the same URL — the classic workshop chat RESUMES the same session (prior turns replay as plain bubbles; the next message continues the conversation). Same journey, plainer skin. Kept until dossier parity is proven at a dress rehearsal. |
 | First breath (the agent's first words) shows the "offline greeting" card | Expected fallback when the one-turn greeting errors or exceeds its ~20s budget. The composed agent is fine — the launch command below the card is real; have the participant run it. |
 | Architect chat needed (generic plugin design, spec download) | `?mode=architect` — the original two-pane interview, untouched. |
 
-## Standing facts
+### Standing facts (day-of)
 
 - Every visible agent word is real model output (one `claude -p` turn per beat) — there
   is no scripted narration to fall back on except the flagged first-breath card.
 - The launch command is real from the moment the launch card renders — integration
   chips fill in as keys connect; keys are never required to build or to talk locally.
-- A REBUILD (pressing Build again) recreates `dist/<name>-cos/` from scratch, including
-  its `.env` — connected keys must be re-entered. Documented consequence, not a bug.
+- After a successful build the ceremony's button reads **Rebuild** and stays live.
+  Rebuilding recreates `dist/<name>-cos/` — connected keys (`.env`) must be re-entered,
+  but the agent's vault (its memory) is PRESERVED across the rebuild.
 - Google connect: primary path = participant's own OAuth client (pre-work); escape
-  hatch = the shared client (see ROADMAP research item before the room).
+  hatch = the shared client (Step 3 above).
 ```
 
 - [ ] **Step 4: Guard + FULL suite including integration (needs live `claude` — closes D1a)**
 
 Run: `node --check studio/static/app.js` → ok.
 Run: `.venv/Scripts/python -m pytest studio/tests -q` → all pass, including `test_real_workshop_turn_emits_chapter` (Task 7).
-Manual: compose once via the shelf drawer → the build result shows the one-line `cd … && claude` install copy with the new caption.
+Manual (in the DEFAULT dossier skin — gate-2 C2): compose once via the shelf drawer — the build panel floats up as the fixed dock over the document, the stream is visible end to end, and the result shows the install copy as two lines (`cd dist/<name>-cos` then `claude`) with the new caption.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add FACILITATOR.md README.md studio/static/app.js
-git commit -m "docs(studio): FACILITATOR runbook + raw-skills GUI install copy (D1a checkpoint, deferred from D0)"
+git add studio/FACILITATOR.md README.md studio/static/app.js
+git commit -m "docs(studio): running-the-room section in the facilitator runbook + raw-skills GUI install copy (D1a checkpoint, deferred from D0)"
 ```
 
-**CUT LINE — D1a ships here.** The dossier is the workshop journey; `?ui=chat` is the fallback; building runs through the kept shelf drawer until D1c's signature close. ROADMAP item-2 status note + CHANGELOG ride the landing PR.
+**CUT LINE — D1a ships here.** The dossier is the workshop journey; `?ui=chat` is the same-session fallback (gate-2 C1); building runs through the kept shelf drawer, streaming visibly into the floating build dock (gate-2 C2), until D1c's signature close. ROADMAP item-2 status note + CHANGELOG ride the landing PR.
 
 ---
 
@@ -1927,8 +2232,8 @@ git commit -m "feat(studio): prompt revision contract — rewrite re-asserts sta
 - Modify: `studio/static/dossier.js`, `studio/static/dossier.css` (append)
 
 **Interfaces:**
-- Consumes: `pendingTarget` / `rwSettle` (declared in Task 9), Task 12's prompt contract.
-- Produces: `beginRewrite(answerEl)` (wired onto every fossil), the ⟳ head button on every section, and the one-beat pending-target consumption already coded into `settle()` (Task 9). One rewrite in flight at a time.
+- Consumes: `pendingTarget` / `rwSettle` / `busy` / `sendTurn` (declared in Task 9), Task 12's prompt contract.
+- Produces: `beginRewrite(answerEl)` (wired onto every fossil), the ⟳ head button on every section, the one-beat pending-target consumption already coded into `settle()` (Task 9), and `verbErrorRecover()` wired into `onError` (gate-2 I8: a verb-turn error cancels the deferred re-settle, marks the un-received fossil "unsent — ↺ retry", clears ⟳ shimmer and stale dressings). One rewrite in flight at a time; ALL verbs inert while any turn is in flight (`busy` — gate-2 I1).
 
 - [ ] **Step 1: Give fossils the rewrite affordance.** In `dossier.js`, replace `fossilize` (Task 9's version) with:
 
@@ -1960,9 +2265,12 @@ git commit -m "feat(studio): prompt revision contract — rewrite re-asserts sta
 ```js
   // ── D1b: rewrite ⟲ (spec §5) — one in flight at a time ──────────────────
   let rw = null;
+  let lastVerbFossil = null;   // the re-fossilized answer of the in-flight rewrite —
+                               // marked "unsent" if that turn errors (gate-2 I8)
 
   function beginRewrite(ans) {
-    if (rw || pendingTarget) return;          // finish the open revision first
+    if (rw || pendingTarget || busy) return;  // finish the open revision — and never
+                                              // steal an in-flight turn's settle (I1)
     const sec = ans.closest('.dz-sec');
     const rec = chapters.find((c) => c.el === sec);
     if (!rec) return;
@@ -1998,8 +2306,8 @@ git commit -m "feat(studio): prompt revision contract — rewrite re-asserts sta
       finish(text) {
         const marker = document.createElement('div');
         this.wl.replaceWith(marker);
-        fossilAt(marker, text, this.q);        // re-fossilize in place, with the chip
-        marker.remove();
+        lastVerbFossil = fossilAt(marker, text, this.q);   // re-fossilize in place, with
+        marker.remove();                                   // the chip; remembered for I8
         this.note.remove();
         if (this.grp) {
           this.grp.querySelectorAll('.choice').forEach((c) => {
@@ -2014,6 +2322,7 @@ git commit -m "feat(studio): prompt revision contract — rewrite re-asserts sta
         pendingTarget = { rec: this.rec, mode: 'append' };
         const later = this.later, n = this.rec.n;
         rwSettle = () => {
+          lastVerbFossil = null;               // the rewrite landed — nothing to un-send (I8)
           later.forEach((c) => {
             c.el.classList.remove('stale');
             // honest scope (§5): downstream prose is NOT rewritten — it keeps its
@@ -2033,7 +2342,7 @@ git commit -m "feat(studio): prompt revision contract — rewrite re-asserts sta
           });
           document.querySelectorAll('#dz-rail .node.stale').forEach((x) => x.classList.remove('stale'));
         };
-        window.queueSend(`[studio event] rewrite — question: "${this.q}"` +
+        sendTurn(`[studio event] rewrite — question: "${this.q}"` +
           ` — previous answer: "${this.old}" — new answer: "${text}"`);
         rw = null;
       },
@@ -2063,11 +2372,37 @@ git commit -m "feat(studio): prompt revision contract — rewrite re-asserts sta
     const label = ch.querySelector('b') ? ch.querySelector('b').textContent : '';
     if (label) rw.finish(label);
   });
+
+  // gate-2 I8: an error on a VERB turn must not leave three-way incoherence — the
+  // deferred re-settle is cancelled (it would otherwise fire on a LATER unrelated
+  // beat, for a rewrite the agent never received), the un-received fossil says so
+  // (its existing ↺ button IS the retry affordance — clicking it melts the answer
+  // back into the line and re-sends), ⟳ shimmer and stale dressings come off.
+  // Task 9's onError already clears pendingTarget.
+  function verbErrorRecover() {
+    if (rwSettle) {
+      rwSettle = null;
+      if (lastVerbFossil && !lastVerbFossil.querySelector('.unsent')) {
+        const chip = document.createElement('span');
+        chip.className = 'redone unsent';
+        chip.textContent = 'unsent — ↺ retry';
+        lastVerbFossil.appendChild(chip);
+      }
+    }
+    lastVerbFossil = null;
+    document.querySelectorAll('.dz-sec.dz-regenerating').forEach((s) => s.classList.remove('dz-regenerating'));
+    document.querySelectorAll('.dz-sec.stale').forEach((s) => s.classList.remove('stale'));
+    document.querySelectorAll('#dz-rail .node.stale').forEach((n) => n.classList.remove('stale'));
+    document.querySelectorAll('.stale-note').forEach((n) => n.remove());
+  }
 ```
+
+Then wire it into the error path: in `onError` (Task 9's function, this same file), insert `verbErrorRecover();` immediately after the `pendingTarget = null;` line.
 
 (`fossilAt` briefly retargets `open` so `fossilize` appends into the melted answer's own
 position, then restores it — the re-fossil lands exactly where the old answer stood, not
-at the document tail.)
+at the document tail. `replayBeat`'s rewrite branch — Task 9 — uses the same retarget
+pattern inline for verb-aware replay.)
 
 - [ ] **Step 3: The regenerate verb.** In `newSection` (Task 9), add the quiet head button — change the `sec.innerHTML` block to:
 
@@ -2084,15 +2419,16 @@ and after the `rec` is created (before `return rec;`) add:
 
 ```js
     sec.querySelector('.dz-regen').addEventListener('click', () => {
-      if (pendingTarget || rw) return;        // one revision in flight at a time
+      if (pendingTarget || rw || busy) return;    // one revision in flight; never while
+                                                  // a turn streams (gate-2 I1)
       pendingTarget = { rec, mode: 'replace' };   // §5: replaces agent prose ONLY, in place
       sec.classList.add('dz-regenerating');
       holdWriteline();
-      window.queueSend(`[studio event] regenerate chapter "${rec.title}" — rewrite it fresh, same facts`);
+      sendTurn(`[studio event] regenerate chapter "${rec.title}" — rewrite it fresh, same facts`);
     });
 ```
 
-(`settle()` from Task 9 already consumes `mode: 'replace'` — it removes `.dz-prose`/`.dz-error` nodes and preserves fossils, asks, and cards — and `onError` already clears `pendingTarget`, so the target is consumed on that beat, success or error.)
+(`settle()` from Task 9 already consumes `mode: 'replace'` — it removes `.dz-prose`/`.dz-error`/`.dz-stale-mark` nodes (gate-2 R1) and preserves fossils, asks, and cards — and `onError` already clears `pendingTarget` and now runs `verbErrorRecover()` (Step 2), so the target is consumed and the ⟳ shimmer clears on that beat, success or error.)
 
 - [ ] **Step 4: D1b styles** — append to `studio/static/dossier.css`:
 
@@ -2107,6 +2443,7 @@ and after the `rec` is created (before `return rec;`) add:
 .answer .redone { font-family: var(--mono); font-style: normal; font-size: 10px;
   letter-spacing: .1em; color: var(--brass); background: var(--brass-tint);
   border-radius: 999px; padding: 3px 9px; margin-left: 10px; vertical-align: middle; }
+.answer .redone.unsent { color: var(--warn); background: var(--warn-t); }  /* gate-2 I8 */
 .dz-sec.stale { opacity: .38; pointer-events: none; filter: saturate(.6); }
 .stale-note { margin: 0 0 60px; padding: 12px 18px; border: 1px dashed var(--brass);
   border-radius: 10px; background: var(--brass-tint); font-family: var(--mono);
@@ -2130,9 +2467,12 @@ Run: `.venv/Scripts/python -m pytest studio/tests -q -m "not integration"` → a
 1. **Rewrite round-trip:** hover a fossilized answer mid-journey → ↺ — the answer melts into a pre-filled writing line; that ask's choice cards (if any) wake re-choosable; every chapter below dims stale; the matching rail milestones go brass; the note bar reads "⟲ rewriting §NN…".
 2. Submit a different answer (Enter) → the answer re-fossilizes with the `rewritten ↺` chip; the agent's next beat lands in the SAME chapter (no duplicate section, even though the agent may retitle); stale sections un-dim and each carries the quiet "written before your rewrite of §NN — ⟳ regenerate to refresh" mark; picks/cards re-settle from the beat's whole state (a dropped pick folds its card to a receipt; a downstream unanswered ask folds).
 3. Re-choose via a reopened card instead of typing — same round-trip.
-4. **One in flight:** while a rewrite is open, other fossils' ↺ and all ⟳ buttons are inert.
-5. **Regenerate:** hover a chapter head → ⟳ — the chapter's agent prose is replaced in place on the next beat; its fossils and choice cards are untouched; a retitled regenerate turn does NOT open a duplicate section; the interview does not advance (no new question beyond what the chapter ended on).
-6. **Reduced motion + `?mode=architect`:** both unaffected.
+4. **One in flight (gate-2 I1):** while a rewrite is open — or while ANY turn is streaming (`busy`) — other fossils' ↺ and all ⟳ buttons are inert; a verb click mid-turn does nothing (the in-flight beat's settle can never consume a stolen override).
+5. **Regenerate:** hover a chapter head → ⟳ — the chapter's agent prose is replaced in place on the next beat (any "written before your rewrite" mark goes with it — gate-2 R1); its fossils and choice cards are untouched; a retitled regenerate turn does NOT open a duplicate section; the interview does not advance (no new question beyond what the chapter ended on).
+6. **Reload after a rewrite (gate-2 C3):** complete a rewrite round-trip, then hard-reload — the replayed document shows the NEW answer with its `rewritten ↺` chip (never the old one), the rewrite beat's prose sits in the SAME chapter, and no duplicate section exists.
+7. **Reload after a regenerate (gate-2 C3):** regenerate a chapter, then hard-reload — the chapter renders ONCE with the regenerated prose (never doubled).
+8. **Verb-turn error (gate-2 I8):** kill `claude`, submit a rewrite — the re-fossilized answer gains the `unsent — ↺ retry` chip, stale sections un-dim immediately (no deferred re-settle fires on a later beat), any ⟳ shimmer clears, the rail's brass marks reset; hovering ↺ and redoing the rewrite works once `claude` is back.
+9. **Reduced motion + `?mode=architect`:** both unaffected.
 
 - [ ] **Step 7: Commit**
 
@@ -2141,13 +2481,13 @@ git add studio/static/dossier.js studio/static/dossier.css
 git commit -m "feat(studio): rewrite ⟲ + regenerate ⟳ — pending-target override, honest re-settle, stale marks"
 ```
 
-**CUT LINE — D1b ships here.** Revision is part of the record; ⟳ is the in-room recovery documented in FACILITATOR.md.
+**CUT LINE — D1b ships here.** Revision is part of the record; ⟳ is the in-room recovery documented in `studio/FACILITATOR.md`; reload composes with both verbs (verb-aware replay — gate-2 C3); builds still stream visibly into the floating dock (gate-2 C2) until D1c's signature close.
 
 ---
 
 # Slice D1c — signature close + the finale (Tasks 14–16) — GATED ON D0
 
-**What ships at this cut:** `ready: true` renders the signature close as the final chapter; Build runs the sign → bind → assemble → first breath → launch-card ceremony (spec §6) over the REAL compose stream and a REAL one-turn greeting from the composed agent home; the launch card carries the real `cd … && claude` command with pending integration chips. Must not start before D0 lands — the first breath and launch command are only real in raw-skills form (spec §7.1).
+**What ships at this cut:** `ready: true` renders the signature close as the final chapter; Build runs the sign → bind → assemble → first breath → launch-card ceremony (spec §6) over the REAL compose stream and a REAL one-turn greeting from the composed agent home; the launch card carries the real `cd … ; claude` command (flagged deviation 11) with pending integration chips; the ceremony ends with an executable **Rebuild** (gate-2 S2). Must not start before D0 lands — the first breath and launch command are only real in raw-skills form (spec §7.1).
 
 ### Task 14: `studio/first_breath.py` + `POST /api/first-breath`
 
@@ -2157,7 +2497,7 @@ git commit -m "feat(studio): rewrite ⟲ + regenerate ⟳ — pending-target ove
 - Test: Create `studio/tests/test_first_breath.py`; append to `studio/tests/test_server.py` and `studio/tests/test_smoke_integration.py`
 
 **Interfaces:**
-- Consumes: `stream_parser.parse_line`/`is_system`/`is_turn_end` + `chat_session.dedup_text`/`resolve_claude` (the §6.4 reuse seam — NOT `ChatSession`), `server.LAST_COMPOSE` (set by `compose_endpoint` from its own done event — path provenance is server-side, never the request body).
+- Consumes: `stream_parser.parse_line`/`is_system`/`is_turn_end` + `chat_session.dedup_text`/`resolve_claude` (the §6.4 reuse seam — NOT `ChatSession`), `server.LAST_COMPOSE` (declared and captured by Task 7 for the beats payload — gate-2 S6; set by `compose_endpoint` from its own done event, so path provenance is server-side, never the request body).
 - Produces: `build_greeting_prompt(owner_name, picks, integrations, catalog) -> str`; `build_first_breath_argv(claude_bin, prompt, empty_mcp: Path) -> list[str]`; `async first_breath(home: Path, prompt: str, budget: float = 20) -> AsyncIterator[dict]` yielding `token`/`done`/`error` events; `POST /api/first-breath` (SSE). Task 16's ceremony consumes the endpoint.
 
 - [ ] **Step 1: Write the failing tests.** Create `studio/tests/test_first_breath.py`:
@@ -2270,7 +2610,7 @@ def test_first_breath_preflight_no_compose_never_spawns(monkeypatch):
 def test_first_breath_streams_tokens(monkeypatch, tmp_path):
     _ob(monkeypatch, tmp_path, name="Ada")
     server.LAST_COMPOSE = {"plugin_path": str(tmp_path), "integrations": ["linear"],
-                           "picks": ["tasks"], "install": f"cd {tmp_path} && claude"}
+                           "picks": ["tasks"], "install": f"cd {tmp_path} ; claude"}
     seen = {}
     async def fake_breath(home, prompt, budget=20):
         seen["home"], seen["prompt"] = home, prompt
@@ -2283,22 +2623,9 @@ def test_first_breath_streams_tokens(monkeypatch, tmp_path):
     assert "Morning, Ada." in body and '"type": "done"' in body
     assert seen["home"] == Path(str(tmp_path))     # derived server-side from LAST_COMPOSE
     assert "Ada" in seen["prompt"] and "linear" in seen["prompt"]
-
-def test_compose_done_captured_for_first_breath(monkeypatch, tmp_path):
-    _ob(monkeypatch, tmp_path)
-    server.LAST_COMPOSE = None
-    async def fake_compose(picks, name, outdir, vault_dir):
-        yield {"type": "done", "grade": "composed", "plugin_path": str(tmp_path),
-               "vault_path": "v", "integrations": ["linear"], "install": "cd x && claude"}
-    monkeypatch.setattr(server._composer, "compose", fake_compose)
-    c = TestClient(server.app)
-    with c.stream("POST", "/api/compose", json={"picks": ["tasks"], "name": "atlas"}) as r:
-        "".join(r.iter_text())
-    assert server.LAST_COMPOSE["plugin_path"] == str(tmp_path)
-    assert server.LAST_COMPOSE["picks"] == ["tasks"]
 ```
 
-(`from pathlib import Path` is needed at the top of test_server.py if not already imported — it is not today; add it with this task.)
+(The `LAST_COMPOSE` capture itself was declared, wired, and tested in Task 7 — `test_compose_done_captured_for_replay_and_first_breath`; this task only consumes it. `from pathlib import Path` is needed at the top of test_server.py if not already imported — it is not today; add it with this task.)
 
 Append to `studio/tests/test_smoke_integration.py`:
 
@@ -2347,13 +2674,13 @@ first-words card (the ceremony never hangs the room).
 """
 from __future__ import annotations
 import asyncio
-import tempfile
 from pathlib import Path
 from typing import AsyncIterator
 
 from studio import stream_parser as sp
 from studio.chat_session import dedup_text, resolve_claude
 
+_HERE = Path(__file__).resolve().parent
 BUDGET_S = 20.0
 
 
@@ -2389,7 +2716,10 @@ async def first_breath(home: Path, prompt: str, budget: float = BUDGET_S) -> Asy
     if not claude_bin:
         yield {"type": "error", "message": "`claude` CLI not found on PATH"}
         return
-    empty_mcp = Path(tempfile.gettempdir()) / "studio-empty-mcp.json"
+    # gate-2 R5: the empty MCP config lives under the studio's own gitignored cache,
+    # never the SHARED OS temp dir (two studios on one machine must not clobber it).
+    empty_mcp = _HERE / ".cache" / "first-breath-empty-mcp.json"
+    empty_mcp.parent.mkdir(parents=True, exist_ok=True)
     empty_mcp.write_text('{"mcpServers": {}}', encoding="utf-8")
     argv = build_first_breath_argv(claude_bin, prompt, empty_mcp)
     try:
@@ -2423,38 +2753,28 @@ async def first_breath(home: Path, prompt: str, budget: float = BUDGET_S) -> Asy
         await proc.wait()
         yield {"type": "error", "message": f"first breath exceeded the {budget:.0f}s budget"}
         return
-    await proc.wait()
+    try:
+        # gate-2 R5: the exit wait rides the SAME budget — a claude that streamed its
+        # turn but won't exit must not hang the ceremony either.
+        await asyncio.wait_for(proc.wait(), timeout=max(deadline - loop.time(), 0.5))
+    except asyncio.TimeoutError:
+        proc.kill()
+        await proc.wait()
+        yield {"type": "done"}   # the greeting already streamed — a slow exit isn't a failure
+        return
     if proc.returncode not in (0, None):
         yield {"type": "error", "message": f"claude exited {proc.returncode}"}
         return
     yield {"type": "done"}
 ```
 
-- [ ] **Step 4: Wire the server.** In `studio/server.py`:
+- [ ] **Step 4: Wire the server.** In `studio/server.py` (the `LAST_COMPOSE` global and its `compose_endpoint` capture already exist — Task 7 landed them for the beats payload, gate-2 S6; this task only reads it):
 
 Add the import (with the other `from studio import …` lines):
 
 ```python
 from studio import first_breath as _first_breath
 ```
-
-Add module state below `_DISTILL_TASK` (line 43):
-
-```python
-LAST_COMPOSE: dict | None = None   # this studio run's last successful compose done event
-```
-
-In `compose_endpoint`'s `stream()` (inside the `async for ev in _composer.compose(...)` loop, line 170-171), capture the done event:
-
-```python
-        async for ev in _composer.compose(picks, name, _composer._REPO / "dist", vault):
-            if ev.get("type") == "done":
-                global LAST_COMPOSE
-                LAST_COMPOSE = {**ev, "picks": list(picks)}
-            yield _sse(ev)
-```
-
-(Python requires the `global` declaration once at the top of `stream()` — place `global LAST_COMPOSE` as the function's first line instead of inline if the linter complains; either form, the assignment must rebind the module global.)
 
 Add the endpoint below `keys_test`:
 
@@ -2502,7 +2822,7 @@ git commit -m "feat(studio): first breath — one real greeting turn from the co
 
 **Interfaces:**
 - Consumes: `window.streamBuild` (Task 10) with a new additive `opts.onEvent` observer (added to app.js here); `lastStudio` (Task 9).
-- Produces: `renderClose(studio)` — the signature close as the final chapter (manifest from **studio picks only**, §4.4); `beginBuild()` — gates mirrored (non-empty picks AND name), the existing `#buildpanel` node physically relocated into the closing chapter (§4.3's morph — hosted, not re-implemented); `lastDone` captured for Tasks 16/18; `unsign(ev)` — the §6.1 failure path. Task 16 rewrites `beginBuild`'s interior into the full ceremony; this task lands the working skeleton (sign → embedded build → wizard rows → done).
+- Produces: `renderClose(studio)` — the signature close as the final chapter (manifest from **studio picks only**, §4.4); `beginBuild()` — gates mirrored (non-empty picks AND name), the existing `#buildpanel` node physically relocated into the closing chapter (§4.3's morph — hosted, not re-implemented; relocating it out of `.rightrail` is also what retires Task 10's pre-D1c build dock, gate-2 C2); `lastDone` captured for Tasks 16/18 (the variable itself is Task 9's — replay restores it, gate-2 S6); `rearmRebuild()` — after success the button re-arms as "Rebuild" with the .env/vault warning (gate-2 S2/I4); `unsign(ev)` — the §6.1 failure path, which also disconnects the chip observer (gate-2 S10). Task 16 rewrites `beginBuild`'s interior into the full ceremony; this task lands the working skeleton (sign → embedded build → wizard rows → done).
 
 - [ ] **Step 1: `streamBuild` gains an event observer.** In `studio/static/app.js`, inside `streamBuild`'s SSE loop, immediately after `const ev = JSON.parse(line);` (app.js:409) add:
 
@@ -2510,13 +2830,14 @@ git commit -m "feat(studio): first breath — one real greeting turn from the co
       if (opts.onEvent) opts.onEvent(ev);   // additive observer — default rendering unchanged
 ```
 
-- [ ] **Step 2: The close + build embed.** In `studio/static/dossier.js`, add module state near the top (with the other `let`s):
+- [ ] **Step 2: The close + build embed.** In `studio/static/dossier.js`, add module state near the top (with the other `let`s — `lastDone` already exists there, declared by Task 9 so the beats replay can restore it, gate-2 S6):
 
 ```js
   let closeRec = null;      // the signature-close chapter record (D1c)
-  let lastDone = null;      // last compose done event — install/plugin_path/integrations
   let building = false;
   let signed = false;
+  let chipObserver = null;  // the launch-card chip observer — one per build, always
+                            // disconnected before re-observe and in unsign (gate-2 S10)
 ```
 
 Extend `onDone` — after the `lastStudio = studio;` line insert:
@@ -2596,12 +2917,35 @@ Add the close renderer + build skeleton below `diffPicks`:
     if (failedEv) { unsign(failedEv); return; }
     lastDone = doneEv;
     building = false;
+    rearmRebuild();                     // gate-2 S2: the build must stay executable
+    armWriteline(pendingAsk, true);     // the document reopens — the journey continues
+                                        // into connect (D2's chapters are written INTO it)
+  }
+
+  // gate-2 S2: after a SUCCESSFUL build the ceremony leaves REBUILD executable —
+  // `signed` resets (so refreshManifest re-applies the §6.1 gates and keeps updating
+  // the manifest), the button re-arms as "Rebuild", and the consequence warning sits
+  // beside it: connected keys (.env) are re-entered; the vault survives (gate-2 I4).
+  function rearmRebuild() {
+    signed = false;
+    const btn = $('#dz-build');
+    btn.disabled = false;
+    btn.textContent = 'Rebuild ▶';
+    if (!closeRec.el.querySelector('.dz-rebuild-warn')) {
+      const warn = document.createElement('div');
+      warn.className = 'dz-rebuild-warn';
+      warn.textContent = 'rebuilding recreates the home — re-enter connected keys (.env); ' +
+        'your agent’s vault (its memory) is preserved';
+      btn.after(warn);
+    }
+    refreshManifest();
   }
 
   // §6.1: a composer error renders INSIDE the ceremony with an un-sign/retry — the
   // signature un-inks and the document reopens for edits.
   function unsign(ev) {
     building = false; signed = false;
+    if (chipObserver) { chipObserver.disconnect(); chipObserver = null; }   // gate-2 S10
     const panel = $('#buildpanel');
     document.querySelector('.rightrail').appendChild(panel);   // give the node back
     panel.hidden = true;
@@ -2643,6 +2987,9 @@ Add the close renderer + build skeleton below `diffPicks`:
 .buildbtn:disabled { background: var(--tint-2); color: var(--ink-4); box-shadow: none;
   cursor: default; transform: none; }
 .buildbtn i { font-style: normal; margin-left: 8px; }
+/* gate-2 S2/I4: the rebuild consequence line beside the re-armed button */
+.dz-rebuild-warn { flex-basis: 100%; margin-top: 8px; font-family: var(--mono);
+  font-size: 10.5px; letter-spacing: .06em; color: var(--ink-4); }
 /* signing: the name inks itself across the line (v1c) */
 .dz-sec.signing .name b { font-weight: 400; color: var(--ink);
   animation: dz-inkin 1.4s cubic-bezier(.2,.7,.2,1) both; display: inline-block; }
@@ -2692,7 +3039,7 @@ git commit -m "feat(studio): signature close — manifest from studio picks, gat
 
 **Interfaces:**
 - Consumes: Task 15's skeleton (`closeRec`, `unsign`, the relocated panel, `opts.onEvent`), `POST /api/first-breath` (Task 14), `done.install`/`done.integrations` (Task 3), catalog `brief`/`deliverable` fields.
-- Produces: the five-beat ceremony (spec §6), organ ticks **event-driven, never timed** (§6.3 mapping: spine ← `component: vault`, shell ← `component: shell`, each pick ← `skill:<id>`, identity ← `stage assemble ok` — flagged deviation 10), the launch card with pending chips + `fillChip(integration)` (Task 18 rewires its trigger). SKIP always visible during the ceremony; `prefers-reduced-motion` collapses every beat to a cut.
+- Produces: the five-beat ceremony (spec §6), organ ticks **event-driven, never timed** (§6.3 mapping: spine ← `component: vault`, shell ← `component: shell`, each pick ← `skill:<id>`, identity ← `stage assemble ok` — flagged deviation 10), the launch card with pending chips + `fillChip(integration)` (Task 18 rewires its trigger; the chip `chipObserver` is re-created per build and disconnected in `unsign` — gate-2 S10), and a ceremony that ENDS with `rearmRebuild()` — an executable Rebuild plus the .env/vault consequence line (gate-2 S2/I4). SKIP always visible during the ceremony and cuts only the staged pauses — the live greeting still streams (gate-2 S8); `prefers-reduced-motion` collapses every beat to a cut.
 
 - [ ] **Step 1: Ceremony helpers.** In `dossier.js`, add near the top (below the `norm` helper):
 
@@ -2813,6 +3160,9 @@ git commit -m "feat(studio): signature close — manifest from studio picks, gat
           const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
           if (!line) continue;
           const ev = JSON.parse(line);
+          // tokens paint the moment they arrive — there is no artificial typing
+          // cadence here for SKIP to cut (gate-2 S8): the greeting is a real turn,
+          // and skipping only removes the staged beatWaits around it.
           if (ev.type === 'token') { words += ev.text; tw.textContent = words; }
           if (ev.type === 'error') fbFailed = true;
         }
@@ -2858,14 +3208,21 @@ git commit -m "feat(studio): signature close — manifest from studio picks, gat
       this.textContent = 'COPIED ✓';
     });
     // chips fill live as the embedded connect rows pass their smoke tests. D1c watches
-    // the wizard rows' class flips; D2's wireKeyRow onResult replaces this observer.
-    const mo = new MutationObserver(() => {
+    // the wizard rows' class flips; D2's wireKeyRow onResult supersedes this trigger
+    // for chapter rows (the observer stays for the embedded wizard fallback rows).
+    // gate-2 S10: ONE observer per build — disconnect any previous one first (unsign
+    // also disconnects on the failure path).
+    if (chipObserver) chipObserver.disconnect();
+    chipObserver = new MutationObserver(() => {
       panel.querySelectorAll('.keyrow.kr-pass').forEach((row) => fillChip(row.dataset.int));
     });
-    mo.observe(panel, { attributes: true, subtree: true, attributeFilter: ['class'] });
+    chipObserver.observe(panel, { attributes: true, subtree: true, attributeFilter: ['class'] });
     skipBtn.hidden = true;
     skipping = false;
     building = false;
+    rearmRebuild();                     // gate-2 S2: the ceremony ends with Rebuild live
+    armWriteline(pendingAsk, true);     // …and the writing line hot — the journey hands
+                                        // into the connect chapters (D2) by conversation
     nudgeScroll();
   }
 
@@ -2967,13 +3324,13 @@ Run: `.venv/Scripts/python -m pytest studio/tests -q` → all pass, including th
 
 - [ ] **Step 5: D1c MANUAL BROWSER CHECKLIST** (spec §10 D1c — real `claude`)
 
-1. **The full finale:** journey to `ready` with a name → the closing chapter renders → Build → the name inks across the signature line, button flips to `✓ signed`, writing line retires → the ToC card binds real chapter titles + real answer fragments with the stamp → assembly organs tick as their REAL events arrive (vault, shell, each picked skill, identity on the assemble stage) with mono captions beneath → the chip hands over to `<name> · live` (page AND header) → the composed agent's REAL first words type in, greeting by name, referencing actual picks, handing into connect → the launch card renders with the REAL `cd … && claude` command (copy works) and PENDING integration chips.
-2. **SKIP:** visible from the signing on; pressing it cuts every remaining wait and jumps the typing to done.
+1. **The full finale:** journey to `ready` with a name → the closing chapter renders → Build → the name inks across the signature line, button flips to `✓ signed`, writing line retires → the ToC card binds real chapter titles + real answer fragments with the stamp → assembly organs tick as their REAL events arrive (vault, shell, each picked skill, identity on the assemble stage) with mono captions beneath → the chip hands over to `<name> · live` (page AND header) → the composed agent's REAL first words stream in, greeting by name, referencing actual picks, handing into connect → the launch card renders with the REAL `cd … ; claude` command (copy works, and the copied line runs in PowerShell 5.1 — gate-2 S4) and PENDING integration chips.
+2. **SKIP (gate-2 S8):** visible from the signing on; pressing it cuts every remaining STAGED pause (the beatWaits). The live greeting still streams — it's a real turn SKIP can't fast-forward — but its words paint instantly as they arrive; after the greeting, the launch card follows with no further wait.
 3. **First-breath fallback:** stop `claude` from resolving (temporarily rename the shim / disconnect) → the static "offline greeting" card renders with the brass flag; the launch card still completes with the real command.
 4. **Failure inside the ceremony:** force a compose preflight error → the brass error line renders in the ceremony, the signature un-inks, the button re-arms, the document reopens for edits; fixing and rebuilding works.
 5. **Connect completes the card:** paste a real Linear key in the embedded wizard row (raw-log disclosure), Test → green → the launch card's `linear` chip flips to `✓`.
-6. **Rebuild after connect:** press Build again — connect rows re-run and the old `.env` is gone (documented consequence, FACILITATOR.md).
-7. **Reduced motion:** every beat cuts (no ink-in, no organ slide, no typing cadence — text still arrives).
+6. **Rebuild after the ceremony (gate-2 S2 + I4):** the button now reads **Rebuild** and is ENABLED, with the consequence line beside it — press it: the full ceremony re-runs, connect rows re-run, the old `.env` is gone (re-enter keys — documented consequence, `studio/FACILITATOR.md`), and content written into the home's `vault/` between the builds is STILL THERE (the I4 preservation).
+7. **Reduced motion:** every beat cuts (no ink-in, no organ slide — text still arrives).
 8. **`?ui=chat` + `?mode=architect`:** both unaffected (old wizard gate still rules the chat skin).
 
 - [ ] **Step 6: Commit**
@@ -3091,7 +3448,7 @@ git commit -m "refactor(studio): wireKeyRow extraction — one connect-row wirin
 - Modify: `studio/static/dossier.js` (fill the Task 9 `renderBlocks` stub), `studio/static/dossier.css` (append)
 
 **Interfaces:**
-- Consumes: `window.keyRowHtml` / `window.wireKeyRow` / `window.KNOWN_INTEGRATIONS` (Task 17), `lastDone` (Task 15/16), `fillChip` (Task 16), validated `chapter.blocks` (Task 5).
+- Consumes: `window.keyRowHtml` / `window.wireKeyRow` / `window.KNOWN_INTEGRATIONS` (Task 17), `lastDone` (set by Task 15/16 builds AND restored on reload from the beats payload's `last_compose` — gate-2 S6, so a replayed connect chapter still hosts a live key row instead of degrading to "build first"), `fillChip` (Task 16), validated `chapter.blocks` (Task 5).
 - Produces: the v1 vocabulary renders natively — `step`, `key-field` (hosting the REAL smoke-test row against `lastDone.plugin_path`), `checklist`, `note`, `skill-card`; unknown types/integrations skipped silently (the extractor already drops them; the renderer re-checks defensively). Launch chips fill via `wireKeyRow`'s `onResult` — replace Task 16's MutationObserver trigger comment accordingly (the observer stays for the embedded wizard fallback rows).
 
 - [ ] **Step 1: Fill the stub.** In `studio/static/dossier.js`, replace `function renderBlocks(rec, blocks) {}` (Task 9) with:
@@ -3163,10 +3520,11 @@ Run: `.venv/Scripts/python -m pytest studio/tests -q -m "not integration"` → a
 
 1. **A connect chapter end to end:** after the finale, prompt the architect toward connecting (e.g. "let's connect Linear") — a `connect`-phase chapter renders numbered `step` lines, then the real Linear key row, then a checklist; paste a real key → Test → ✅ green inside the document; the launch card's `linear` chip flips to `✓`; a wrong key → ❌ with the smoke's message.
 2. **Persistence:** the `.env` lands in the composed home (open `dist/<name>-cos/.env`) exactly as the wizard path writes it — same endpoint, same tree.
-3. **Unknown vocabulary skipped silently:** temporarily prompt the agent to emit a bogus block type and a `key-field` with a made-up integration (facilitator console: send a crafted message) — nothing renders for them, the rest of the chapter is intact, no console errors.
-4. **Pre-build key-field:** force a connect chapter before any build — the quiet "build first" note renders instead of a dead row.
-5. **Rail:** the `connect` milestone colours in.
-6. **`?ui=chat`:** the old wizard-in-build-panel flow still works end to end (Task 17's refactor holds).
+3. **Reload mid-connect (gate-2 S6):** hard-reload after the finale — the replayed connect chapter still hosts a LIVE key row (never the "build first" note): `lastDone` was restored from the beats payload's `last_compose`; testing a key in the replayed row still flips the launch chip.
+4. **Unknown vocabulary skipped silently:** temporarily prompt the agent to emit a bogus block type and a `key-field` with a made-up integration (facilitator console: send a crafted message) — nothing renders for them, the rest of the chapter is intact, no console errors.
+5. **Pre-build key-field:** force a connect chapter before any build — the quiet "build first" note renders instead of a dead row.
+6. **Rail:** the `connect` milestone colours in.
+7. **`?ui=chat`:** the old wizard-in-build-panel flow still works end to end (Task 17's refactor holds).
 
 - [ ] **Step 5: Commit**
 
@@ -3267,7 +3625,7 @@ git commit -m "feat(studio): block-authoring contract — connect chapters walk 
 
 **Interfaces:**
 - Consumes: `/api/onboarding`, `/api/onboarding/name|materials|materials/done|second-brain|complete` (existing, unchanged), `window.startWorkshopSession`, `window.queueSend`, Task 9's `fossilize`/`newSection`/`open`.
-- Produces: `window.dossier.intake(state)` — app.js routes first-launch dossier boots here instead of `onboardWalk`; the C3 overlay + floating dock never mount in dossier mode (retired); `?ui=chat` keeps `onboardWalk` unchanged. One prompt-wording tweak: the onboarding contract's "panel on their right" becomes surface-neutral (the fields are IN the page now; `?ui=chat` still shows a panel, so the neutral phrasing serves both).
+- Produces: `window.dossier.intake(state)` — app.js routes first-launch dossier boots here instead of `onboardWalk` — and `window.dossier.resumeIntake(state)` — a reload mid-intake resumes the walk at the step the server state file indicates, on the SAME replayed session (gate-2 S3; Task 10's boot gate already calls it when present); the C3 overlay + floating dock never mount in dossier mode (retired); `?ui=chat` keeps `onboardWalk` unchanged. TWO prompt-wording tweaks in `_ONBOARDING_CONTRACT` (gate-2 S7/R4): both "panel on the/their right" phrasings become surface-neutral (the fields are IN the page now; `?ui=chat` still shows a panel, so the neutral phrasing serves both).
 
 - [ ] **Step 1: The intake flow.** In `studio/static/dossier.js`, add below the writing-line section:
 
@@ -3286,6 +3644,18 @@ git commit -m "feat(studio): block-authoring contract — connect chapters walk 
       fr.onerror = rej;
       fr.readAsDataURL(file);
     });
+  }
+
+  // gate-2 S3: a reload mid-intake resumes the WALK where the server's state file says
+  // it stopped — the beats replay already restored the document and the session, so
+  // no new session and no re-seed (intake() only creates a session at the name step).
+  async function resumeIntake(state) {
+    await getCatalog();
+    if (!state || !state.name) return intake(state || {});   // name never landed — from the top
+    window.onboardingActive = true;
+    if (!open) newSection({ title: 'Welcome', phase: 'welcome' });
+    if (!state.second_brain) { materialsStep(); return; }    // materials/home still open
+    return completeIntake();            // everything chosen — finish the distill hand-off
   }
 
   async function intake(state) {
@@ -3446,6 +3816,7 @@ git commit -m "feat(studio): block-authoring contract — connect chapters walk 
       console.error('dossier intake complete failed', e);   // never strand the page
     } finally {
       window.onboardingActive = false;
+      renderPendingAsk();                   // an ask parked mid-walk renders now (gate-2 R6)
       armWriteline(pendingAsk, true);       // the interview is live in the same document
     }
   }
@@ -3454,27 +3825,35 @@ git commit -m "feat(studio): block-authoring contract — connect chapters walk 
 And extend the export line at the bottom of the IIFE:
 
 ```js
-  window.dossier = { activate, tryReplay, onToken, onError, onDone, intake };
+  window.dossier = { activate, tryReplay, onToken, onError, onDone, renderPendingAsk,
+                     intake, resumeIntake };
 ```
 
 - [ ] **Step 2: Retire the C3 mount in dossier mode.** In `studio/static/app.js` `start()` (Task 10's version), replace the onboarding gate body:
 
 ```js
-    if ((force || !ob.completed)) {
-      if (UI === 'dossier' && window.dossier.intake) {
+    if (!ob.completed || force) {
+      // gate-2 S3: a reload mid-intake resumes the walk on the SAME replayed session,
+      // at the step the state file indicates (resumeIntake landed with this task —
+      // Task 10's "accepted D1a–D2 window" comment is now obsolete: delete it).
+      if (replayed && !force && UI === 'dossier' && window.dossier.resumeIntake) {
+        window.dossier.resumeIntake(ob);
+        return;
+      }
+      if (!replayed && UI === 'dossier' && window.dossier.intake) {
         await window.dossier.intake(ob);   // D3: intake IS the opening chapter (§7.3)
         return;
       }
-      if (window.onboardWalk) {
+      if (!replayed && window.onboardWalk) {
         window.onboardWalk.begin(ob);      // ?ui=chat keeps the C3 chat-card walk
         return;
       }
     }
 ```
 
-(Delete the `if (UI === 'dossier') document.body.classList.add('onboarding');` line — the dock never mounts in dossier mode any more. The `body.dossier.onboarding` CSS stays: harmless, and `?ui=chat` never adds `dossier`.)
+(Delete the `if (UI === 'dossier') document.body.classList.add('onboarding');` line — the dock never mounts in dossier mode any more. The `body.dossier.onboarding` CSS stays: harmless, and `?ui=chat` never adds `dossier`; `body.dz-dock-build` — the C2 build dock — became unreachable at D1c and its CSS also stays inert.)
 
-- [ ] **Step 3: Prompt wording (surface-neutral walk).** In `studio/system_prompt.py` `_ONBOARDING_CONTRACT` (line 189), change:
+- [ ] **Step 3: Prompt wording (surface-neutral walk — BOTH occurrences, gate-2 S7/R4).** In `studio/system_prompt.py` `_ONBOARDING_CONTRACT`, change the intro line (line 188-189):
 
 ```python
 - The walk, in order — narrate each step and point the participant to the panel on their
@@ -3488,7 +3867,23 @@ to:
   controls the page is showing them, ONE step at a time:
 ```
 
-Run: `.venv/Scripts/python -m pytest studio/tests/test_system_prompt.py -v` → all pass (no test pins the "panel on their right" phrasing — verified against test_system_prompt.py, which asserts only `"studio event"` presence for this contract).
+AND the second occurrence inside step 1 of the same contract (lines 190-192):
+
+```python
+  1. Greet the participant warmly by name. Ask them to drop their CV, LinkedIn
+     screenshots, and anything they've written into the panel on the right. Reassure them:
+     everything stays on their machine.
+```
+
+to:
+
+```python
+  1. Greet the participant warmly by name. Ask them to drop their CV, LinkedIn
+     screenshots, and anything they've written into the drop zone in front of them.
+     Reassure them: everything stays on their machine.
+```
+
+Run: `.venv/Scripts/python -m pytest studio/tests/test_system_prompt.py -v` → all pass (no test pins either "panel" phrasing — verified against test_system_prompt.py, which asserts only `"studio event"` presence for this contract).
 
 - [ ] **Step 4: D3 styles** — append to `studio/static/dossier.css`:
 
@@ -3533,7 +3928,7 @@ Run: `.venv/Scripts/python -m pytest studio/tests -q -m "not integration"` → a
 3. **Second brain:** the path field renders as chapter content; confirming creates the home, streams the distill, and the agent reacts WITH SPECIFICS from the materials; the interview continues in the same document — no reset, writing line armed.
 4. **Skip-all path:** `?onboard=1`, skip both steps → stub profile, graceful agent reaction, journey continues.
 5. **Retired overlay:** `#onboard-overlay` and the dock never appear in dossier mode; `?ui=chat` + `?onboard=1` still runs the full C3 overlay walk unchanged.
-6. **Reload mid-intake:** reload after the name step — beats replay restores the document and the session resumes (materials state is server-side; re-render shows the walk beats as chapters).
+6. **Reload mid-intake — CONTINUATION (gate-2 S3):** reload after the name step — beats replay restores the document AND the walk RESUMES on the same session at the materials step (the drop zone re-renders as chapter content, no name form, no new session, no re-seed); complete materials + home from there — the distill streams, `/api/onboarding/complete` runs, the agent reacts to the profile, and the interview continues with the writing line armed. Also reload after choosing the home but before the distill hand-off completed — `resumeIntake` jumps straight to `completeIntake` and the walk still ends in a live interview.
 7. **Reduced motion + `?mode=architect`:** unaffected.
 
 - [ ] **Step 7: Commit**
@@ -3576,7 +3971,7 @@ Expected: silence.
 - [ ] **Step 5: Review + rehearsal gate**
 
 1. `/code-review` on the branch; address every Critical + Improvement; re-run the suite.
-2. Flag for the landing PR: the **fresh-machine dress rehearsal** (spec §11.2 — clone → `--doctor` → full dossier journey → `cd dist/<name>-cos && claude` → skill triggers) is the release gate for the packaging switch AND the `?ui=chat` retirement decision; it is run by a human before the room, not by this plan.
+2. Flag for the landing PR: the **fresh-machine dress rehearsal** (spec §11.2 — clone → `--doctor` → full dossier journey → `cd dist/<name>-cos` then `claude` → skill triggers) is the release gate for the packaging switch AND the `?ui=chat` retirement decision; it is run by a human before the room, not by this plan. Also flag the gate-2 I4 decision for Lucas in the handoff: rebuilds now PRESERVE the in-home vault (agent memory) and lose only `.env`.
 
 - [ ] **Step 6: Commit (only if review fixes landed)** — per-fix commits as usual; no omnibus commit.
 
@@ -3586,29 +3981,36 @@ Expected: silence.
 
 ## Self-review notes
 
+**Gate-2 integration (docs/reviews/shipshape-studio-dossier-journey-plan-2026-07-03.md):** every Critical (C1–C3), every Improvement (S1–S6, I1, I3–I9 — I2 rides S2, I7 rides S1), and every Refinement (S7–S10, R1–R8) is folded into the tasks above, marked in place as `gate-2 <id>` comments/notes. ▸DECISIONs landed as flagged deviations 2 (I4), 7 (S5/R3), 11 (S4) and the C2 dock.
+
 **Spec-coverage map (spec § → tasks):**
-- §1 thesis / `?ui=chat` escape hatch → Task 10 (UI switch, routing); §1 architect byte-identity → guarded in Tasks 6/12/19 tests + checklist items.
+- §1 thesis / `?ui=chat` escape hatch → Task 10 (UI switch, routing, `tryChatResume` — the hatch is same-SESSION, gate-2 C1); §1 architect byte-identity → guarded in Tasks 6/12/19 tests + checklist items.
 - §2 design language → Task 8 (dossier.css from v1b) + Tasks 13/15/16/18/20 (per-slice style appends); type scale in Task 10 checklist #14.
 - §3.1 chapter field → Task 5 (extractor) + Task 7 (SSE passthrough pin); §3.2 blocks vocabulary → Task 5 (validation, D1a accepted-and-ignored), Task 18 (rendering), Task 19 (authoring contract); §3.3 prompt contract → Task 6.
-- §4.1 beats→chapters, live-edge staging, picks-diff, asks+baton, fossils, ready step, errors, beats replay → Task 9 (engine) + Task 7 (server beats) + Task 15 (ready step); §4.2 rail → Task 9; §4.3 build embed → Task 15; §4.4 replacement table → Tasks 8/10 (takeover, advanced dropped, shelf kept + event sync, status chip kept).
-- §5 rewrite/regenerate/pending-target/prompt addition → Tasks 12–13.
-- §6 finale beats 1–5 (incl. gating/un-sign, honest assembly mapping, first-breath flags/provenance/fallback, launch-card pending chips, `done.install`) → Tasks 14–16 (+ Task 3 supplies `shell` event + install field; Task 18 completes the chips via `wireKeyRow`).
-- §7.0 D0 → Tasks 1–4 (commit order honored; `installLineHtml` deferral honored to Task 11); §7.1 D1a/b/c composition → Tasks 5–11 / 12–13 / 14–16 (D1c gated after Task 4 by plan order); §7.2 D2 → Tasks 17–19; §7.3 D3 → Task 20; §7.4 reuse (ask channel, [card]/[studio event], cards.js, onboarding.py, tolerant parsing) → consumed, never rebuilt (Tasks 9/10/20).
+- §4.1 beats→chapters, live-edge staging, picks-diff, asks+baton, fossils, ready step, errors, beats replay → Task 9 (engine — verb-aware replay per gate-2 C3, boot-error Welcome section per S1) + Task 7 (server beats + `last_compose` per S6) + Task 15 (ready step); §4.2 rail → Task 9; §4.3 build embed → Task 15 (pre-D1c drawer builds float as the C2 dock — Tasks 8/10); §4.4 replacement table → Tasks 8/10 (takeover, advanced dropped, shelf kept + event sync, status chip kept; R8 note in Task 10's checklist — the welcome heading lands at first `done`, not first token).
+- §5 rewrite/regenerate/pending-target/prompt addition → Tasks 12–13 (+ busy gating per I1, verb-error recovery per I8, `.dz-stale-mark` in the replace selector per R1).
+- §6 finale beats 1–5 (incl. gating/un-sign, honest assembly mapping, first-breath flags/provenance/fallback, launch-card pending chips, `done.install`) → Tasks 14–16 (+ Task 3 supplies `shell` event + the `;` install field per S4; Task 18 completes the chips via `wireKeyRow`; rebuild re-armed after success per S2; observer lifecycle per S10; SKIP semantics per S8).
+- §7.0 D0 → Tasks 1–4 (commit order honored; `installLineHtml` deferral honored to Task 11; agents/*.md in the reference rewrite per I5; owner threading per I3; rebuild vault preservation per I4); §7.1 D1a/b/c composition → Tasks 5–11 / 12–13 / 14–16 (D1c gated after Task 4 by plan order); §7.2 D2 → Tasks 17–19; §7.3 D3 → Task 20 (+ resume-after-replay per S3); §7.4 reuse (ask channel, [card]/[studio event], cards.js, onboarding.py, tolerant parsing) → consumed, never rebuilt (Tasks 9/10/20).
 - §8 non-goals: no persistence-across-restarts task, no guide-content task, no new deps, substrate untouched outside Task 4 — correct.
-- §9 docs → Task 4 (substrate README/INSTALL), Task 11 (FACILITATOR + SETUP/GUI copy); ROADMAP/CHANGELOG ride each landing PR (flagged deviation 1).
-- §10 testing → D0 composer tests (Tasks 1–3: tree form, install field, reference-path invariant, CLAUDE.md lean fields, shell event, mcp-trim survival, placeholder grep in Task 4); first breath incl. preflight negative (Task 14); beats replay + 404 (Task 7); extractor negatives incl. per-block field negatives + chapter-failure-never-kills-picks (Task 5); prompt tests (Tasks 6/12/19); SSE chapter (Task 7); integration smokes (Tasks 7/14, run in 11/16/21); named manual checklists D1a→Task 10, D1b→Task 13, D1c→Task 16, D2→Task 18, D3→Task 20.
+- §9 docs → Task 4 (substrate README/INSTALL), Task 11 ("Running the room" section in the EXISTING `studio/FACILITATOR.md` per S5/R3 + GUI copy per S4); ROADMAP/CHANGELOG ride each landing PR (flagged deviation 1).
+- §10 testing → D0 composer tests (Tasks 1–3: tree form, `;` install field, reference-path invariant incl. agents, CLAUDE.md lean fields + owner-vs-agent-name pin, shell event, mcp-trim survival, rebuild-preserves-vault, owner threading, placeholder grep in Task 4); first breath incl. preflight negative (Task 14); beats replay + 404 + `last_compose` piggyback + compose capture (Task 7); extractor negatives incl. per-block field negatives + chapter-failure-never-kills-picks (Task 5); prompt tests (Tasks 6/12/19); SSE chapter (Task 7); integration smokes (Tasks 7/14, run in 11/16/21); named manual checklists D1a→Task 10 (incl. same-session `?ui=chat`, boot failure, dock build), D1b→Task 13 (incl. reload-after-rewrite/regenerate, verb-error), D1c→Task 16 (incl. rebuild + vault survival), D2→Task 18 (incl. reload mid-connect), D3→Task 20 (incl. intake continuation).
 - §11 risks: collision rule in Global Constraints; packaging-switch rehearsal in Task 21; contract-compliance fallback in Tasks 5/9 + ⟳; DOM-growth note (flagged deviation 6); fence discipline in Global Constraints.
 
-**Cut-line preservation:** Tasks 1–4 = D0 (independently shippable, frontend untouched); 5–11 = D1a (ships with shelf-drawer builds and the C3 dock); 12–13 = D1b; 14–16 = D1c (gated on D0 by ordering); 17–19 = D2; 20–21 = D3. Each slice ends on a commit with the suite green and a named cut-line statement; no task reaches forward across a cut line (Task 9's `renderBlocks` stub and `pendingTarget` declaration are deliberate seams consumed later in the same file, inert until then).
+**Cut-line preservation:** Tasks 1–4 = D0 (independently shippable, frontend untouched); 5–11 = D1a (ships with shelf-drawer builds streaming into the VISIBLE floating dock — gate-2 C2 — and the C3 dock; reload-mid-intake continuation is the one accepted D1a–D2 gap, documented in Task 10's gate comment and closed by Task 20's `resumeIntake`); 12–13 = D1b; 14–16 = D1c (gated on D0 by ordering); 17–19 = D2; 20–21 = D3. Each slice ends on a commit with the suite green and a named cut-line statement; no task reaches forward across a cut line (Task 9's `renderBlocks` stub, `pendingTarget`/`rwSettle`/`busy`/`lastDone` declarations, and the verb-aware `replayBeat` branches are deliberate seams consumed later in the same file, inert until their producers exist — no verb beats exist before D1b, no `last_compose` before a D1c-era build).
 
 **Type-consistency check:**
 - `extract_studio` → `{picks, name, ready, ask, chapter}` (T5) = what `_extract` stores → what `done`/beats carry (T7) = what `dossier.onDone(ev.studio)` reads (T9) = what `renderBlocks` receives (T18).
 - `chapter.blocks[*]` per-type shapes (T5) = exactly the keys T18 renders (`n/text`, `integration/label`, `items`, `text`, `id`).
-- Beat `{user, prose, studio}` (T7 ChatSession) = the endpoint payload (T7 server) = `replayBeat`'s reads (T9).
-- `compose` done `{plugin_path, vault_path, integrations, install, grade}` (T3) = `LAST_COMPOSE` (+`picks`) (T14) = `lastDone` reads in T15/T16/T18.
+- Beat `{user, prose, studio}` (T7 ChatSession) = the endpoint payload's `beats` (T7 server) = `replayBeat`'s reads (T9) = `tryChatResume`'s reads (T10). The payload's THIRD key `last_compose` (T7 server, = `LAST_COMPOSE` or null) = `tryReplay`'s `out.last_compose` → `lastDone` (T9) — produced and consumed with the same shape (gate-2 S6).
+- `compose` done `{plugin_path, vault_path, integrations, install, grade}` (T3, `install` in the `;` form) = `LAST_COMPOSE` (+`picks`) (declared/captured T7, consumed T14) = `lastDone` reads in T15/T16/T18 (both the build path and the replay path assign the same shape).
+- `write_claude_md(tree, agent_name, owner, vault_dir, picks)` (T2) = compose's call `write_claude_md(staging, owner_name, _onboarding_owner() or owner_name, vault_dir, picks)` (T3) — 5 args both sides (gate-2 I3).
+- `_rewrite_reference_paths(text, skill_id: str | None)` (T1) — SKILL.md callers pass the skill id; the agents/*.md caller passes `None` (gate-2 I5).
 - `first_breath(home: Path, prompt: str, budget)` (T14 module) = the endpoint call = both fakes' signatures in tests.
 - `wireKeyRow(rowEl, integration, tree, onResult)` (T17) = wireWizard's consumption (T17) = the dossier key-field's (T18); `keyRowHtml`/`KNOWN_INTEGRATIONS` exposed where consumed.
-- `window.dossier.{activate, tryReplay, onToken(acc), onError(msg), onDone(ev)}` (T9) = app.js's exact call sites (T10); `intake(state)` added T20 = app.js's T20 gate.
+- `window.dossier.{activate (async), tryReplay, onToken(acc), onError(msg), onDone(ev), renderPendingAsk}` (T9) = app.js's exact call sites (T10 — `activate` awaited, `renderPendingAsk` from the baton hook); `intake(state)`/`resumeIntake(state)` added T20 = app.js's T20 gate (T10's gate already guards on `window.dossier.resumeIntake` existing).
 - Extractor `_INTEGRATIONS` (T5) = prompt's id list (T19) = `WIZARD_FIELDS`+scheduler (`KNOWN_INTEGRATIONS`, T17).
+- The seed filter (T9 `SEED_MSGS`) = T10's `SEED_MSGS` = exactly the two seeds the code ever sends: app.js's `SEED` ('Begin the workshop interview.') and the walks' 'Begin onboarding.' (gate-2 S9).
+
+**Checklist↔code contradiction sweep (the gate-2 bug class):** D1c checklist #6 now claims a live Rebuild — `rearmRebuild()` (T15/16) delivers it; the FACILITATOR reload row claims replay restores the document — `tryReplay`+`replayBeat` (T9) incl. verbs (C3) deliver it; the FACILITATOR `?ui=chat` row claims same-session — `tryChatResume` (T10) delivers it; D1b checklist #8 claims un-stale on verb error — `verbErrorRecover` (T13) delivers it; D2 checklist #3 claims live key rows after reload — `last_compose`→`lastDone` (T7/T9) delivers it; the D1a/D1b cut lines claim visible builds — the C2 dock (T8/T10) delivers it. No checklist item asserts behavior no code block provides.
 
 **Placeholder scan:** every step carries complete code or a precise anchored edit; the only conditional step is Task 1 Step 4's invariant-miss remedy, which names the fix location (`_rewrite_reference_paths`) and the prohibition (never edit substrate content). No TBDs.
