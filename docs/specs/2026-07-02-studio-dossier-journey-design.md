@@ -9,9 +9,9 @@ participants must feel value, EMPOWERED, MORE PRODUCTIVE, and the journey itself
 engaging/energizing — this spec is that bar applied to the whole participant surface).
 **Depends on:** the onboarding-cards slice (spec
 `docs/specs/2026-07-02-studio-onboarding-cards-design.md`, plan
-`docs/plans/onboarding-cards.md`) — **in flight on `feat/onboarding-cards-impl` at time of
-writing**. This spec targets the tree AFTER that slice lands and reuses its contracts (§7.4);
-it must not be planned into implementation until onboarding-cards merges (collision risk §11.1).
+`docs/plans/onboarding-cards.md`) — **LANDED on `main` 2026-07-03 (PR #7, v0.3.0)**. The
+collision gate that previously blocked D1–D3 is satisfied; all slices may now execute,
+based on post-#7 main. Reused contracts inventoried in §7.4.
 Also builds on the landed ` ```studio ` journey (PR #6: extractor, shelfSync, workshop mode),
 and **absorbs ROADMAP item 3 (raw-skills packaging)** as slice D0 — implementing the design
 already fixed in `docs/specs/2026-07-02-workshop-lean-distribution-design.md` §5, because the
@@ -485,11 +485,10 @@ Docs ride each slice's landing PR — never a trailing docs pass:
 
 ## 11. Risks
 
-1. **Branch collision (live now):** onboarding-cards is mid-implementation in the same
-   repo. This spec lands as docs on `main` safely; **D1–D3 must not be executed** until
-   `feat/onboarding-cards-impl` merges, then the implementation branch bases on that.
-   **D0 is exempt** (composer/substrate-side, no contested files) and may execute
-   immediately on its own branch. The execution handoff must restate this gate per slice.
+1. **Branch collision — RESOLVED 2026-07-03:** onboarding-cards landed as PR #7 (v0.3.0).
+   All slices execute against post-#7 `main`. (Historical gate, kept for provenance: D1–D3
+   were blocked until that merge; D0 was exempt.) Any FUTURE parallel session in this repo
+   re-creates the same risk — the execution handoff keeps the sync-main-first rule.
 2. **Packaging switch day-of-workshop:** D0 changes the participant install flow the night
    before the room. Mitigation: the reference-path invariant test + a fresh-machine dress
    rehearsal (ROADMAP "Cleanup / later" E2E item) before the room; the old plugin form
