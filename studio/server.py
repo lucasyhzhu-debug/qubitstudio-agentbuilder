@@ -307,12 +307,14 @@ async def onboarding_complete() -> StreamingResponse:
         task = _DISTILL_TASK
         if task is None:
             # Studio restarted between materials/done and here (review I1): start inline.
-            # set_second_brain already MOVED staged files into <sb>/inbox/onboarding/, so
-            # materials_sources() may be empty; fall back to that dir as a source.
+            # set_second_brain COPIED staged files into <sb>/inbox/onboarding/; if staging
+            # was already cleared, fall back to that dir — but only when it actually holds
+            # files, or a skip-all run would distill an empty dir into a hallucinated
+            # profile (final review C1).
             sources = _onboarding.materials_sources()
             if not sources:
                 moved = Path(state["second_brain"]) / "inbox" / "onboarding"
-                if moved.is_dir():
+                if moved.is_dir() and any(f.is_file() for f in moved.iterdir()):
                     sources = [moved]
             task = asyncio.create_task(_distiller.distill(sources)) if sources else None
         yield _sse({"type": "stage", "name": "distill", "status": "running"})
@@ -325,6 +327,16 @@ async def onboarding_complete() -> StreamingResponse:
         _DISTILL_TASK = None
         yield _sse({"type": "stage", "name": "distill", "status": "ok" if text else "fail"})
         profile_path = _onboarding.write_profile(text)
+        try:
+            # Copies live in <sb>/inbox/onboarding/ and the distill has settled — clear
+            # staging now (copy-not-move, final review C2). Best-effort: cleanup failure
+            # must never break completion.
+            if _onboarding.STAGING.exists():
+                for f in _onboarding.STAGING.iterdir():
+                    if f.is_file():
+                        f.unlink()
+        except Exception:
+            pass
         yield _sse({"type": "profile",
                     "text": profile_path.read_text(encoding="utf-8"),
                     "distilled": bool(text)})

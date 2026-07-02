@@ -47,6 +47,7 @@ function renderAskCard(ask) {
       queueSend(reply);
     });
 }
+window.renderAskCard = renderAskCard;   // onboard.js replays a walk-suppressed ask (final review I6)
 
 function setStatus(text, live) {
   const el = $('#status');
@@ -143,7 +144,12 @@ async function send(message) {
         if (ev.spec && !window.onboardingActive) renderBlueprint(ev.spec);
         if (ev.studio && typeof window.shelfSync === 'function') window.shelfSync(ev.studio);
         if (MODE === 'workshop' && !window.onboardingActive) renderAgentPanel(ev.studio);
-        if (ev.studio && ev.studio.ask && !window.onboardingActive) renderAskCard(ev.studio.ask);
+        // A walk-suppressed ask is stashed, not dropped — onboard.js replays it after
+        // the handback (final review I6).
+        if (ev.studio && ev.studio.ask) {
+          if (!window.onboardingActive) renderAskCard(ev.studio.ask);
+          else window._pendingAsk = ev.studio.ask;
+        }
       }
     }
   }

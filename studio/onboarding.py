@@ -1,8 +1,10 @@
 """Onboarding state + materials intake (onboarding-cards spec §5.1–5.3).
 
 Everything is local: dropped files are staged under studio/.cache/ (gitignored) until the
-participant chooses their second brain, then move into <sb>/inbox/onboarding/. The second
-brain is the SAME directory compose later uses as the vault — one memory, two readers.
+participant chooses their second brain, then are COPIED into <sb>/inbox/onboarding/ —
+staging is cleared by the server only after the distill settles, so an in-flight distill
+never loses its inputs (final review C2). The second brain is the SAME directory compose
+later uses as the vault — one memory, two readers.
 State raises ValueError on bad input; the server maps that to a preflight error.
 """
 from __future__ import annotations
@@ -100,10 +102,11 @@ def set_second_brain(path: str) -> dict:
     inbox = p / "inbox" / "onboarding"
     inbox.mkdir(parents=True, exist_ok=True)
     if STAGING.exists():
+        # COPY, don't move — a materials/done-started distill may still be reading
+        # STAGING; the server clears it after the distill settles (final review C2).
         for f in sorted(STAGING.iterdir()):
             if f.is_file():
                 (inbox / f.name).write_bytes(f.read_bytes())
-                f.unlink()
     state = load_state()
     mats = _materials(state)
     index = ["# Materials", "", "## Copied into inbox/onboarding/"]

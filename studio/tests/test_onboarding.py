@@ -72,13 +72,16 @@ def test_register_folder_must_exist(tmp_path):
         ob.register_folder("")          # blank must not link the cwd
 
 
-def test_second_brain_created_staged_moved(tmp_path):
+def test_second_brain_created_staged_copied(tmp_path):
     ob.set_name("Ada")
     ob.stage_file("cv.md", _b64(b"# cv"))
     sb = tmp_path / "second-brain"
     state = ob.set_second_brain(str(sb))
     assert Path(state["second_brain"]) == sb
     assert (sb / "inbox" / "onboarding" / "cv.md").read_bytes() == b"# cv"
+    # COPY, not move — an in-flight distill may still read STAGING; the server clears
+    # it only after the distill settles (final review C2).
+    assert (ob.STAGING / "cv.md").read_bytes() == b"# cv"
     assert "cv.md" in (sb / "materials.md").read_text(encoding="utf-8")
 
 

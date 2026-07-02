@@ -129,7 +129,13 @@
     }, async (a) => {
       if (a.skipped) {
         // Skip-all path (review I6): default location, stub profile — never stall.
-        await post('/api/onboarding/second-brain', { path: '~/second-brain' });
+        const out = await post('/api/onboarding/second-brain', { path: '~/second-brain' });
+        if (!out.ok) {
+          // Default home failed too — don't pretend it was chosen; proceed anyway,
+          // completeStep's finally hands the UI back (final review I6b).
+          window.cards.fold('ob-path', 'skipped');
+          return completeStep();
+        }
         await window.queueSend('[studio event] participant skipped choosing — defaulted to ~/second-brain');
       } else {
         const path = document.querySelector('.card[data-card-id="ob-path"] .card-path').value.trim();
@@ -147,27 +153,40 @@
 
   async function completeStep() {
     // Stream the distill; then hand the profile to the live agent as an event.
-    const r = await fetch('/api/onboarding/complete', { method: 'POST' });
-    const reader = r.body.getReader(); const dec = new TextDecoder();
-    let buf = '', profile = '', distilled = false;
-    while (true) {
-      const { value, done } = await reader.read(); if (done) break;
-      buf += dec.decode(value, { stream: true });
-      let i; while ((i = buf.indexOf('\n\n')) >= 0) {
-        const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
-        if (!line) continue;
-        const ev = JSON.parse(line);
-        if (ev.type === 'profile') { profile = ev.text; distilled = !!ev.distilled; }
-        if (ev.type === 'error') { alert(ev.message); return; }
+    // try/finally (final review I6a): the handback ALWAYS runs — on fetch/SSE failure or
+    // a preflight error the walk still ends into a normal interview, never a stuck
+    // asleep composer.
+    try {
+      const r = await fetch('/api/onboarding/complete', { method: 'POST' });
+      const reader = r.body.getReader(); const dec = new TextDecoder();
+      let buf = '', profile = '', distilled = false;
+      while (true) {
+        const { value, done } = await reader.read(); if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i; while ((i = buf.indexOf('\n\n')) >= 0) {
+          const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
+          if (!line) continue;
+          const ev = JSON.parse(line);
+          if (ev.type === 'profile') { profile = ev.text; distilled = !!ev.distilled; }
+          if (ev.type === 'error') { alert(ev.message); return; }   // finally still hands back
+        }
+      }
+      const state = await (await fetch('/api/onboarding')).json();
+      const note = distilled ? 'Distilled profile:' : 'Materials registered but not yet distilled. Stub profile:';
+      await window.queueSend(`[studio event] second brain created at ${state.second_brain}. ${note}\n${profile}`);
+    } catch (e) {
+      console.error('onboarding complete failed', e);   // never strand the walk
+    } finally {
+      window.onboardingActive = false;
+      await window.cards.morph('');                 // clear the rail — resolves AFTER the swap (review C1)
+      if (typeof renderAgentPanel === 'function') renderAgentPanel(null);   // …hand back the panel
+      window.cards.baton('composer');               // the interview is live
+      // Replay an ask the walk suppressed mid-flight (final review I6c).
+      if (window._pendingAsk && typeof window.renderAskCard === 'function') {
+        window.renderAskCard(window._pendingAsk);
+        window._pendingAsk = null;
       }
     }
-    const state = await (await fetch('/api/onboarding')).json();
-    const note = distilled ? 'Distilled profile:' : 'Materials registered but not yet distilled. Stub profile:';
-    await window.queueSend(`[studio event] second brain created at ${state.second_brain}. ${note}\n${profile}`);
-    window.onboardingActive = false;
-    await window.cards.morph('');                 // clear the rail — resolves AFTER the swap (review C1)
-    if (typeof renderAgentPanel === 'function') renderAgentPanel(null);   // …hand back the panel
-    window.cards.baton('composer');               // the interview is live
   }
 
   window.onboardWalk = { begin };

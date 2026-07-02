@@ -67,7 +67,12 @@
     const picked = new Set();
     const go = el.querySelector('.card-go');
     const own = el.querySelector('.card-own');
-    const answer = (a) => { onAnswer({ card_id: card.id, choices: [...picked],
+    let answered = false;   // double-click / Enter+click re-entrancy guard (final review C3)
+    const answer = (a) => {
+      if (answered) return;
+      answered = true;
+      el.querySelectorAll('.card-go, .card-skip').forEach((b) => { b.disabled = true; });
+      onAnswer({ card_id: card.id, choices: [...picked],
       custom: own && own.value.trim() ? own.value.trim() : null,
       skipped: false, payload: null, ...a }); };
 
@@ -107,6 +112,7 @@
     el.classList.remove('hot');
     el.classList.add('folded');
     el.innerHTML = `<div class="card-receipt">${esc(text)}</div>`;
+    delete el.dataset.cardId;   // folded cards must not shadow a future ask reusing the id (final review I5)
   }
 
   function morph(html) {

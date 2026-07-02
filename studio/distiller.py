@@ -1,9 +1,12 @@
 """Distill the participant's materials into a markdown owner profile.
 
 One scoped `claude -p` pass with Read only (argv shape live-probed during spec review:
-reads markdown AND genuinely views images). Mirrors tweaker._run_voice_pass: subprocess +
-timeout + nonzero-exit -> RuntimeError. The CALLER treats every failure as non-fatal
-(spec §5.6) — onboarding always completes, worst case with the stub profile.
+reads markdown AND genuinely views images). Runs with cwd = the system temp dir —
+`--add-dir` already grants read access to every source, and a neutral cwd keeps this
+repo's CLAUDE.md out of the profile pass (mirrors chat_session; final review I4).
+Mirrors tweaker._run_voice_pass: subprocess + timeout + nonzero-exit -> RuntimeError.
+The CALLER treats every failure as non-fatal (spec §5.6) — onboarding always completes,
+worst case with the stub profile.
 """
 from __future__ import annotations
 import asyncio
@@ -41,7 +44,7 @@ async def distill(source_dirs: list[Path], timeout: int = _TIMEOUT) -> str:
     if not claude_bin:
         raise RuntimeError("`claude` CLI not found on PATH")
     argv = build_distill_argv(claude_bin, [Path(d) for d in source_dirs])
-    cwd = next((str(d) for d in source_dirs if Path(d).is_dir()), tempfile.gettempdir())
+    cwd = tempfile.gettempdir()   # neutral cwd — never a source dir, never this repo (I4)
     try:
         proc = await asyncio.create_subprocess_exec(
             *argv, cwd=cwd,

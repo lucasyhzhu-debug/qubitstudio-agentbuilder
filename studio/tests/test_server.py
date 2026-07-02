@@ -159,6 +159,9 @@ def test_onboarding_complete_inline_distill_and_profile(monkeypatch, tmp_path):
     ob = _ob(monkeypatch, tmp_path, name="Ada")
     c = TestClient(server.app)
     c.post("/api/onboarding/second-brain", json={"path": str(tmp_path / "sb")})
+    # Simulate a restart that already cleared staging: the copied file sits in the
+    # second brain's inbox — the fallback may only distill it because it holds files (C1).
+    (tmp_path / "sb" / "inbox" / "onboarding" / "cv.md").write_text("# cv", encoding="utf-8")
     async def fake_distill(sources, timeout=180):
         return "# Ada\n\nBuilt engines."
     monkeypatch.setattr(server._distiller, "distill", fake_distill)
@@ -198,6 +201,24 @@ def test_session_new_degrades_when_sb_missing(monkeypatch, tmp_path):
     # heading form uniquely marks the injected participant section; the always-on ask
     # contract legitimately contains the prose "The participant's answer ..." (merged code).
     assert "# The participant" not in text
+
+def test_onboarding_complete_skip_all_no_distill_stub_profile(monkeypatch, tmp_path):
+    # Skip-all path (final review C1): second brain set, its inbox/onboarding dir exists
+    # but is EMPTY (set_second_brain always creates it) — the inline-restart fallback
+    # must NOT distill an empty dir into a hallucinated profile.
+    import pytest
+    sb = tmp_path / "sb"
+    (sb / "inbox" / "onboarding").mkdir(parents=True)
+    _ob(monkeypatch, tmp_path, name="Ada", second_brain=str(sb))
+    async def never_distill(sources, timeout=180):
+        pytest.fail("distill must not run on the skip-all path")
+    monkeypatch.setattr(server._distiller, "distill", never_distill)
+    server._DISTILL_TASK = None
+    c = TestClient(server.app)
+    with c.stream("POST", "/api/onboarding/complete") as r:
+        body = "".join(r.iter_text())
+    assert '"distilled": false' in body
+    assert (sb / "profile.md").exists()               # stub profile written
 
 def test_compose_uses_second_brain_vault(monkeypatch, tmp_path):
     sb = tmp_path / "sb"; sb.mkdir()
