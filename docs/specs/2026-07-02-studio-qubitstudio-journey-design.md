@@ -5,7 +5,7 @@
 **Owner:** Lucas
 **Target:** QubitStudio "Build Your Own Chief of Staff" workshop, Friday 2026-07-03
 **Depends on:** v0.1.0 migration (shipped) · the SapphireOS design system from qubit-site (`github.com/Nicegarrry/qubit-site`, `app/globals.css`). Naming: the workshop product is **QubitStudio** (a SapphireOS × Ikigai AI Ventures partnership); "SapphireOS" below names only the design system we adopt
-**Supersedes:** `docs/specs/2026-07-02-studio-theme-toggle-design.md` (uncommitted draft — its
+**Supersedes:** `docs/specs/2026-07-02-studio-theme-toggle-design.md` (superseded draft, committed for the record — its
 dark/light toggle is dropped; its hardcoded-color audit is folded into §3.4)
 
 ## 1. Problem
