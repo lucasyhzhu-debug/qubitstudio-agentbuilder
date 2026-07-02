@@ -53,7 +53,7 @@ def set_name(name: str) -> dict:
 
 def stage_file(filename: str, b64: str) -> dict:
     fname = Path(filename or "").name          # basename only — no traversal
-    if not fname:
+    if not fname or fname in (".", ".."):
         raise ValueError("missing filename")
     try:
         data = base64.b64decode(b64 or "", validate=True)
@@ -77,6 +77,8 @@ def stage_file(filename: str, b64: str) -> dict:
 
 def register_folder(folder: str) -> dict:
     p = Path(folder or "").expanduser()
+    if not str(p).strip() or str(p) == ".":   # Path("") -> "." — never link the cwd
+        raise ValueError("choose a folder to link")
     if not p.is_dir():
         raise ValueError(f"not a folder on this machine: {folder}")
     state = load_state()

@@ -39,6 +39,20 @@ def test_stage_file_sanitizes_and_writes():
     assert (ob.STAGING / "evil.md").read_bytes() == b"hello"   # basename only
 
 
+def test_stage_file_rejects_dot_dot_names():
+    with pytest.raises(ValueError):
+        ob.stage_file("..", _b64(b"x"))
+    with pytest.raises(ValueError):
+        ob.stage_file("x/..", _b64(b"x"))
+
+
+def test_stage_file_total_cap(monkeypatch):
+    monkeypatch.setattr(ob, "MAX_TOTAL_BYTES", 10)
+    ob.stage_file("small.md", _b64(b"x" * 8))
+    with pytest.raises(ValueError):
+        ob.stage_file("over.md", _b64(b"x" * 8))
+
+
 def test_stage_file_caps():
     with pytest.raises(ValueError):
         ob.stage_file("big.bin", _b64(b"x" * (ob.MAX_FILE_BYTES + 1)))
@@ -54,6 +68,8 @@ def test_register_folder_must_exist(tmp_path):
     assert Path(out["materials"]["folders"][0]) == d.resolve()
     with pytest.raises(ValueError):
         ob.register_folder(str(tmp_path / "nope"))
+    with pytest.raises(ValueError):
+        ob.register_folder("")          # blank must not link the cwd
 
 
 def test_second_brain_created_staged_moved(tmp_path):
