@@ -12,9 +12,9 @@ migration + raw skills) and `docs/specs/2026-07-02-workshop-studio-r1-personaliz
    - ~~**Known failure:** `test_smoke_integration.py::test_one_real_turn`~~ — **verified
      2026-07-02**: full suite 98/98 green on this machine, including the real `claude -p`
      round-trip. The floor is confirmed live.
-2. **SapphireOS reskin + conversation-driven journey** — **specced + planned** (spec:
-   `docs/specs/2026-07-02-studio-sapphireos-journey-design.md`, plan:
-   `docs/plans/sapphireos-journey.md`, both shipshape-gated). Chat becomes chief-of-staff-aware
+2. **QubitStudio reskin + conversation-driven journey** — **specced + planned** (spec:
+   `docs/specs/2026-07-02-studio-qubitstudio-journey-design.md`, plan:
+   `docs/plans/qubitstudio-journey.md`, both shipshape-gated). Chat becomes chief-of-staff-aware
    and drives the shelf (` ```studio ` block → shelfSync → "Your agent" panel); studio restyled
    to qubit-site's SapphireOS system (light-only — supersedes the theme-toggle draft). Covers
    the "first-run handshake" requirement below (status chip flips on first streamed token).

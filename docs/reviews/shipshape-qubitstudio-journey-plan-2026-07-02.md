@@ -1,6 +1,6 @@
-# Shipshape review — plan: sapphireos-journey
+# Shipshape review — plan: qubitstudio-journey
 
-**Target:** `docs/plans/sapphireos-journey.md` (plan mode)
+**Target:** `docs/plans/qubitstudio-journey.md` (plan mode)
 **Date:** 2026-07-02 · **Reviewers:** Staff + Principal personas · **Verdict:** APPROVE with minor fixes (applied inline)
 
 ✅ Structure validated — header with goal/architecture/constraints, exact file paths, complete

@@ -1,6 +1,6 @@
-# Shipshape review — spec: SapphireOS reskin + conversation-driven journey
+# Shipshape review — spec: QubitStudio reskin + conversation-driven journey
 
-**Target:** `docs/specs/2026-07-02-studio-sapphireos-journey-design.md` (spec mode)
+**Target:** `docs/specs/2026-07-02-studio-qubitstudio-journey-design.md` (spec mode)
 **Date:** 2026-07-02 · **Reviewers:** Staff + Principal personas · **Verdict:** REVISE → fixes applied inline same session
 
 ✅ Structure validated — status/owner/date, decisions with rejections, non-goals, build order
@@ -64,7 +64,7 @@ noted in §4.3 so the plan doesn't add defensive complexity. No action beyond th
   working workshop. index.html contention called out with ownership.
 - Test & doctor/smoke: **Adequate** after fixes — extractor negatives, prompt-mode tests,
   server-mode tests, real-turn workshop variant; manual checklist for the no-JS-runner frontend.
-- Lifecycle & git: spec committed on `feat/sapphireos-journey` (spec-first gate met);
+- Lifecycle & git: spec committed on `feat/qubitstudio-journey` (spec-first gate met);
   ROADMAP/CHANGELOG refresh scheduled as pipeline step 6; public-repo gate — fonts are OFL,
   no personal values introduced.
 
