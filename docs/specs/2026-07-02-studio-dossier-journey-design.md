@@ -9,8 +9,8 @@ engaging/energizing — this spec is that bar applied to the whole participant s
 **Depends on:** the onboarding-cards slice (spec
 `docs/specs/2026-07-02-studio-onboarding-cards-design.md`, plan
 `docs/plans/onboarding-cards.md`) — **in flight on `feat/onboarding-cards-impl` at time of
-writing**. This spec targets the tree AFTER that slice lands and reuses its contracts (§6.4);
-it must not be planned into implementation until onboarding-cards merges (collision risk §9.1).
+writing**. This spec targets the tree AFTER that slice lands and reuses its contracts (§7.4);
+it must not be planned into implementation until onboarding-cards merges (collision risk §10.1).
 Also builds on the landed ` ```studio ` journey (PR #6: extractor, shelfSync, workshop mode).
 **Proofing artifacts** (gitignored, `.superpowers/brainstorm/journey-page-feel/`):
 `v1b-dossier-journey.html` — the chosen direction, interactive (undo, choice cards, journey
@@ -194,16 +194,50 @@ agent is prompted they exist):
   and continue from that chapter. On regenerate: re-write that chapter's content; do not
   advance the interview.*
 
-## 6. Slices (each independently shippable, in order)
+## 6. The finale — sign · bind · assemble · first breath · launch
 
-### 6.1 D1 — the dossier shell + interview journey (the floor)
+The close is where the outcome bar gets cashed; it must not be a progress bar. Five beats,
+one orchestrated sequence (proofed in `v1c-finale.html`, approved by Lucas 2026-07-02;
+SKIP affordance always visible; `prefers-reduced-motion` collapses every beat to a cut):
+
+1. **The Signing.** Build clicked → the agent's name inks itself across the signature line
+   (clip-path stroke-in), the writing line retires, the button flips to `✓ signed`. The
+   document is closed for edits; everything after is consequence.
+2. **The Binding.** The dossier compresses into a small table-of-contents card — chapter
+   numbers + the participant's own serif answer fragments — stamped "N chapters · M answers ·
+   signed <date>". Honest theater: their answers genuinely feed the personalize pass.
+3. **The Assembly.** The bound card slides into an *anatomy* view: wiki-brain spine clicks
+   in, shell around it, each picked skill slots in with a tick, personalization last —
+   while the REAL compose/tweak log lines run as mono captions beneath (the existing build
+   stream, re-skinned; truth under the theater). This replaces the raw build-panel log as
+   the D1 §4.3 embed's visible face; the raw log stays reachable behind a disclosure.
+4. **First Breath.** The page goes quiet; the status chip hands over — `architect` →
+   `<name> · live` (sapphire pulse). Then the composed agent's first words stream in, typed:
+   a REAL one-turn `claude -p` greeting run with cwd = the composed agent home, prompted to
+   greet the participant by name and reference their actual choices. **Gated on ROADMAP
+   item 3 (raw-skills packaging)** — the turn needs the agent-home form (`.claude/skills/`
+   + `CLAUDE.md`) to load as an agent. Until item 3 lands, this beat renders a static
+   "first words" card quoting the personalized identity instead (flagged fallback, not a
+   silent cut).
+5. **The Launch Card.** The birth certificate: name in serif, parts manifest, integrations
+   green, the exact launch command (`cd dist/<name>-cos && claude` post-item-3; the
+   `/plugin marketplace add …` pair before it — read from the composer's `install` field,
+   never hardcoded) with a copy button, and "three things to ask it first" derived from
+   picks (each skill's `brief` supplies its line).
+
+Beats 1–3 + 5 ship with D1 (they re-skin surfaces D1 already owns); beat 4's live turn is a
+small follow-on wired when item 3 lands.
+
+## 7. Slices (each independently shippable, in order)
+
+### 7.1 D1 — the dossier shell + interview journey (the floor)
 
 Extractor `chapter` (+ blocks parsed-not-rendered) · prompt contract §3.3 + §5 · `dossier.css`/
 `dossier.js` · full-page takeover in workshop mode (chat UI stays for architect) · chapters,
 picks-diff cards, inline asks, writing line, baton · journey rail · rewrite + regenerate ·
 signature close → embedded build panel (§4.3) · shelf drawer kept as overlay.
 
-### 6.2 D2 — build & connect as native chapters
+### 7.2 D2 — build & connect as native chapters
 
 `blocks` rendering (`step`/`key-field`/`checklist`/`note`/`skill-card`) · connect rows
 dissolve into `connect`-phase chapters (key wizard + smoke tests hosted in `key-field`
@@ -211,7 +245,7 @@ blocks, endpoints unchanged) · prompt contract gains the block-authoring sectio
 emitted in build/connect phases). **Guide content** (which steps for Discord/Linear/Google)
 remains ROADMAP item 7 — D2 is the rendering vehicle, not the content.
 
-### 6.3 D3 — intake as the opening chapter
+### 7.3 D3 — intake as the opening chapter
 
 The onboarding walk (welcome → introduce yourself → materials drop CV/LinkedIn/screenshots →
 second-brain choice) re-skins from chat-cards into `welcome`-phase dossier chapters: the
@@ -219,13 +253,13 @@ drop zone and name/path fields render as chapter content; same `onboarding.py` e
 state file, staging, and `[studio event]` completions — **zero backend change**. C3's
 chat-card walk remains the fallback until D3 lands.
 
-### 6.4 Reused from onboarding-cards (not rebuilt)
+### 7.4 Reused from onboarding-cards (not rebuilt)
 
 Ask channel (`studio.ask`, §4 of that spec) · `[card]` / `[studio event]` message protocol +
 bubble suppression · `cards.js` card primitive + rise/fold/baton/morph motion ·
 `onboarding.py` + endpoints · the extractor's tolerant-parsing conventions.
 
-## 7. Non-goals
+## 8. Non-goals
 
 - **Architect mode**: byte-identical, including `build_system_prompt()` and its tests.
 - **Conversation persistence across studio restarts** (ROADMAP product requirement) — not
@@ -235,7 +269,7 @@ bubble suppression · `cards.js` card primitive + rise/fold/baton/morph motion �
 - **No new deps, no build step** — vanilla JS + CSS, stdlib-only server additions.
 - **`chief-of-staff/` and `agent-architect/` untouched.**
 
-## 8. Testing
+## 9. Testing
 
 - **Extractor** (`test_studio_extractor.py`): chapter valid/malformed/absent; unknown phase;
   title >80 chars; blocks vocabulary (valid, unknown type skipped, malformed → `[]`);
@@ -249,7 +283,7 @@ bubble suppression · `cards.js` card primitive + rise/fold/baton/morph motion �
   round-trip (stale → re-settle), regenerate in place, reduced-motion, `?mode=architect`
   unchanged, workshop-room legibility on a shared screen.
 
-## 9. Risks
+## 10. Risks
 
 1. **Branch collision (live now):** onboarding-cards is mid-implementation in the same
    repo. This spec lands as docs on `main` safely; the **plan must not be executed** until
