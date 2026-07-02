@@ -201,6 +201,16 @@ def assemble_manifests(tree: Path, integrations: set[str]) -> None:
 def _stage(name: str, status: str) -> dict:
     return {"type": "stage", "name": name, "status": status}
 
+def _onboarding_owner() -> str | None:
+    """The participant's onboarding name, if the walk ran (gate-2 I3). Lazy, guarded
+    import: composer keeps working standalone and tests monkeypatch this seam."""
+    try:
+        from studio import onboarding
+        return onboarding.load_state().get("name") or None
+    except Exception:
+        return None
+
+
 async def compose(picks, owner_name, outdir, vault_dir) -> AsyncIterator[dict]:
     outdir, vault_dir = Path(outdir), Path(vault_dir)
     try:
@@ -212,34 +222,59 @@ async def compose(picks, owner_name, outdir, vault_dir) -> AsyncIterator[dict]:
 
         base = _slug(owner_name)
         slug = f"{base}-cos"
+        final = outdir / slug
         staging = _HERE / ".cache" / "compose" / slug
         if staging.exists():
             shutil.rmtree(staging, ignore_errors=True)
         staging.mkdir(parents=True, exist_ok=True)
 
         yield _stage("generate", "running")
-        scaffold_vault(vault_dir, owner_name, picks)
+        # An in-home vault (the <home>/vault/ default, lean §5) must ride the
+        # staging→final move — scaffolding it at its final path would be destroyed by
+        # the package step's rmtree below. External vaults (the onboarding second
+        # brain) scaffold in place, exactly as before.
+        in_home = vault_dir.resolve() == (final / "vault").resolve()
+        scaffold_vault(staging / "vault" if in_home else vault_dir, owner_name, picks)
         yield {"type": "component", "key": "vault", "status": "ok"}
         copy_home(staging, picks)
+        yield {"type": "component", "key": "shell", "status": "ok"}
         for sk in picks:
             yield {"type": "component", "key": f"skill:{sk}", "status": "ok"}
         yield _stage("generate", "ok")
 
         yield _stage("assemble", "running")
         delucas(staging, owner_name, vault_dir)
+        # gate-2 I3: CLAUDE.md's Owner is the PARTICIPANT (onboarding name); the agent
+        # name still drives the slug/identity. Fallback: the agent name.
+        write_claude_md(staging, owner_name, _onboarding_owner() or owner_name,
+                        vault_dir, picks)
         assemble_manifests(staging, res.integrations)
         yield _stage("assemble", "ok")
 
         yield _stage("package", "running")
-        final = outdir / slug
         outdir.mkdir(parents=True, exist_ok=True)
+        kept_vault = None
         if final.exists():
+            # gate-2 I4: a REBUILD must not destroy the agent's memory — the in-home
+            # vault moves aside, the home is rebuilt, then the vault rides back in
+            # (replacing the fresh staging scaffold: memories win). Only .env is lost
+            # on a rebuild — the documented consequence (spec §6.1).
+            if in_home and (final / "vault").exists():
+                kept_vault = _HERE / ".cache" / "compose" / f"{slug}-vault-keep"
+                if kept_vault.exists():
+                    shutil.rmtree(kept_vault, ignore_errors=True)
+                shutil.move(str(final / "vault"), str(kept_vault))
             shutil.rmtree(final, ignore_errors=True)
         shutil.move(str(staging), str(final))
+        if kept_vault is not None:
+            shutil.rmtree(str(final / "vault"), ignore_errors=True)
+            shutil.move(str(kept_vault), str(final / "vault"))
         yield _stage("package", "ok")
         yield {"type": "done", "grade": "composed", "plugin_path": str(final),
                "vault_path": str(vault_dir), "integrations": sorted(res.integrations),
-               "install": f"/plugin marketplace add {final} ; /plugin install {slug}@{base}-workshop"}
+               # gate-2 S4 (flagged deviation 11): `;` parses in Windows PowerShell 5.1
+               # where `&&` is a parse error; the GUI splits ' ; ' into two lines.
+               "install": f"cd {final} ; claude"}
     except UnknownPickError as e:
         yield {"type": "error", "stage": "preflight", "message": str(e)}
     except Exception as e:  # filesystem etc. — never leave a half-agent silently

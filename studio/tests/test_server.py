@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from fastapi.testclient import TestClient
 from studio import server
 
@@ -233,3 +234,17 @@ def test_compose_uses_second_brain_vault(monkeypatch, tmp_path):
     with c.stream("POST", "/api/compose", json={"picks": ["crm"], "name": "my cos"}) as r:
         "".join(r.iter_text())
     assert seen["vault"] == str(sb)
+
+def test_compose_default_vault_is_in_home(monkeypatch, tmp_path):
+    # No completed onboarding → the default vault is INSIDE the agent home (lean §5),
+    # not the old dist/<slug>-vault sibling.
+    _ob(monkeypatch, tmp_path)
+    seen = {}
+    async def fake_compose(picks, name, outdir, vault_dir):
+        seen["vault"] = Path(vault_dir)
+        yield {"type": "done", "grade": "composed", "plugin_path": "x", "vault_path": str(vault_dir)}
+    monkeypatch.setattr(server._composer, "compose", fake_compose)
+    c = TestClient(server.app)
+    with c.stream("POST", "/api/compose", json={"picks": ["crm"], "name": "my cos"}) as r:
+        "".join(r.iter_text())
+    assert seen["vault"] == server._composer._REPO / "dist" / "my-cos-cos" / "vault"

@@ -164,9 +164,9 @@ async def compose_endpoint(req: Request) -> StreamingResponse:
             return
         state = _onboarding.load_state()
         if state.get("completed_at") and state.get("second_brain"):
-            vault = Path(state["second_brain"])       # spec §5.3: the second brain IS the vault
+            vault = Path(state["second_brain"])       # onboarding: the second brain IS the vault
         else:
-            vault = _composer._REPO / "dist" / f"{slug}-vault"
+            vault = _composer._REPO / "dist" / f"{slug}-cos" / "vault"   # lean §5: <home>/vault/ default
         async for ev in _composer.compose(picks, name, _composer._REPO / "dist", vault):
             yield _sse(ev)
 
