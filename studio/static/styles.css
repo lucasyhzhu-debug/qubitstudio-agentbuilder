@@ -560,3 +560,35 @@ input:focus, textarea:focus { border-color: var(--sapphire); box-shadow: 0 0 0 3
   html, body { overflow: auto; }
   body { height: auto; }
 }
+
+/* ── Onboarding overlay (onboarding-cards spec §5.4/§5.7) ── */
+#onboard-overlay {
+  position: fixed; inset: 0; z-index: 50; background: var(--canvas, #fff);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .6s cubic-bezier(.2,.7,.2,1);
+}
+#onboard-overlay.ob-slide-up { transform: translateY(-100%); }
+.ob-screen { text-align: center; max-width: 560px; padding: 24px; }
+.ob-screen h1 {
+  font-family: var(--display, sans-serif); font-size: 56px; font-weight: 640;
+  letter-spacing: -.02em; color: var(--ink, #141A21); margin: 14px 0 8px;
+  animation: ob-rise .9s cubic-bezier(.2,.7,.2,1) both;
+}
+.ob-screen p, .ob-sub {
+  font-family: var(--wordmark, serif); font-style: italic; font-size: 19px;
+  color: var(--ink-3, #6B7681); animation: ob-rise .9s cubic-bezier(.2,.7,.2,1) .35s both;
+}
+@keyframes ob-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+#ob-name-form { margin-top: 22px; display: flex; gap: 10px; justify-content: center; }
+#ob-name-input {
+  font-size: 17px; padding: 10px 14px; width: 280px;
+  border: 1px solid var(--rule-strong, rgba(20,26,33,.2)); border-radius: 10px;
+}
+#ob-name-form button {
+  background: var(--sapphire, #306FA8); color: #fff; border: none;
+  border-radius: 10px; padding: 0 18px; font-size: 17px; cursor: pointer;
+}
+@media (prefers-reduced-motion: reduce) {
+  #onboard-overlay { transition: none; }
+  .ob-screen h1, .ob-screen p, .ob-sub { animation: none; }
+}

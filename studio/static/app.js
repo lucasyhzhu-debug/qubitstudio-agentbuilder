@@ -56,6 +56,9 @@ function setStatus(text, live) {
 
 // Used by onboard.js after the reveal (Task 9): create the session, seed the walk.
 // Seeding goes through queueSend so it can never overlap a later programmatic send.
+// `lastSeed` tracks whichever seed actually kicked off the session ('Begin onboarding.'
+// on the walk, SEED otherwise) so send() never paints it as a fake user bubble.
+let lastSeed = SEED;
 window.startWorkshopSession = async function (seed) {
   const r = await fetch('/api/session/new', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -63,10 +66,21 @@ window.startWorkshopSession = async function (seed) {
   });
   sessionId = (await r.json()).session_id;
   setStatus('ready');
-  return queueSend(seed || SEED);  // seed the first turn
+  lastSeed = seed || SEED;
+  return queueSend(lastSeed);  // seed the first turn
 };
 
 async function start() {
+  // Onboarding gate (Task 9): first launch (or ?onboard=1) hands the whole boot to the
+  // walk — it creates the session and seeds the first turn itself.
+  if (MODE === 'workshop') {
+    const ob = await (await fetch('/api/onboarding')).json();
+    const force = new URLSearchParams(location.search).get('onboard') === '1';
+    if ((force || !ob.completed) && window.onboardWalk) {
+      window.onboardWalk.begin(ob);
+      return;                          // the walk calls startWorkshopSession itself
+    }
+  }
   // Empty-state paint — gated by onboardingActive so Task 9's walk owns the panel.
   if (MODE === 'workshop' && !window.onboardingActive) renderAgentPanel(null);
   return window.startWorkshopSession(SEED);
@@ -102,7 +116,7 @@ function stripSpec(text) {
 }
 
 async function send(message) {
-  if (message !== SEED && !HIDDEN_MSG.test(message)) addBubble('user', message);
+  if (message !== lastSeed && !HIDDEN_MSG.test(message)) addBubble('user', message);
   const bubble = addBubble('assistant', '');
   const r = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -122,10 +136,14 @@ async function send(message) {
       }
       else if (ev.type === 'error') { acc += '\n\n**[error]** ' + ev.message; bubble.innerHTML = renderMarkdown(stripSpec(acc)); }
       else if (ev.type === 'done') {
-        if (ev.spec) renderBlueprint(ev.spec);
+        // While the onboarding walk owns #blueprint (and the shared cards mount root),
+        // neither a stray spec paint nor an ask card may touch it: renderBlueprint would
+        // wipe the walk's cards, and renderAskCard re-mounts cards onto #askrail, which
+        // would strand the walk's fold/show targets (Task 9).
+        if (ev.spec && !window.onboardingActive) renderBlueprint(ev.spec);
         if (ev.studio && typeof window.shelfSync === 'function') window.shelfSync(ev.studio);
         if (MODE === 'workshop' && !window.onboardingActive) renderAgentPanel(ev.studio);
-        if (ev.studio && ev.studio.ask) renderAskCard(ev.studio.ask);
+        if (ev.studio && ev.studio.ask && !window.onboardingActive) renderAskCard(ev.studio.ask);
       }
     }
   }
