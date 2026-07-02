@@ -3,7 +3,8 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>agent-studio</title>
 <link rel="stylesheet" href="/static/styles.css">
-<link rel="stylesheet" href="/static/shelf.css"></head>
+<link rel="stylesheet" href="/static/shelf.css">
+<link rel="stylesheet" href="/static/cards.css"></head>
 <body>
   <header>
     <span class="qmark"><i></i><i></i><i></i><i class="fill"></i></span>
@@ -24,12 +25,18 @@
     <section id="chat"><div id="log"></div>
       <form id="composer"><textarea id="msg" rows="2" placeholder="Describe the agent you want…"></textarea>
       <button type="submit">Send</button></form></section>
-    <aside id="blueprint"><div class="empty">The blueprint fills in as you chat.</div></aside>
-    <div id="buildpanel" hidden>
-      <div id="stepper"></div>
-      <div id="components"></div>
-      <pre id="buildlog"></pre>
-      <div id="buildresult"></div>
+    <div id="rightrail" class="rightrail">
+      <!-- Ask cards mount here, in their OWN rail ABOVE the blueprint, so the per-turn
+           panel repaints (renderBlueprint/renderAgentPanel overwrite #blueprint.innerHTML)
+           can never wipe them (onboarding-cards review I2). -->
+      <div id="askrail"></div>
+      <aside id="blueprint"><div class="empty">The blueprint fills in as you chat.</div></aside>
+      <div id="buildpanel" hidden>
+        <div id="stepper"></div>
+        <div id="components"></div>
+        <pre id="buildlog"></pre>
+        <div id="buildresult"></div>
+      </div>
     </div>
   </main>
 
@@ -48,6 +55,7 @@
 
   <script src="/static/vendor/marked.min.js"></script>
   <script src="/static/vendor/purify.min.js"></script>
+  <script src="/static/cards.js"></script>
   <script src="/static/app.js"></script>
   <script src="/static/shelf.js"></script>
 </body></html>

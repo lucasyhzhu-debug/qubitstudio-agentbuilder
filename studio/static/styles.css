@@ -127,6 +127,21 @@ main {
   overflow: hidden;
 }
 
+/* ── Right rail ── the second grid column. #askrail holds the architect's ask
+   cards in their own lane ABOVE the blueprint (so #blueprint's per-turn innerHTML
+   repaints never wipe them). Empty until an ask arrives → collapses to zero height,
+   so the blueprint/build panel fills the pane exactly as before. #blueprint and
+   #buildpanel keep their own overflow-y:auto; flex:1 + min-height:0 lets them scroll. */
+.rightrail {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.rightrail > #askrail { flex: 0 0 auto; }
+.rightrail > #askrail:not(:empty) { padding: 16px 16px 0; }
+.rightrail > #blueprint,
+.rightrail > #buildpanel { flex: 1 1 auto; min-height: 0; }
+
 /* ── Chat pane ── */
 #chat {
   display: flex;

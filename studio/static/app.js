@@ -6,21 +6,70 @@ const MODE = new URLSearchParams(location.search).get('mode') === 'architect' ? 
 const SEED = MODE === 'architect' ? 'Begin the agent-architect interview.' : 'Begin the workshop interview.';
 if (MODE === 'architect') { const a = $('#advanced'); if (a) a.open = true; }
 
+// ── Send queue ────────────────────────────────────────────────────────────
+// ALL sends — participant submit, seed, [card] answers, [studio event]s — go through
+// ONE promise chain so a programmatic send can never overlap an in-flight turn
+// (spec §5.4.8). `.catch(() => {})` on the chain so one failed send never wedges it.
+let sendChain = Promise.resolve();
+function queueSend(message) {
+  sendChain = sendChain.then(() => send(message)).catch(() => {});
+  return sendChain;
+}
+window.queueSend = queueSend;
+
+// Bracketed messages are the machine channel — never shown as user bubbles (spec §4.2).
+const HIDDEN_MSG = /^\[(card|studio event)\]/;
+window.onboardingActive = false;   // Task 9 flips this; gates the agent-panel repaints
+
+// Composer baton: while a card holds the turn the composer sleeps (dashed overlay text).
+if (window.cards) {
+  window.cards.onBaton((holder) => {
+    $('#composer').classList.toggle('asleep', holder === 'card');
+  });
+}
+
+// The architect's ask (spec §4.2): render the card in its own rail, then send the
+// answer back as a [card] message (suppressed from the chat by HIDDEN_MSG).
+function renderAskCard(ask) {
+  if (!window.cards || document.querySelector(`.card[data-card-id="${CSS.escape(ask.id)}"]`)) return;
+  window.cards.mount($('#askrail'));   // own rail — panel repaints never wipe asks (review I2)
+  window.cards.show({ ...ask, producer: 'ask', kind: 'question', eyebrow: 'the architect asks' },
+    (a) => {
+      let receipt, reply;
+      if (a.skipped) { receipt = 'skipped'; reply = `[card] ${ask.title} → skipped`; }
+      else {
+        const labels = a.choices.map((id) => (ask.options.find((o) => o.id === id) || {}).label).filter(Boolean);
+        const parts = [...labels, ...(a.custom ? [`(custom) ${a.custom}`] : [])];
+        receipt = parts.join(' + ') || '—'; reply = `[card] ${ask.title} → ${parts.join('; ')}`;
+      }
+      window.cards.fold(ask.id, `${receipt} ✓`);
+      window.cards.baton('composer');
+      queueSend(reply);
+    });
+}
+
 function setStatus(text, live) {
   const el = $('#status');
   el.innerHTML = '<i class="dot"></i>' + text.replace(/[<>&]/g, '');
   el.classList.toggle('live', !!live);
 }
 
-async function start() {
+// Used by onboard.js after the reveal (Task 9): create the session, seed the walk.
+// Seeding goes through queueSend so it can never overlap a later programmatic send.
+window.startWorkshopSession = async function (seed) {
   const r = await fetch('/api/session/new', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ mode: MODE }),
   });
   sessionId = (await r.json()).session_id;
   setStatus('ready');
-  if (MODE === 'workshop') renderAgentPanel(null);
-  send(SEED);  // seed the first turn
+  return queueSend(seed || SEED);  // seed the first turn
+};
+
+async function start() {
+  // Empty-state paint — gated by onboardingActive so Task 9's walk owns the panel.
+  if (MODE === 'workshop' && !window.onboardingActive) renderAgentPanel(null);
+  return window.startWorkshopSession(SEED);
 }
 
 // Render assistant markdown -> sanitized HTML (bold, headings, lists, code, links).
@@ -53,7 +102,7 @@ function stripSpec(text) {
 }
 
 async function send(message) {
-  if (message !== SEED) addBubble('user', message);
+  if (message !== SEED && !HIDDEN_MSG.test(message)) addBubble('user', message);
   const bubble = addBubble('assistant', '');
   const r = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -75,7 +124,8 @@ async function send(message) {
       else if (ev.type === 'done') {
         if (ev.spec) renderBlueprint(ev.spec);
         if (ev.studio && typeof window.shelfSync === 'function') window.shelfSync(ev.studio);
-        if (MODE === 'workshop') renderAgentPanel(ev.studio);
+        if (MODE === 'workshop' && !window.onboardingActive) renderAgentPanel(ev.studio);
+        if (ev.studio && ev.studio.ask) renderAskCard(ev.studio.ask);
       }
     }
   }
@@ -147,7 +197,7 @@ async function renderAgentPanel(studio) {
 
 $('#composer').addEventListener('submit', (e) => {
   e.preventDefault(); const v = $('#msg').value.trim(); if (!v) return;
-  $('#msg').value = ''; send(v);
+  $('#msg').value = ''; queueSend(v);
 });
 // Enter sends; Shift+Enter inserts a newline.
 $('#msg').addEventListener('keydown', (e) => {
