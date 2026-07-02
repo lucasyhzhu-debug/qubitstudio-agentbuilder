@@ -7,24 +7,35 @@ def _run(agen):
         return [ev async for ev in agen]
     return asyncio.run(drain())
 
-def test_assemble_writes_plugin_and_marketplace(tmp_path):
-    tree = tmp_path / "plug"
-    composer.copy_plugin(tree, ["crm"])
-    composer.assemble_manifests(tree, "Sam Rivera", ["crm"], set())
-    pj = json.loads((tree / ".claude-plugin/plugin.json").read_text(encoding="utf-8"))
-    assert pj["author"]["name"] == "Sam Rivera" and pj["name"] == "sam-rivera-cos"
-    mk = json.loads((tree / "marketplace.json").read_text(encoding="utf-8"))
-    assert mk["plugins"][0]["name"] == "sam-rivera-cos" and mk["plugins"][0]["source"] == "."
+def test_claude_md_carries_exactly_the_lean_fields(tmp_path):
+    tree = tmp_path / "home"; tree.mkdir()
+    composer.write_claude_md(tree, "atlas", "Sam Rivera", tmp_path / "vault", ["crm", "tasks"])
+    text = (tree / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "atlas-cos" in text                            # identity — slug from the AGENT name
+    assert "Sam Rivera" in text                           # owner — the PARTICIPANT (gate-2 I3)
+    assert "sam-rivera-cos" not in text                   # the owner never leaks into the slug
+    assert str(tmp_path / "vault").replace("\\", "/") in text   # resolved vault path
+    assert "crm" in text and "tasks" in text              # picked-skill roster
+    assert "drain" not in text                            # roster is the PICKS, not the shelf
+    assert "personaliz" not in text.lower()               # no personalization claim (review F10)
 
-def test_mcp_trimmed_when_no_discord(tmp_path):
-    tree = tmp_path / "plug"
-    composer.copy_plugin(tree, ["crm"])
-    composer.assemble_manifests(tree, "Sam", ["crm"], set())  # crm needs no discord
+def test_assemble_trims_mcp_when_no_discord(tmp_path):
+    tree = tmp_path / "home"
+    composer.copy_home(tree, ["crm"])
+    composer.assemble_manifests(tree, set())              # crm needs no discord
     mcp = json.loads((tree / ".mcp.json").read_text(encoding="utf-8"))
     assert mcp.get("mcpServers", {}) == {}
 
-def test_compose_streams_done_with_installable_tree(tmp_path):
-    evs = _run(composer.compose(["crm"], "Sam Rivera", tmp_path / "dist", tmp_path / "vault"))
-    assert evs[-1]["type"] == "done"
-    out = Path(evs[-1]["plugin_path"])
-    assert (out / ".claude-plugin/plugin.json").exists() and (out / "marketplace.json").exists()
+def test_assemble_keeps_discord_when_needed(tmp_path):
+    tree = tmp_path / "home"
+    composer.copy_home(tree, ["drain"])
+    composer.assemble_manifests(tree, {"discord", "linear", "scheduler"})
+    mcp = json.loads((tree / ".mcp.json").read_text(encoding="utf-8"))
+    assert "discord" in mcp["mcpServers"]
+
+def test_assemble_writes_no_plugin_manifests(tmp_path):
+    tree = tmp_path / "home"
+    composer.copy_home(tree, ["crm"])
+    composer.assemble_manifests(tree, set())
+    assert not (tree / ".claude-plugin").exists()
+    assert not (tree / "marketplace.json").exists()

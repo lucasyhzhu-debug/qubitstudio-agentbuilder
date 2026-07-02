@@ -149,30 +149,53 @@ def _edit_json(path: Path, mutate) -> None:
     mutate(data)
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
-def assemble_manifests(tree: Path, owner_name: str, picks: list[str], integrations: set[str]) -> None:
-    base = _slug(owner_name)
-    slug = f"{base}-cos"
-    description = f"{owner_name}'s chief of staff — composed at the workshop."
+def write_claude_md(tree: Path, agent_name: str, owner: str,
+                    vault_dir: Path, picks: list[str]) -> None:
+    """The generated agent-home CLAUDE.md — deterministic per lean spec §5: identity
+    (slug from the AGENT name), the OWNER's name (the participant — gate-2 I3: a
+    distinct argument, so "Owner: atlas" can never happen), resolved vault path,
+    picked-skill roster, and NOTHING more. No personalization claim — personalization
+    lives in the tweak pass, not this file (review F10). Absorbs plugin.json's identity
+    role; greets with identity so a correct launch is self-confirming."""
+    cat = _catalog()
+    by_id = {it["id"]: it for it in cat["shelf"]["items"]}
+    slug = f"{_slug(agent_name)}-cos"
+    roster = "\n".join(
+        f"- **{p}** ({by_id[p]['name']}): {by_id[p]['what']}"
+        for p in picks if p in by_id) or "- (baseline only)"
+    vault = str(vault_dir).replace("\\", "/")
+    (tree / "CLAUDE.md").write_text(f"""# {slug}
 
-    def _plugin(pj):
-        pj["name"] = slug
-        pj["author"] = {"name": owner_name, "email": "workshop@local"}  # non-empty — empty email can fail plugin validation (P-I3)
-        pj["description"] = description
-    _edit_json(tree / ".claude-plugin/plugin.json", _plugin)
+You are **{slug}** — {owner}'s personal chief of staff, composed at the QubitStudio
+workshop. This folder is your home: your skills live in `.claude/skills/`, their shared
+reference material under `skills/` and `references/`.
 
-    def _marketplace(mk):
-        mk["name"] = f"{base}-workshop"
-        mk["owner"] = {"name": owner_name, "email": ""}
-        mk["plugins"] = [{"name": slug, "source": ".", "description": description,
-                          "version": "0.1.0", "category": "productivity"}]
-    _edit_json(tree / "marketplace.json", _marketplace)
+## Owner
 
-    # Trim .mcp.json: keep discord only if a Discord-needing integration was picked.
+- {owner}
+
+## Your memory (the vault)
+
+- Your wiki-brain vault lives at: `{vault}`
+- People pages, meeting pages, and your `meta/` self-layer (personality, memories,
+  lessons) live there. Read it before you act; write what you learn back.
+
+## Your skills
+
+{roster}
+""", encoding="utf-8")
+
+
+def assemble_manifests(tree: Path, integrations: set[str]) -> None:
+    """Agent-home form (lean §5): no plugin.json / marketplace.json — the generated
+    CLAUDE.md absorbs their identity role. Only the .mcp.json discord-trim behaviour
+    survives the rewrite: keep discord only if a Discord-needing integration was picked."""
     mcp_path = tree / ".mcp.json"
     if mcp_path.exists():
         def _mcp(mcp):
             if "discord" not in integrations:
-                mcp["mcpServers"] = {k: v for k, v in mcp.get("mcpServers", {}).items() if k != "discord"}
+                mcp["mcpServers"] = {k: v for k, v in mcp.get("mcpServers", {}).items()
+                                     if k != "discord"}
         _edit_json(mcp_path, _mcp)
 
 def _stage(name: str, status: str) -> dict:
@@ -204,7 +227,7 @@ async def compose(picks, owner_name, outdir, vault_dir) -> AsyncIterator[dict]:
 
         yield _stage("assemble", "running")
         delucas(staging, owner_name, vault_dir)
-        assemble_manifests(staging, owner_name, picks, res.integrations)
+        assemble_manifests(staging, res.integrations)
         yield _stage("assemble", "ok")
 
         yield _stage("package", "running")
