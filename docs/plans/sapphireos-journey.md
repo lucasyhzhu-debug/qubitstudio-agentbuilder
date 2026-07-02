@@ -10,6 +10,10 @@
 
 **Spec:** `docs/specs/2026-07-02-studio-sapphireos-journey-design.md` (shipshape-reviewed; read it first).
 
+**Flagged deviations (deliberate, not omissions):**
+- ROADMAP/CHANGELOG updates are NOT a task here — they ride the pipeline's landing PR (spec-plan-pipeline step 6).
+- If the work cuts after Task 5 (slice B1 only), `.sc-rec` renders unstyled and the status chip has no pulse animation — those styles land in Task 7. Functional, just plain; not a bug.
+
 ## Global Constraints
 
 - Branch: `feat/sapphireos-journey` (already exists with the spec). Commit per task.
@@ -1025,7 +1029,7 @@ async def test_one_real_workshop_turn(tmp_path):
 - [ ] **Step 2: Run the full suite (integration included — needs live `claude`)**
 
 Run: `.venv/Scripts/python -m pytest studio/tests -q`
-Expected: all pass (baseline was 98; now ~115+ with the new tests)
+Expected: all pass — 120 total (98 baseline + 9 T1 + 4 T2 + 4 T3 + 4 T4 + 1 T9)
 
 - [ ] **Step 3: QA close-out (repo pipeline)**
 1. `.venv/Scripts/python -m studio --doctor` — preflight green.
