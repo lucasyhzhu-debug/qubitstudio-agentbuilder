@@ -89,7 +89,7 @@ def test_extract_pass_workshop_mode_sets_studio(tmp_path):
     s = ChatSession(session_id="11111111-1111-1111-1111-111111111111",
                     system_prompt_path=sp_path, catalog_ids={"crm", "tasks"})
     s._extract('hi\n```studio\n{"picks": ["crm"], "name": "my-cos", "ready": false}\n```')
-    assert s.studio == {"picks": ["crm"], "name": "my-cos", "ready": False}
+    assert s.studio == {"picks": ["crm"], "name": "my-cos", "ready": False, "ask": None}
 
 def test_extract_pass_keeps_prior_studio_on_garbage(tmp_path):
     sp_path = tmp_path / "sp.md"; sp_path.write_text("p", encoding="utf-8")
@@ -98,4 +98,4 @@ def test_extract_pass_keeps_prior_studio_on_garbage(tmp_path):
                     system_prompt_path=sp_path, catalog_ids={"crm"})
     s._extract('```studio\n{"picks": ["crm"]}\n```')
     s._extract('no block this turn')
-    assert s.studio == {"picks": ["crm"], "name": None, "ready": False}
+    assert s.studio == {"picks": ["crm"], "name": None, "ready": False, "ask": None}
