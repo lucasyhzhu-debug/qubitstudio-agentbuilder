@@ -51,6 +51,10 @@ class ChatSession:
         # extractor never runs (QubitStudio journey spec §4.3).
         self.catalog_ids = catalog_ids
         self.studio: dict | None = None
+        # One `claude -p --resume` per session at a time (onboarding-cards spec §5.4.8):
+        # programmatic [studio event] sends must never fork a concurrent subprocess on
+        # the same session id.
+        self._lock = asyncio.Lock()
 
     def _extract(self, text: str) -> None:
         """End-of-turn extraction pass: spec always, studio only for workshop sessions.
@@ -79,37 +83,38 @@ class ChatSession:
         return argv
 
     async def send(self, user_msg: str) -> AsyncIterator[dict]:
-        argv = self.build_argv(user_msg)
-        try:
-            # cwd = a neutral temp dir so the chat does NOT load THIS repo's CLAUDE.md / project
-            # hooks (brain.mjs:23-25 does the same) — less derailment surface (IP1).
-            proc = await asyncio.create_subprocess_exec(
-                *argv, cwd=tempfile.gettempdir(),
-                stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-        except FileNotFoundError:
-            yield {"type": "error", "message": "`claude` CLI not found on PATH."}
-            return
+        async with self._lock:
+            argv = self.build_argv(user_msg)
+            try:
+                # cwd = a neutral temp dir so the chat does NOT load THIS repo's CLAUDE.md / project
+                # hooks (brain.mjs:23-25 does the same) — less derailment surface (IP1).
+                proc = await asyncio.create_subprocess_exec(
+                    *argv, cwd=tempfile.gettempdir(),
+                    stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+            except FileNotFoundError:
+                yield {"type": "error", "message": "`claude` CLI not found on PATH."}
+                return
 
-        full_text: list[str] = []
-        saw_delta = False
-        assert proc.stdout is not None
-        async for raw in proc.stdout:
-            event = sp.parse_line(raw.decode("utf-8", "replace"))
-            if not event or sp.is_system(event):
-                continue
-            text, saw_delta = dedup_text(event, saw_delta)
-            if text:
-                full_text.append(text)
-                yield {"type": "token", "text": text}
-            if sp.is_turn_end(event):
-                break
+            full_text: list[str] = []
+            saw_delta = False
+            assert proc.stdout is not None
+            async for raw in proc.stdout:
+                event = sp.parse_line(raw.decode("utf-8", "replace"))
+                if not event or sp.is_system(event):
+                    continue
+                text, saw_delta = dedup_text(event, saw_delta)
+                if text:
+                    full_text.append(text)
+                    yield {"type": "token", "text": text}
+                if sp.is_turn_end(event):
+                    break
 
-        await proc.wait()
-        if proc.returncode not in (0, None):
-            err = (await proc.stderr.read()).decode("utf-8", "replace") if proc.stderr else ""
-            yield {"type": "error", "message": f"claude exited {proc.returncode}: {err[:500]}"}
-            return
+            await proc.wait()
+            if proc.returncode not in (0, None):
+                err = (await proc.stderr.read()).decode("utf-8", "replace") if proc.stderr else ""
+                yield {"type": "error", "message": f"claude exited {proc.returncode}: {err[:500]}"}
+                return
 
-        self.started = True
-        self._extract("".join(full_text))
-        yield {"type": "done", "spec": self.spec, "studio": self.studio}
+            self.started = True
+            self._extract("".join(full_text))
+            yield {"type": "done", "spec": self.spec, "studio": self.studio}
