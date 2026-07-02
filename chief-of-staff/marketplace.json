@@ -1,7 +1,7 @@
 {
-  "name": "lucas-consulting-agents",
+  "name": "workshop-agents",
   "owner": {
-    "name": "Lucas Zhu",
+    "name": "{{OWNER_NAME}}",
     "email": "you@example.com"
   },
   "plugins": [

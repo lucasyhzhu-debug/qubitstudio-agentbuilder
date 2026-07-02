@@ -32,7 +32,7 @@ new #inbox messages (channel 1234567890123456789, after watermark 13850000000000
   [
     {
       "id":        "1385000000000000099",
-      "author":    "lucas_malostudio",
+      "author":    "owner_handle",
       "timestamp": "2026-06-28T09:14:22.000Z",
       "content":   "Can you check whether Frollie's Notion workspace has a product roadmap page and, if so, pull the key milestones into a Linear project summary for me?"
     }
@@ -67,7 +67,7 @@ urgency:         normal
 mutation {
   issueCreate(input: {
     title: "Frollie Notion roadmap → Linear summary"
-    description: "**Original #inbox message (lucas_malostudio, 2026-06-28T09:14:22Z):**\n\nCan you check whether Frollie's Notion workspace has a product roadmap page and, if so, pull the key milestones into a Linear project summary for me?\n\n---\n**Intake classification:** knowledge/research\n**Proposed action:** Search Frollie Notion workspace for a roadmap page; extract key milestones; draft Linear project summary for Lucas to review."
+    description: "**Original #inbox message (owner_handle, 2026-06-28T09:14:22Z):**\n\nCan you check whether Frollie's Notion workspace has a product roadmap page and, if so, pull the key milestones into a Linear project summary for me?\n\n---\n**Intake classification:** knowledge/research\n**Proposed action:** Search Frollie Notion workspace for a roadmap page; extract key milestones; draft Linear project summary for Lucas to review."
     teamId:    "{{LINEAR_TEAM_ID}}"
     projectId: "{{LINEAR_PROJECT_ID}}"
     labelIds:  ["<ch:inbox-label-id>", "<needs-agent-label-id>"]
@@ -136,7 +136,7 @@ mutation {
   issueUpdate(
     id: "a1b2c3d4-0001-0001-0001-000000000001"
     input: {
-      description: "**Original #inbox message (lucas_malostudio, 2026-06-28T09:14:22Z):**\n\nCan you check whether Frollie's Notion workspace has a product roadmap page and, if so, pull the key milestones into a Linear project summary for me?\n\n---\n**Intake classification:** knowledge/research\n**Proposed action:** Search Frollie Notion workspace; extract key milestones; draft Linear project summary.\n\n---\n**Discord thread:** https://discord.com/channels/9876543210987654321/1385000000000000200"
+      description: "**Original #inbox message (owner_handle, 2026-06-28T09:14:22Z):**\n\nCan you check whether Frollie's Notion workspace has a product roadmap page and, if so, pull the key milestones into a Linear project summary for me?\n\n---\n**Intake classification:** knowledge/research\n**Proposed action:** Search Frollie Notion workspace; extract key milestones; draft Linear project summary.\n\n---\n**Discord thread:** https://discord.com/channels/9876543210987654321/1385000000000000200"
     }
   ) { success }
 }
@@ -172,7 +172,7 @@ Authorization: Bot <DISCORD_BOT_TOKEN>
 [
   {
     "id":      "1385000000000000201",
-    "author":  { "username": "lucas_malostudio" },
+    "author":  { "username": "owner_handle" },
     "content": "Also check if there's a separate 'Q3 goals' page — grab that too if it exists."
   }
 ]
@@ -184,7 +184,7 @@ Authorization: Bot <DISCORD_BOT_TOKEN>
 mutation {
   commentCreate(input: {
     issueId: "a1b2c3d4-0001-0001-0001-000000000001"
-    body:    "**[Discord reply — lucas_malostudio]** Also check if there's a separate 'Q3 goals' page — grab that too if it exists."
+    body:    "**[Discord reply — owner_handle]** Also check if there's a separate 'Q3 goals' page — grab that too if it exists."
   }) { comment { id } }
 }
 ```

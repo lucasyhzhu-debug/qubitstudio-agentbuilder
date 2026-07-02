@@ -34,7 +34,7 @@ _STUDIO_CONTRACT = """
     "routines": [ { "name": "...", "schedule": "cron or /schedule expr", "does": "..." } ]
   }
 
-- Default plugin.author to {"name": "Lucas Zhu", "email": "you@example.com"}, version "0.1.0".
+- Default plugin.author to {"name": "<participant's name>", "email": "you@example.com"}, version "0.1.0".
 - When the user signals they're done, confirm the spec is complete and tell them to download it.
 """
 

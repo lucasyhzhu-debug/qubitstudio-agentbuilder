@@ -85,6 +85,7 @@ def _subs(owner_name: str, vault_dir: Path) -> list[tuple[str, str]]:
         # This repo's substrate is pre-scrubbed to {{VAULT_PATH}} (migration 2026-07-02);
         # the Lucas-form entries above are kept as no-op safety for any stray original text.
         ("{{VAULT_PATH}}", vault_fwd),
+        ("{{OWNER_NAME}}", owner_name),
         ("wiki-brain/people/", "people/"),
         (_LINEAR_TEAM, "{{LINEAR_TEAM_ID}}"),
         (_LINEAR_PROJ, "{{LINEAR_PROJECT_ID}}"),

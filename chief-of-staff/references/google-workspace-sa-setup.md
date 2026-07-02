@@ -44,7 +44,7 @@ Both must show "API enabled" before proceeding.
 
 ## Step 4 — Admin Console: grant Domain-wide Delegation
 
-This step must be performed by a **Workspace super-admin** for `ikigaiventures.ai`.
+This step must be performed by a **Workspace super-admin** for `example.com`.
 
 1. Open [Google Admin Console](https://admin.google.com/) → **Security → Access and data control → API controls**.
 2. Under **Domain-wide delegation** → **Manage Domain Wide Delegation → Add new**.
@@ -108,7 +108,7 @@ The Admin Console entry must use the **numeric Unique ID**, not the service acco
 Google DWD is an exact-match gate. If the authorized scope set is `calendar.readonly,gmail.readonly` but the mint request includes `calendar.events`, the token request fails with `unauthorized_client`. The set in Step 4 (`calendar.readonly`, `gmail.readonly`, `calendar.events`) is the canonical list; any deviation requires updating both the DWD entry and the mint request in lockstep.
 
 **3. `sub` / `GOOGLE_EMAIL_work` must be a real user in the domain.**
-The service account impersonates a user via the `sub` claim in its JWT, which is `GOOGLE_EMAIL_work`. That address must exist as a live Workspace user in `ikigaiventures.ai`. A deleted, suspended, or non-existent user causes a `400 invalid_grant` on token mint. `you@example.com` is the intended subject.
+The service account impersonates a user via the `sub` claim in its JWT, which is `GOOGLE_EMAIL_work`. That address must exist as a live Workspace user in `example.com`. A deleted, suspended, or non-existent user causes a `400 invalid_grant` on token mint. `you@example.com` is the intended subject.
 
 **4. Consumer Gmail accounts cannot use DWD — this is why `personal` stays on the loopback flow.**
 Domain-wide Delegation is a Workspace (paid/Google Apps) feature. A `@gmail.com` account has no Admin Console, so there is no way to authorize a DWD entry. The personal account must remain on the interactive OAuth + refresh-token path. Do not try to apply this walkthrough to a consumer account.
