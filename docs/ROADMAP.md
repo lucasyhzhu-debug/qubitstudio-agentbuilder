@@ -9,26 +9,32 @@ migration + raw skills) and `docs/specs/2026-07-02-workshop-studio-r1-personaliz
 
 1. ~~Migrate to this repo~~ — **done** (v0.1.0, incl. `agent-architect/` — the core conversation
    agent; its absence originally failed 13/98 tests, all fixed by migrating it).
-   - **Known failure:** `test_smoke_integration.py::test_one_real_turn` (a REAL `claude -p`
-     round-trip) failed in the migration session's sandboxed environment. This is exactly the
-     "first-run GUI↔agent handshake" requirement below — verify live (`python -m studio`, watch
-     the first chat stream) as the first act in this repo.
-2. **Raw-skills packaging** — composer emits an agent-home dir (`.claude/skills/`,
+   - ~~**Known failure:** `test_smoke_integration.py::test_one_real_turn`~~ — **verified
+     2026-07-02**: full suite 98/98 green on this machine, including the real `claude -p`
+     round-trip. The floor is confirmed live.
+2. **SapphireOS reskin + conversation-driven journey** — **specced + planned** (spec:
+   `docs/specs/2026-07-02-studio-sapphireos-journey-design.md`, plan:
+   `docs/plans/sapphireos-journey.md`, both shipshape-gated). Chat becomes chief-of-staff-aware
+   and drives the shelf (` ```studio ` block → shelfSync → "Your agent" panel); studio restyled
+   to qubit-site's SapphireOS system (light-only — supersedes the theme-toggle draft). Covers
+   the "first-run handshake" requirement below (status chip flips on first streamed token).
+   Slices: B1 journey floor → A reskin → B2 panel; cut anywhere leaves a working workshop.
+3. **Raw-skills packaging** — composer emits an agent-home dir (`.claude/skills/`,
    `.claude/agents/`, root `.mcp.json`, generated `CLAUDE.md`, `vault/`, `.env`); final step
    becomes `cd <dir> && claude`. Kill plugin.json/marketplace.json emission + the `/plugin`
    install copy in GUI/README. Includes the **reference-path invariant** test (every reference
    mentioned in a shipped SKILL.md resolves from the agent-home root). Lean spec §5.
-3. **r1-A: always-on** — `studio/scheduler.py` + `POST /api/schedule` + wizard step; per-OS task
+4. **r1-A: always-on** — `studio/scheduler.py` + `POST /api/schedule` + wizard step; per-OS task
    (schtasks S4U hidden / launchd / cron) with the safe headless flags (`--strict-mcp-config` +
    empty MCP config), cwd = the agent home. r1 spec §4.
-4. **r1-B: per-skill personalize** — catalog `personalize` questions per skill, deterministic
+5. **r1-B: per-skill personalize** — catalog `personalize` questions per skill, deterministic
    substitution into SKILL.md personalization blocks + vault `memories.md`, Q&A cards in UI.
    r1 spec §2.
-5. **r1-C: per-skill AI tailoring passes** — sequential scoped `claude -p` per picked skill,
+6. **r1-C: per-skill AI tailoring passes** — sequential scoped `claude -p` per picked skill,
    non-fatal per skill. r1 spec §2.
-6. **Own-infra wizard guides** — Discord server+bot / Linear workspace+key / Google Cloud OAuth
+7. **Own-infra wizard guides** — Discord server+bot / Linear workspace+key / Google Cloud OAuth
    walkthroughs wired into the connect rows, Test after every paste. r1 spec §3. (Content work —
-   parallelizable with 3–5.)
+   parallelizable with 4–6.)
 
 ## Product requirements (from Lucas, 2026-07-02 — refine here)
 
@@ -37,7 +43,8 @@ migration + raw skills) and `docs/specs/2026-07-02-workshop-studio-r1-personaliz
   every `{{VAULT_PATH}}` substitution honors it.
 - **First-run GUI↔agent handshake.** The first agent a participant ever uses is the agent-builder
   itself, via the GUI talking to `claude -p`. On first studio start the UI must *verifiably* show
-  it is talking to the agent (surfaced handshake/echo, not a silent spinner).
+  it is talking to the agent (surfaced handshake/echo, not a silent spinner). → **planned** in
+  item 2 (status chip flips to "agent live" on the first streamed token).
 - **Conversation-context persistence.** The journey's conversation context (compose →
   personalize → connect → schedule) must be stored in the right place for the whole workflow —
   one continuous session/state, not per-request amnesia. Decide the store (session id resume vs
