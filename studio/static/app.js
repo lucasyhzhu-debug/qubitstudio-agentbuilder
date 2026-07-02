@@ -1,11 +1,24 @@
 const $ = (s) => document.querySelector(s);
-let sessionId = null, currentSpec = null;
+let sessionId = null, currentSpec = null, agentLive = false;
+
+// ?mode=architect keeps the generic plugin-design interview reachable (spec §4.1/§4.7).
+const MODE = new URLSearchParams(location.search).get('mode') === 'architect' ? 'architect' : 'workshop';
+const SEED = MODE === 'architect' ? 'Begin the agent-architect interview.' : 'Begin the workshop interview.';
+
+function setStatus(text, live) {
+  const el = $('#status');
+  el.textContent = text;
+  el.classList.toggle('live', !!live);
+}
 
 async function start() {
-  const r = await fetch('/api/session/new', { method: 'POST' });
+  const r = await fetch('/api/session/new', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: MODE }),
+  });
   sessionId = (await r.json()).session_id;
-  $('#status').textContent = 'ready';
-  send('Begin the agent-architect interview.');  // seed Q0
+  setStatus('ready');
+  send(SEED);  // seed the first turn
 }
 
 // Render assistant markdown -> sanitized HTML (bold, headings, lists, code, links).
@@ -31,14 +44,14 @@ function addBubble(who, text) {
 // a not-yet-closed trailing block so the fence/JSON never flashes mid-stream.
 function stripSpec(text) {
   return text
-    .replace(/```(?:spec|json)[\s\S]*?```/g, '')  // closed blocks
-    .replace(/```(?:spec|json)[\s\S]*$/, '')       // an unclosed trailing block (mid-stream)
+    .replace(/```(?:spec|json|studio)[\s\S]*?```/g, '')  // closed blocks
+    .replace(/```(?:spec|json|studio)[\s\S]*$/, '')       // an unclosed trailing block (mid-stream)
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
 async function send(message) {
-  if (message !== 'Begin the agent-architect interview.') addBubble('user', message);
+  if (message !== SEED) addBubble('user', message);
   const bubble = addBubble('assistant', '');
   const r = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -52,9 +65,15 @@ async function send(message) {
       const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
       if (!line) continue;
       const ev = JSON.parse(line);
-      if (ev.type === 'token') { acc += ev.text; bubble.innerHTML = renderMarkdown(stripSpec(acc)); scrollLog(); }
+      if (ev.type === 'token') {
+        if (!agentLive) { agentLive = true; setStatus('agent live', true); }  // verifiable handshake
+        acc += ev.text; bubble.innerHTML = renderMarkdown(stripSpec(acc)); scrollLog();
+      }
       else if (ev.type === 'error') { acc += '\n\n**[error]** ' + ev.message; bubble.innerHTML = renderMarkdown(stripSpec(acc)); }
-      else if (ev.type === 'done' && ev.spec) renderBlueprint(ev.spec);
+      else if (ev.type === 'done') {
+        if (ev.spec) renderBlueprint(ev.spec);
+        if (ev.studio && typeof window.shelfSync === 'function') window.shelfSync(ev.studio);
+      }
     }
   }
 }
@@ -365,7 +384,7 @@ $('#loadfile').addEventListener('change', async (e) => {
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec }) });
   if (!r.ok) { alert('Invalid spec.json'); return; }
   sessionId = (await r.json()).session_id; currentSpec = null; renderBlueprint(spec);
-  $('#status').textContent = 'loaded';
+  setStatus('loaded');
 });
 
 start();

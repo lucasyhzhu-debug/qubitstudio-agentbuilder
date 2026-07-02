@@ -6,7 +6,7 @@
    data-driven — edit catalog.json to change the shelf. */
 (function () {
   const sel = (s) => document.querySelector(s);
-  const selected = new Map();   // id -> item
+  const selected = new Map();   // id -> { it, origin: 'user' | 'agent' }
   let catalog = null;
 
   const btn = sel('#shelfbtn');
@@ -32,9 +32,12 @@
   }
 
   function shelfCard(it) {
-    const on = selected.has(it.id);
-    return `<div class="shelf-card ${on ? 'on' : ''}" data-id="${esc(it.id)}">
+    const v = selected.get(it.id);
+    const on = !!v;
+    const rec = v && v.origin === 'agent';
+    return `<div class="shelf-card ${on ? 'on' : ''} ${rec ? 'recommended' : ''}" data-id="${esc(it.id)}">
       <div class="sc-head"><span class="sc-name">${esc(it.name)}</span>${tag(it.cost)}</div>
+      ${rec ? '<div class="sc-rec">✓ recommended</div>' : ''}
       <p class="sc-what">${esc(it.what)}</p>
       ${it.deliverable ? `<div class="sc-deliv">makes <b>${esc(it.deliverable)}</b></div>` : ''}
       <button class="sc-add" data-id="${esc(it.id)}">${on ? '✓ Added' : 'Add to agent'}</button>
@@ -43,6 +46,7 @@
 
   function renderBody() {
     if (!catalog) return;
+    const keep = sel('.shelf-foot .shelf-name')?.value;
     const b = catalog.baseline || { items: [] };
     const sh = catalog.shelf || { items: [] };
     sel('.shelf-body').innerHTML = `
@@ -57,11 +61,12 @@
         ${(sh.items || []).map(shelfCard).join('')}
       </div>`;
     renderFoot();
+    const nf = sel('.shelf-foot .shelf-name'); if (nf && keep) nf.value = keep;
     updateBtn();
   }
 
   function renderFoot() {
-    const items = [...selected.values()];
+    const items = [...selected.values()].map((v) => v.it);
     const ints = [...new Set(items.flatMap((it) => it.requires || []))];
     const chips = ints.length
       ? ints.map((i) => `<span class="int-chip">${esc(i)}</span>`).join('')
@@ -83,15 +88,8 @@
   function toggle(id) {
     const it = (catalog.shelf.items || []).find((x) => x.id === id);
     if (!it) return;
-    if (selected.has(id)) selected.delete(id); else selected.set(id, it);
-    const card = drawer.querySelector(`.shelf-card[data-id="${CSS.escape(id)}"]`);
-    if (card) {
-      const on = selected.has(id);
-      card.classList.toggle('on', on);
-      card.querySelector('.sc-add').textContent = on ? '✓ Added' : 'Add to agent';
-    }
-    renderFoot();
-    updateBtn();
+    if (selected.has(id)) selected.delete(id); else selected.set(id, { it, origin: 'user' });
+    renderBody();  // re-render so on/recommended states stay truthful
   }
 
   function buildAgent() {
@@ -117,6 +115,26 @@
     drawer.addEventListener('transitionend', done);
     setTimeout(done, 350);  // fallback if transitionend doesn't fire (reduced motion)
   }
+
+  // Chat→shelf sync (spec §4.4): the agent's studio block re-asserts ITS picks only.
+  // User-added picks are never removed by a sync; agent picks no longer recommended drop.
+  function shelfSync(studio) {
+    if (!catalog || !studio) return;
+    const picks = new Set(studio.picks || []);
+    for (const [id, v] of [...selected]) {
+      if (v.origin === 'agent' && !picks.has(id)) selected.delete(id);
+    }
+    for (const id of picks) {
+      if (!selected.has(id)) {
+        const it = (catalog.shelf.items || []).find((x) => x.id === id);
+        if (it) selected.set(id, { it, origin: 'agent' });
+      }
+    }
+    renderBody();
+    const nameField = sel('.shelf-foot .shelf-name');
+    if (studio.name && nameField && !nameField.value.trim()) nameField.value = studio.name;
+  }
+  window.shelfSync = shelfSync;
 
   async function init() {
     try {
