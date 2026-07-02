@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V2 — The Canvas · you're editing your agent</title>
+<style>
+  @font-face { font-family:'Bricolage Grotesque'; src:url('http://127.0.0.1:8765/static/fonts/BricolageGrotesque.ttf') format('truetype'); font-weight:200 800; font-display:swap; }
+  @font-face { font-family:'Hanken Grotesk'; src:url('http://127.0.0.1:8765/static/fonts/HankenGrotesk.ttf') format('truetype'); font-weight:100 900; font-display:swap; }
+  @font-face { font-family:'JetBrains Mono'; src:url('http://127.0.0.1:8765/static/fonts/JetBrainsMono-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+  :root{
+    --canvas:#FFFFFF; --band:#F7FAFC; --sapphire:#306FA8; --tint:#EEF4FA; --tint-2:#DBE8F3;
+    --teal:#347890; --brass:#C2791A; --brass-tint:#F6EDDC;
+    --ink:#141A21; --ink-2:#3A4550; --ink-3:#6B7681; --ink-4:#9AA4AD;
+    --rule:rgba(20,26,33,.10); --rule-strong:rgba(20,26,33,.20);
+    --r-card:14px; --sh-sm:0 1px 2px rgba(20,26,33,.04),0 2px 8px rgba(20,26,33,.05);
+    --sh-md:0 2px 6px rgba(20,26,33,.06),0 10px 28px rgba(20,26,33,.09);
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --body:'Hanken Grotesk',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--body);font-size:16px;line-height:1.5;color:var(--ink-2);
+    /* the builder canvas: dotted grid = "you are editing a thing" */
+    background:var(--band);
+    background-image:radial-gradient(rgba(20,26,33,.07) 1px, transparent 1px);
+    background-size:22px 22px;}
+
+  .topbar{position:sticky;top:0;z-index:5;display:flex;align-items:center;gap:12px;height:54px;padding:0 20px;
+    background:rgba(255,255,255,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--rule)}
+  .topbar .crumb{font-family:var(--mono);font-size:11px;color:var(--ink-3);letter-spacing:.08em}
+  .topbar .crumb b{color:var(--ink);font-weight:500}
+  .topbar .status{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--sapphire);display:flex;gap:6px;align-items:center}
+  .topbar .dot{width:6px;height:6px;border-radius:50%;background:var(--sapphire);animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.4;transform:scale(.8)}}
+
+  .stage{max-width:1020px;margin:0 auto;padding:56px 24px 45vh}
+  .stage-title{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-4);margin-bottom:18px}
+  .board{display:grid;grid-template-columns:repeat(2,1fr);gap:18px}
+  @media(max-width:700px){.board{grid-template-columns:1fr}}
+
+  /* blocks — website-builder components, complete with hover handles */
+  .block{position:relative;background:var(--canvas);border:1px solid var(--rule);border-radius:var(--r-card);box-shadow:var(--sh-sm);padding:22px 24px 20px;transition:box-shadow .18s ease,transform .18s ease}
+  .block:hover{box-shadow:var(--sh-md);transform:translateY(-2px)}
+  .block h2{font-family:var(--display);font-weight:620;font-size:20px;letter-spacing:-.012em;color:var(--ink);margin:0 0 7px}
+  .block p{margin:0;font-size:15px;color:var(--ink-3)}
+  .block .chip{position:absolute;top:14px;right:14px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4)}
+  .block .handle{position:absolute;top:8px;left:10px;color:var(--ink-4);font-size:13px;letter-spacing:2px;opacity:0;transition:opacity .15s}
+  .block:hover .handle{opacity:.7}
+  .block .price{display:inline-block;margin-top:12px;font-family:var(--mono);font-size:10.5px;padding:3px 10px;border-radius:999px;background:rgba(181,133,43,.14);color:#B5852B}
+
+  /* the selected block gets a builder-style selection ring + the live annotation */
+  .block.selected{border:1.5px solid var(--sapphire);box-shadow:0 0 0 4px rgba(48,111,168,.14),var(--sh-md)}
+  .block.selected .chip{color:var(--sapphire)}
+  .block.ghost{border-style:dashed;background:transparent;box-shadow:none;display:flex;align-items:center;justify-content:center;min-height:130px;color:var(--ink-4);font-family:var(--mono);font-size:11.5px;letter-spacing:.1em}
+
+  /* pins: answered questions fossilize as numbered annotations on the artifact */
+  .pin{position:absolute;bottom:-11px;left:22px;width:22px;height:22px;border-radius:50%;background:var(--brass);color:#fff;
+    font-family:var(--mono);font-size:11px;display:flex;align-items:center;justify-content:center;cursor:help;box-shadow:var(--sh-sm)}
+  .pin .tip{position:absolute;bottom:30px;left:-8px;width:290px;background:var(--ink);color:#fff;border-radius:10px;padding:12px 14px;
+    font-family:var(--body);font-size:13.5px;line-height:1.45;opacity:0;pointer-events:none;transition:opacity .15s;z-index:6}
+  .pin:hover .tip{opacity:1}
+  .pin .tip .q{color:var(--tint-2);font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;display:block;margin-bottom:5px}
+
+  /* the live annotation: question + blended input, physically attached to the selected block */
+  .annot{grid-column:1/-1;position:relative;margin-top:6px;padding:20px 22px 18px;background:var(--tint);border:1.5px solid var(--sapphire);border-radius:var(--r-card);animation:drop .5s ease both}
+  .annot::before{content:'';position:absolute;top:-9px;left:46px;width:14px;height:14px;background:var(--tint);border-left:1.5px solid var(--sapphire);border-top:1.5px solid var(--sapphire);transform:rotate(45deg)}
+  .annot .who{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--sapphire);margin-bottom:7px}
+  .annot .q{font-family:var(--display);font-weight:560;font-size:19px;color:var(--ink);margin:0 0 14px;letter-spacing:-.008em}
+  .annot .field{display:flex;gap:10px;align-items:center;border-bottom:2px solid var(--sapphire);padding-bottom:6px}
+  .annot input{flex:1;border:0;outline:0;background:transparent;font-family:var(--body);font-size:17px;color:var(--ink)}
+  .annot input::placeholder{color:var(--ink-4)}
+  .annot .go{border:0;background:var(--sapphire);color:#fff;font-family:var(--mono);font-size:11px;letter-spacing:.08em;border-radius:8px;padding:7px 13px;cursor:pointer}
+  .annot .go:hover{background:#1E4C80}
+  @keyframes drop{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
+  .hidden{display:none}
+  @media (prefers-reduced-motion:reduce){.annot{animation:none}.topbar .dot{animation:none}.block:hover{transform:none}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="crumb">qubit studio ▸ <b>your-cos</b> ▸ editing</span>
+  <span class="status"><i class="dot"></i>architect live</span>
+</div>
+<main class="stage">
+  <div class="stage-title">■ your agent — 2 baseline parts, 1 added</div>
+  <div class="board" id="board">
+    <div class="block"><span class="handle">⋮⋮</span><span class="chip">🔒 baseline</span>
+      <h2>wiki-brain spine</h2><p>The agent's memory — a folder of plain-markdown notes it reads and writes. Everything else reads from here.</p>
+      <span class="pin">1<span class="tip"><span class="q">Q1 · you answered</span>"Mostly Linear, but half my tasks arrive by email and never make it in."</span></span>
+    </div>
+    <div class="block"><span class="handle">⋮⋮</span><span class="chip">🔒 baseline</span>
+      <h2>chief-of-staff shell</h2><p>The agent itself: its identity, your voice, and the read→decide→act loop. Capable, but does nothing special yet.</p>
+    </div>
+    <div class="block selected" id="newblock"><span class="handle">⋮⋮</span><span class="chip">just added</span>
+      <h2>Tasks</h2><p>Sweeps your inbox and turns loose asks into a triaged todo list in Linear — nothing falls through.</p>
+      <span class="price">needs Linear</span>
+    </div>
+    <div class="block ghost" id="ghost">next part appears here</div>
+
+    <!-- the live annotation — attached under the selected block -->
+    <div class="annot" id="annot">
+      <div class="who">architect · about the block above</div>
+      <p class="q">How many emails hit you per day — and how many secretly contain a task?</p>
+      <div class="field">
+        <input id="inp" placeholder="answer right here — this page is the conversation…" autocomplete="off">
+        <button class="go" id="go">ANSWER ↵</button>
+      </div>
+    </div>
+  </div>
+</main>
+<script>
+  const send=()=>{
+    const v=document.getElementById('inp').value.trim(); if(!v)return;
+    // answer fossilizes as pin 2 on the selected block
+    const b=document.getElementById('newblock');
+    b.insertAdjacentHTML('beforeend',`<span class="pin" style="left:56px">2<span class="tip"><span class="q">Q2 · you answered</span>"${v.replace(/</g,'&lt;')}"</span></span>`);
+    b.classList.remove('selected');
+    // ghost materializes into the next candidate + the annotation moves on
+    const g=document.getElementById('ghost');
+    g.outerHTML=`<div class="block selected"><span class="handle">⋮⋮</span><span class="chip">candidate</span>
+      <h2>Daily debrief</h2><p>A morning brief that sweeps your inbox, calendar and queues and tells you what to actually focus on today.</p>
+      <span class="price">needs Google</span></div>`;
+    const a=document.getElementById('annot');
+    a.querySelector('.q').textContent='Walk me through the first 20 minutes of your workday — what do you check first?';
+    a.querySelector('input').value=''; a.querySelector('input').focus();
+    document.getElementById('board').appendChild(a); // annotation re-attaches below the new block
+  };
+  document.getElementById('go').addEventListener('click',send);
+  document.getElementById('inp').addEventListener('keydown',e=>{if(e.key==='Enter')send()});
+</script>
+<script src="proofing-room.js"></script>
+</body>
+</html>

@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V3 — The Stage · one question at a time, history becomes strata</title>
+<style>
+  @font-face { font-family:'Bricolage Grotesque'; src:url('http://127.0.0.1:8765/static/fonts/BricolageGrotesque.ttf') format('truetype'); font-weight:200 800; font-display:swap; }
+  @font-face { font-family:'Hanken Grotesk'; src:url('http://127.0.0.1:8765/static/fonts/HankenGrotesk.ttf') format('truetype'); font-weight:100 900; font-display:swap; }
+  @font-face { font-family:'JetBrains Mono'; src:url('http://127.0.0.1:8765/static/fonts/JetBrainsMono-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+  :root{
+    --canvas:#FFFFFF; --band:#F7FAFC; --sapphire:#306FA8; --tint:#EEF4FA; --tint-2:#DBE8F3;
+    --brass:#C2791A; --ink:#141A21; --ink-2:#3A4550; --ink-3:#6B7681; --ink-4:#9AA4AD;
+    --rule:rgba(20,26,33,.10); --rule-strong:rgba(20,26,33,.20);
+    --r-card:14px; --sh-sm:0 1px 2px rgba(20,26,33,.04),0 2px 8px rgba(20,26,33,.05);
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --body:'Hanken Grotesk',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--band);font-family:var(--body);color:var(--ink-2);font-size:16px;line-height:1.5}
+  .wrap{max-width:860px;margin:0 auto;padding:48px 28px 40vh}
+
+  /* strata: every answered beat compresses into a permanent stratum you scroll back through */
+  .strata{border-left:2px solid var(--tint-2);margin-left:6px;padding-left:26px}
+  .stratum{position:relative;padding:14px 0 18px;border-bottom:1px dashed var(--rule)}
+  .stratum::before{content:'';position:absolute;left:-33px;top:22px;width:12px;height:12px;border-radius:50%;background:var(--canvas);border:2.5px solid var(--sapphire)}
+  .stratum .qline{font-family:var(--mono);font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-4);margin-bottom:4px}
+  .stratum .aline{font-size:16.5px;color:var(--ink-2)}
+  .stratum .gain{display:inline-block;margin-top:8px;font-family:var(--mono);font-size:10.5px;color:var(--brass);background:var(--tint);border:1px solid var(--tint-2);border-radius:999px;padding:3px 11px}
+  .stratum.new{animation:compress .6s ease both}
+  @keyframes compress{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+
+  /* the bench: what your agent has so far, always visible above the stage */
+  .bench{margin:44px 0 0}
+  .bench .label{font-family:var(--mono);font-size:10.5px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-4);margin-bottom:12px}
+  .bench-row{display:flex;gap:12px;flex-wrap:wrap}
+  .part{flex:1 1 220px;background:var(--canvas);border:1px solid var(--rule);border-radius:var(--r-card);box-shadow:var(--sh-sm);padding:16px 18px}
+  .part h2{font-family:var(--display);font-weight:620;font-size:17px;color:var(--ink);margin:0 0 4px;letter-spacing:-.008em}
+  .part p{margin:0;font-size:13.5px;color:var(--ink-3);line-height:1.45}
+  .part .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4)}
+  .part.pop{animation:pop .5s ease both}
+  @keyframes pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+
+  /* the stage: the current question, big — the page's whole attention on one beat */
+  .stage{margin:72px 0 0}
+  .stage .who{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--sapphire)}
+  .stage .who .dot{width:7px;height:7px;border-radius:50%;background:var(--sapphire);animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.4;transform:scale(.75)}}
+  .stage h1{font-family:var(--display);font-weight:640;font-size:clamp(28px,4.6vw,42px);line-height:1.12;letter-spacing:-.022em;color:var(--ink);margin:14px 0 8px;max-width:22ch}
+  .stage .sub{font-size:16px;color:var(--ink-3);margin:0 0 34px;max-width:52ch}
+
+  /* the giant blended input: a writing line, not a widget */
+  .line{position:relative}
+  .line input{width:100%;border:0;outline:0;background:transparent;font-family:var(--display);font-weight:480;
+    font-size:clamp(20px,3vw,27px);letter-spacing:-.012em;color:var(--ink);padding:6px 2px 12px}
+  .line input::placeholder{color:var(--ink-4);font-weight:380}
+  .line .under{position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--rule-strong)}
+  .line .under i{position:absolute;left:0;top:0;bottom:0;width:0;background:var(--sapphire);transition:width .25s ease}
+  .line input:focus ~ .under i{width:100%}
+  .keyhint{margin-top:12px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--ink-4)}
+  .keyhint b{color:var(--ink-3);font-weight:500}
+  @media (prefers-reduced-motion:reduce){.stage .who .dot{animation:none}.stratum.new,.part.pop{animation:none}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <!-- history = strata. compact, permanent, scrollable — the sediment of the interview -->
+  <div class="strata" id="strata">
+    <div class="stratum">
+      <div class="qline">Q1 · where do your tasks live?</div>
+      <div class="aline">"Mostly Linear, but half of them arrive by email and never make it in."</div>
+      <span class="gain">+ added <b>Tasks</b> to your agent</span>
+    </div>
+  </div>
+
+  <!-- the bench: the artifact so far -->
+  <div class="bench">
+    <div class="label">■ your agent so far</div>
+    <div class="bench-row" id="bench">
+      <div class="part"><span class="k">🔒 baseline</span><h2>wiki-brain spine</h2><p>The agent's memory — plain-markdown notes it reads and writes.</p></div>
+      <div class="part"><span class="k">🔒 baseline</span><h2>chief-of-staff shell</h2><p>Its identity, your voice, and the read→decide→act loop.</p></div>
+      <div class="part"><span class="k">added · needs linear</span><h2>Tasks</h2><p>Inbox → triaged todo list in Linear. Nothing falls through.</p></div>
+    </div>
+  </div>
+
+  <!-- the stage: current beat, full attention -->
+  <div class="stage" id="stage">
+    <div class="who"><i class="dot"></i>architect · question 2 of ~6</div>
+    <h1 id="bigq">How many emails land on you each day?</h1>
+    <p class="sub" id="subq">Ballpark is fine — I'm gauging whether your inbox needs a daily sweep or an always-on watcher.</p>
+    <div class="line">
+      <input id="inp" placeholder="type here — the page is listening…" autocomplete="off">
+      <span class="under"><i></i></span>
+    </div>
+    <div class="keyhint"><b>↵ enter</b> to answer · your answer joins the record above</div>
+  </div>
+</main>
+<script>
+  const inp=document.getElementById('inp');
+  inp.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'||!inp.value.trim())return;
+    const v=inp.value.trim().replace(/</g,'&lt;');
+    // 1. the beat compresses into a stratum
+    document.getElementById('strata').insertAdjacentHTML('beforeend',
+      `<div class="stratum new"><div class="qline">Q2 · how many emails per day?</div>
+       <div class="aline">"${v}"</div><span class="gain">+ considering <b>Daily debrief</b></span></div>`);
+    // 2. the bench gains a candidate part
+    document.getElementById('bench').insertAdjacentHTML('beforeend',
+      `<div class="part pop"><span class="k">candidate · needs google</span><h2>Daily debrief</h2><p>Morning brief: inbox, calendar, queues → what to focus on today.</p></div>`);
+    // 3. the stage moves to the next question
+    document.getElementById('bigq').textContent='Walk me through the first 20 minutes of your workday.';
+    document.getElementById('subq').textContent='What do you check, in what order? This decides whether the debrief runs at 7:30 or waits for you.';
+    document.querySelector('.stage .who').innerHTML='<i class="dot"></i>architect · question 3 of ~6';
+    inp.value='';
+    document.getElementById('stage').scrollIntoView({behavior:'smooth',block:'center'});
+  });
+</script>
+<script src="proofing-room.js"></script>
+</body>
+</html>

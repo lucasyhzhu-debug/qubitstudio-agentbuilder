@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V1.5 — The Dossier, end to end · undo + choice cards + signature close</title>
+<style>
+  @font-face { font-family:'Bricolage Grotesque'; src:url('http://127.0.0.1:8765/static/fonts/BricolageGrotesque.ttf') format('truetype'); font-weight:200 800; font-display:swap; }
+  @font-face { font-family:'Hanken Grotesk'; src:url('http://127.0.0.1:8765/static/fonts/HankenGrotesk.ttf') format('truetype'); font-weight:100 900; font-display:swap; }
+  @font-face { font-family:'JetBrains Mono'; src:url('http://127.0.0.1:8765/static/fonts/JetBrainsMono-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+  @font-face { font-family:'Crimson Pro'; src:url('http://127.0.0.1:8765/static/fonts/CrimsonPro-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+  @font-face { font-family:'Crimson Pro'; src:url('http://127.0.0.1:8765/static/fonts/CrimsonPro-Italic.woff2') format('woff2'); font-weight:400; font-style:italic; font-display:swap; }
+  :root{
+    --canvas:#FFFFFF; --band:#F7FAFC; --sapphire:#306FA8; --sapphire-hover:#1E4C80;
+    --tint:#EEF4FA; --tint-2:#DBE8F3; --brass:#C2791A; --brass-tint:#F6EDDC;
+    --ink:#141A21; --ink-2:#3A4550; --ink-3:#6B7681; --ink-4:#9AA4AD;
+    --rule:rgba(20,26,33,.10); --rule-strong:rgba(20,26,33,.20);
+    --r-card:14px; --sh-sm:0 1px 2px rgba(20,26,33,.04),0 2px 8px rgba(20,26,33,.05);
+    --sh-md:0 2px 6px rgba(20,26,33,.06),0 10px 28px rgba(20,26,33,.09);
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --body:'Hanken Grotesk',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --serif:'Crimson Pro',Georgia,serif;
+  }
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--band);color:var(--ink-2);font-family:var(--body);font-size:17px;line-height:1.55}
+  .doc{max-width:760px;margin:0 auto;padding:64px 32px 30vh;position:relative}
+  .rail{position:fixed;left:calc(50% - 380px - 52px);top:10vh;bottom:10vh;width:2px;background:var(--rule)}
+  .rail > i{position:absolute;top:0;left:0;width:2px;height:12%;background:var(--sapphire);transition:height .8s ease}
+  /* journey map: named phases along the rail, colouring in as chapters close */
+  .node{position:absolute;left:-5.5px;cursor:pointer}
+  .node b{display:block;width:11px;height:11px;border-radius:50%;background:var(--canvas);border:2px solid var(--ink-4);transition:all .3s ease}
+  .node span{position:absolute;right:20px;top:-3px;white-space:nowrap;font-family:var(--mono);font-size:10px;
+    letter-spacing:.13em;text-transform:uppercase;color:var(--ink-4);transition:color .3s ease}
+  .node.done b{background:var(--sapphire);border-color:var(--sapphire)}
+  .node.done span{color:var(--ink-3)}
+  .node.now b{border-color:var(--sapphire);box-shadow:0 0 0 4px rgba(48,111,168,.16);animation:ring 1.8s ease-in-out infinite}
+  .node.now span{color:var(--sapphire);font-weight:500}
+  .node.stale b{border-color:var(--brass);background:var(--brass-tint);box-shadow:none;animation:none}
+  .node.stale span{color:var(--brass)}
+  @keyframes ring{50%{box-shadow:0 0 0 7px rgba(48,111,168,.08)}}
+  @media(max-width:900px){.rail{display:none}.doc{padding-top:40px}}
+  @media (prefers-reduced-motion:reduce){.node.now b{animation:none}}
+
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+  h1{font-family:var(--display);font-weight:640;font-size:44px;line-height:1.06;letter-spacing:-.025em;color:var(--ink);margin:10px 0 6px}
+  .lede{font-size:18px;color:var(--ink-3);margin:0 0 56px;max-width:52ch}
+  .lede b{color:var(--ink-2);font-weight:600}
+
+  section{margin:0 0 60px;position:relative;transition:opacity .4s ease}
+  .sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--rule-strong);padding-bottom:10px;margin-bottom:22px}
+  .sec-head .no{font-family:var(--mono);font-size:12px;color:var(--brass)}
+  h2{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:-.015em;color:var(--ink);margin:0}
+  .sec-head .why{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-4);letter-spacing:.08em}
+
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:640px){.cards{grid-template-columns:1fr}}
+  .card{background:var(--canvas);border:1px solid var(--rule);border-radius:var(--r-card);box-shadow:var(--sh-sm);padding:20px 22px;position:relative}
+  .card .tag{position:absolute;top:16px;right:16px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4)}
+  .card h3{font-family:var(--display);font-weight:620;font-size:18.5px;color:var(--ink);margin:0 0 6px}
+  .card p{margin:0;font-size:15.5px;color:var(--ink-3);line-height:1.5}
+  .card .price{display:inline-block;margin-top:12px;font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:999px;background:rgba(181,133,43,.14);color:#B5852B}
+
+  .ask{margin:26px 0 0;padding-left:18px;border-left:3px solid var(--sapphire)}
+  .ask .who{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--sapphire);margin-bottom:6px}
+  .ask p{margin:0;font-size:17.5px;color:var(--ink)}
+
+  /* fossilized answer + the undo affordance */
+  .answer{margin:18px 0 0 18px;font-family:var(--serif);font-style:italic;font-size:21px;line-height:1.5;color:var(--ink-2);position:relative;padding-right:90px}
+  .answer::before{content:'— ';color:var(--brass)}
+  .answer .rewrite{position:absolute;right:0;top:4px;font-family:var(--mono);font-style:normal;font-size:10.5px;letter-spacing:.08em;
+    color:var(--ink-4);background:none;border:1px solid var(--rule);border-radius:999px;padding:4px 11px;cursor:pointer;opacity:0;transition:opacity .15s,color .15s,border-color .15s}
+  .answer:hover .rewrite{opacity:1}
+  .answer .rewrite:hover{color:var(--brass);border-color:var(--brass)}
+  .answer .redone{font-family:var(--mono);font-style:normal;font-size:10px;letter-spacing:.1em;color:var(--brass);background:var(--brass-tint);border-radius:999px;padding:3px 9px;margin-left:10px;vertical-align:middle}
+
+  /* choice cards — the personalize ask, as dossier material */
+  .choices{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:18px 0 0 18px}
+  @media(max-width:640px){.choices{grid-template-columns:1fr}}
+  .choice{background:var(--canvas);border:1.5px solid var(--rule);border-radius:12px;padding:14px 16px;cursor:pointer;text-align:left;font-family:var(--body);transition:border-color .15s,box-shadow .15s,transform .15s}
+  .choice:hover{border-color:var(--sapphire);box-shadow:var(--sh-sm);transform:translateY(-2px)}
+  .choice b{display:block;font-size:15.5px;color:var(--ink);font-weight:650;margin-bottom:4px}
+  .choice span{font-size:13.5px;color:var(--ink-3);line-height:1.4}
+  .choice.picked{border-color:var(--sapphire);background:var(--tint);box-shadow:0 0 0 3px rgba(48,111,168,.12)}
+  .choice.dim{opacity:.42}
+  .or{margin:12px 0 0 18px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--ink-4)}
+
+  .writeline{margin:14px 0 0 18px;display:flex;align-items:flex-start;gap:12px}
+  .writeline .bar{width:3px;align-self:stretch;background:var(--brass);border-radius:2px;animation:breathe 1.6s ease-in-out infinite}
+  @keyframes breathe{50%{opacity:.35}}
+  .writeline input{flex:1;border:0;outline:0;background:transparent;font-family:var(--serif);font-style:italic;font-size:21px;color:var(--ink);padding:2px 0;border-bottom:1px dashed var(--rule-strong)}
+  .writeline input::placeholder{color:var(--ink-4)}
+  .writeline input:focus{border-bottom-color:var(--brass)}
+
+  /* stale: the dossier below a rewritten answer */
+  section.stale{opacity:.38;pointer-events:none;filter:saturate(.6)}
+  .stale-note{margin:0 0 60px;padding:12px 18px;border:1px dashed var(--brass);border-radius:10px;background:var(--brass-tint);
+    font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--brass)}
+
+  /* the close: sign the dossier */
+  .closing{border-top:2px solid var(--ink);padding-top:26px}
+  .manifest{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 26px}
+  .manifest .m{font-family:var(--mono);font-size:11.5px;padding:5px 12px;border-radius:999px;background:var(--tint);border:1px solid var(--tint-2);color:var(--sapphire)}
+  .manifest .m.lock{background:var(--band);border-color:var(--rule);color:var(--ink-3)}
+  .sig-row{display:flex;align-items:flex-end;gap:26px;flex-wrap:wrap}
+  .sigline{flex:1;min-width:240px}
+  .sigline .name{font-family:var(--serif);font-style:italic;font-size:30px;color:var(--ink);padding:0 4px 8px;border-bottom:1.5px solid var(--ink);min-height:44px}
+  .sigline .cap{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-4);margin-top:7px}
+  .buildbtn{border:0;border-radius:12px;background:var(--sapphire);color:#fff;font-family:var(--display);font-weight:620;font-size:18px;
+    letter-spacing:-.01em;padding:16px 30px;cursor:pointer;box-shadow:var(--sh-md);transition:background .15s,transform .15s}
+  .buildbtn:hover{background:var(--sapphire-hover);transform:translateY(-2px)}
+  .buildbtn i{font-style:normal;margin-left:8px}
+
+  .hidden{display:none}
+  @media (prefers-reduced-motion:reduce){.writeline .bar{animation:none}.choice:hover,.buildbtn:hover{transform:none}}
+</style>
+</head>
+<body>
+<div class="rail"><i id="railfill"></i>
+  <div class="node" data-step="1" style="top:6%"><b></b><span>baseline</span></div>
+  <div class="node" data-step="2" style="top:28%"><b></b><span>skills</span></div>
+  <div class="node" data-step="3" style="top:50%"><b></b><span>personalize</span></div>
+  <div class="node" data-step="4" style="top:72%"><b></b><span>name</span></div>
+  <div class="node" data-step="5" style="top:94%"><b></b><span>build</span></div>
+</div>
+<main class="doc">
+  <div class="kicker">qubit agent studio · session dossier</div>
+  <h1>The agent you're building.</h1>
+  <p class="lede">This page <b>is</b> the conversation. Your architect writes sections into it; your answers become part of the record. <b>Hover any answer to rewrite it</b> — the dossier reconsiders everything beneath.</p>
+
+  <!-- 01 · baseline, fossilized, with working undo -->
+  <section id="s1" data-step="1">
+    <div class="sec-head"><span class="no">01</span><h2>Your baseline</h2><span class="why">everyone starts here</span></div>
+    <div class="cards">
+      <div class="card"><span class="tag">🔒 locked</span><h3>wiki-brain spine</h3><p>The agent's memory — a folder of plain-markdown notes it reads and writes. Everything else reads from here.</p></div>
+      <div class="card"><span class="tag">🔒 locked</span><h3>chief-of-staff shell</h3><p>The agent itself: its identity, your voice, and the read→decide→act loop.</p></div>
+    </div>
+    <div class="ask"><div class="who">architect asked</div><p>Where do most of your tasks actually live day-to-day?</p></div>
+    <div class="answer" data-q="Where do your tasks live?">Mostly Linear, but half of them arrive by email and never make it in.<button class="rewrite">↺ rewrite</button></div>
+  </section>
+
+  <!-- 02 · a skill landed + a PERSONALIZE choice, already answered via cards -->
+  <section id="s2" data-step="2">
+    <div class="sec-head"><span class="no">02</span><h2>Taming the inbox</h2><span class="why">from your answer above</span></div>
+    <div class="cards">
+      <div class="card"><span class="tag">✓ added</span><h3>Tasks</h3><p>Sweeps your inbox and turns loose asks into a triaged todo list in Linear — nothing falls through.</p><span class="price">needs Linear</span></div>
+    </div>
+    <div class="ask"><div class="who">architect asked · personalize</div><p>How aggressive should the inbox sweep be?</p></div>
+    <div class="choices" id="c2">
+      <button class="choice dim" data-a="Gentle — flag things, never move anything without me."><b>Gentle</b><span>Only flags — never moves or archives anything itself.</span></button>
+      <button class="choice picked" data-a="Standard — file the obvious ones, leave me the judgment calls."><b>Standard</b><span>Files obvious tasks to Linear, leaves judgment calls for you.</span></button>
+      <button class="choice dim" data-a="Aggressive — archive anything I haven't touched in 3 days."><b>Aggressive</b><span>Archives anything untouched for 3 days. Inbox zero, enforced.</span></button>
+    </div>
+    <div class="answer" data-q="How aggressive should the sweep be?">Standard — file the obvious ones, leave me the judgment calls.<button class="rewrite">↺ rewrite</button></div>
+  </section>
+
+  <!-- 03 · LIVE personalize beat: choice cards + custom line -->
+  <section id="s3" data-step="3">
+    <div class="sec-head"><span class="no">03</span><h2>Your mornings</h2><span class="why">personalizing · daily debrief</span></div>
+    <div class="cards">
+      <div class="card"><span class="tag">candidate</span><h3>Daily debrief</h3><p>A morning brief that sweeps inbox, calendar and queues and tells you what to actually focus on today.</p><span class="price">needs Google</span></div>
+    </div>
+    <div class="ask"><div class="who">architect asks · personalize</div><p>When should your morning brief land?</p></div>
+    <div class="choices" id="c3">
+      <button class="choice" data-a="7:00 sharp, before the day starts moving."><b>07:00 sharp</b><span>Waiting with your coffee, every day.</span></button>
+      <button class="choice" data-a="Weekdays at 7:30 — weekends are mine."><b>Weekdays 07:30</b><span>The workshop default. Weekends stay quiet.</span></button>
+      <button class="choice" data-a="Whenever I first open my laptop."><b>When I show up</b><span>Triggered by you, not the clock.</span></button>
+    </div>
+    <div class="or">OR WRITE YOUR OWN ↓</div>
+    <div class="answer hidden" id="a3" data-q="When should the brief land?"></div>
+    <div class="writeline" id="wl3"><span class="bar"></span><input id="inp3" placeholder="e.g. only on days with 3+ meetings…" autocomplete="off"></div>
+  </section>
+
+  <!-- 04 · naming, revealed -->
+  <section class="hidden" id="s4" data-step="4">
+    <div class="sec-head"><span class="no">04</span><h2>Name it</h2><span class="why">it's yours now</span></div>
+    <div class="ask"><div class="who">architect asks</div><p>Every chief of staff needs a name. What's yours called?</p></div>
+    <div class="answer hidden" id="a4" data-q="What's it called?"></div>
+    <div class="writeline" id="wl4"><span class="bar"></span><input id="inp4" placeholder="e.g. atlas, my-cos, friday…" autocomplete="off"></div>
+  </section>
+
+  <!-- 05 · the signature close -->
+  <section class="hidden closing" id="s5" data-step="5">
+    <div class="sec-head"><span class="no">05</span><h2>Sign &amp; build</h2><span class="why">the dossier becomes an agent</span></div>
+    <div class="manifest">
+      <span class="m lock">🔒 wiki-brain</span><span class="m lock">🔒 cos-shell</span>
+      <span class="m">tasks · standard sweep</span><span class="m" id="m-brief">daily debrief</span>
+    </div>
+    <div class="sig-row">
+      <div class="sigline"><div class="name" id="signame">&nbsp;</div><div class="cap">signed — this is the agent I want</div></div>
+      <button class="buildbtn">Build my agent<i>▶</i></button>
+    </div>
+  </section>
+</main>
+
+<script>
+  const $=s=>document.querySelector(s);
+  /* ---- journey map: phase state drives the rail ---- */
+  let phase=3; // 1 baseline · 2 skills · 3 personalize · 4 name · 5 build
+  function setPhase(p){ phase=p;
+    document.querySelectorAll('.rail .node').forEach(n=>{
+      const s=+n.dataset.step; n.classList.remove('done','now','stale');
+      if(s<p)n.classList.add('done'); else if(s===p)n.classList.add('now');
+    });
+    const now=document.querySelector('.rail .node[data-step="'+Math.min(p,5)+'"]');
+    $('#railfill').style.height=(p>5?'100':parseFloat(now.style.top))+'%';
+  }
+  document.querySelectorAll('.rail .node').forEach(n=>n.addEventListener('click',()=>{
+    const sec=document.getElementById('s'+n.dataset.step);
+    if(sec&&!sec.classList.contains('hidden'))sec.scrollIntoView({behavior:'smooth',block:'center'});
+  }));
+  const railTo=()=>{}; // superseded by setPhase
+  setPhase(3);
+
+  /* ---- shared helpers ---- */
+  const esc=t=>t.replace(/</g,'&lt;');
+  function markPicked(grp,text){ if(!grp)return;
+    grp.querySelectorAll('.choice').forEach(o=>{
+      o.classList.add('dim'); o.classList.remove('picked');
+      if(o.dataset.a===text){o.classList.remove('dim');o.classList.add('picked');}
+    });
+  }
+  // section-specific side effects when an answer lands (forward OR rewrite)
+  function sideEffects(sec,text){
+    if(sec.id==='s3') $('#m-brief').textContent='daily debrief · '+(text.length>34?text.slice(0,31)+'…':text).toLowerCase();
+    if(sec.id==='s4') $('#signame').textContent=text;
+  }
+
+  /* ---- forward motion: the live beat (§03 cards-or-line, §04 line) ---- */
+  function fossilize3(text){
+    markPicked($('#c3'),text); sideEffects($('#s3'),text);
+    const a=$('#a3'); a.innerHTML=esc(text)+'<button class="rewrite">↺ rewrite</button>';
+    a.classList.remove('hidden'); $('#wl3').classList.add('hidden');
+    $('#s4').classList.remove('hidden'); setPhase(4);
+    $('#s4').scrollIntoView({behavior:'smooth',block:'center'}); $('#inp4').focus({preventScroll:true});
+    wireRewrites();
+  }
+  $('#inp3').addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.value.trim()) fossilize3(e.target.value.trim()); });
+  $('#inp4').addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.value.trim()){
+    const v=e.target.value.trim();
+    const a=$('#a4'); a.innerHTML=esc(v)+'<button class="rewrite">↺ rewrite</button>'; a.classList.remove('hidden');
+    $('#wl4').classList.add('hidden'); sideEffects($('#s4'),v); $('#s5').classList.remove('hidden');
+    setPhase(5); $('#s5').scrollIntoView({behavior:'smooth',block:'center'}); wireRewrites(); }});
+  document.querySelector('.buildbtn').addEventListener('click',function(){
+    this.textContent='✓ signed — building…'; this.disabled=true; setPhase(6);
+  });
+
+  /* ---- UNDO: rewrite an answer. Choice sections REOPEN their cards; every
+     section gets the writeline back; the dossier below goes stale until it
+     re-settles. One rewrite at a time. ---- */
+  let rw=null;
+  function wireRewrites(){ document.querySelectorAll('.answer .rewrite').forEach(btn=>{
+    if(btn.dataset.wired)return; btn.dataset.wired='1';
+    btn.addEventListener('click',()=>{
+      if(rw)return; // finish the open rewrite first
+      const ans=btn.closest('.answer'), sec=ans.closest('section');
+      const later=[...document.querySelectorAll('section:not(.hidden)')].filter(s=>+s.dataset.step>+sec.dataset.step);
+      later.forEach(s=>s.classList.add('stale'));
+      document.querySelectorAll('.rail .node').forEach(n=>{ if(+n.dataset.step>+sec.dataset.step&&!document.getElementById('s'+n.dataset.step).classList.contains('hidden'))n.classList.add('stale'); });
+      const note=document.createElement('div'); note.className='stale-note';
+      note.textContent='⟲ REWRITING §'+sec.dataset.step.padStart(2,'0')+' — THE ARCHITECT WILL RECONSIDER EVERYTHING BELOW';
+      sec.after(note);
+      // choice sections: the cards wake back up, re-choosable
+      const grp=sec.querySelector('.choices');
+      if(grp){ grp.classList.add('reopen'); grp.querySelectorAll('.choice').forEach(o=>o.classList.remove('dim')); }
+      // and the fossil melts back into a writeline, pre-filled with the old words
+      const old=ans.childNodes[0].textContent.trim();
+      const wl=document.createElement('div'); wl.className='writeline';
+      wl.innerHTML='<span class="bar"></span><input autocomplete="off">';
+      const inp=wl.querySelector('input'); inp.value=old;
+      ans.replaceWith(wl); inp.focus(); inp.select();
+      rw={sec,grp,note,later,wl,q:ans.dataset.q||'',
+        finish(text){
+          const na=document.createElement('div'); na.className='answer'; na.dataset.q=this.q;
+          na.innerHTML=esc(text)+'<span class="redone">rewritten ↺</span><button class="rewrite">↺ rewrite</button>';
+          this.wl.replaceWith(na); this.note.remove();
+          this.later.forEach(s=>s.classList.remove('stale'));
+          if(this.grp){ this.grp.classList.remove('reopen'); markPicked(this.grp,text); }
+          sideEffects(this.sec,text); setPhase(phase); rw=null; wireRewrites();
+        }};
+      inp.addEventListener('keydown',ev=>{ if(ev.key==='Enter'&&inp.value.trim()) rw.finish(inp.value.trim()); });
+    });
+  });}
+  wireRewrites();
+
+  /* ---- one delegated handler for ALL choice cards: live beat or reopen ---- */
+  document.addEventListener('click',e=>{
+    const ch=e.target.closest('.choice'); if(!ch)return;
+    const grp=ch.closest('.choices');
+    if(rw && rw.grp===grp){ rw.finish(ch.dataset.a); return; }          // re-choosing during a rewrite
+    if(grp.id==='c3' && $('#a3').classList.contains('hidden')) fossilize3(ch.dataset.a);  // the live beat
+  });
+</script>
+<script src="proofing-room.js"></script>
+</body>
+</html>

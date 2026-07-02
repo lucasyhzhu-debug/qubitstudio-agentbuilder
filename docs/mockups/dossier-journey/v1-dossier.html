@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V1 — The Dossier · your agent, being written</title>
+<style>
+  /* SapphireOS tokens */
+  @font-face { font-family:'Bricolage Grotesque'; src:url('http://127.0.0.1:8765/static/fonts/BricolageGrotesque.ttf') format('truetype'); font-weight:200 800; font-display:swap; }
+  @font-face { font-family:'Hanken Grotesk'; src:url('http://127.0.0.1:8765/static/fonts/HankenGrotesk.ttf') format('truetype'); font-weight:100 900; font-display:swap; }
+  @font-face { font-family:'JetBrains Mono'; src:url('http://127.0.0.1:8765/static/fonts/JetBrainsMono-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+  @font-face { font-family:'Crimson Pro'; src:url('http://127.0.0.1:8765/static/fonts/CrimsonPro-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+  @font-face { font-family:'Crimson Pro'; src:url('http://127.0.0.1:8765/static/fonts/CrimsonPro-Italic.woff2') format('woff2'); font-weight:400; font-style:italic; font-display:swap; }
+  :root{
+    --canvas:#FFFFFF; --band:#F7FAFC; --sapphire:#306FA8; --sapphire-hover:#1E4C80;
+    --tint:#EEF4FA; --tint-2:#DBE8F3; --teal:#347890; --brass:#C2791A; --brass-tint:#F6EDDC;
+    --ink:#141A21; --ink-2:#3A4550; --ink-3:#6B7681; --ink-4:#9AA4AD;
+    --rule:rgba(20,26,33,.10); --rule-strong:rgba(20,26,33,.20);
+    --r-card:14px; --sh-sm:0 1px 2px rgba(20,26,33,.04),0 2px 8px rgba(20,26,33,.05);
+    --sh-md:0 2px 6px rgba(20,26,33,.06),0 10px 28px rgba(20,26,33,.09);
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --body:'Hanken Grotesk',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --serif:'Crimson Pro',Georgia,serif;
+  }
+  *{box-sizing:border-box} html{scroll-behavior:smooth}
+  body{margin:0;background:var(--band);color:var(--ink-2);font-family:var(--body);font-size:17px;line-height:1.55}
+
+  /* document column + rail */
+  .doc{max-width:760px;margin:0 auto;padding:64px 32px 40vh;position:relative}
+  .rail{position:fixed;left:calc(50% - 380px - 46px);top:0;bottom:0;width:2px;background:var(--rule)}
+  .rail i{position:absolute;top:0;left:0;width:2px;height:32%;background:var(--sapphire);transition:height .8s ease}
+  @media(max-width:900px){.rail{display:none}.doc{padding-top:40px}}
+
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+  h1{font-family:var(--display);font-weight:640;font-size:44px;line-height:1.06;letter-spacing:-.025em;color:var(--ink);margin:10px 0 6px}
+  .lede{font-size:18px;color:var(--ink-3);margin:0 0 56px;max-width:52ch}
+  .lede b{color:var(--ink-2);font-weight:600}
+
+  section{margin:0 0 64px}
+  .sec-head{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid var(--rule-strong);padding-bottom:10px;margin-bottom:22px}
+  .sec-head .no{font-family:var(--mono);font-size:12px;color:var(--brass)}
+  h2{font-family:var(--display);font-weight:600;font-size:24px;letter-spacing:-.015em;color:var(--ink);margin:0}
+  .sec-head .why{margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--ink-4);letter-spacing:.08em}
+
+  .cards{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  @media(max-width:640px){.cards{grid-template-columns:1fr}}
+  .card{background:var(--canvas);border:1px solid var(--rule);border-radius:var(--r-card);box-shadow:var(--sh-sm);padding:20px 22px;position:relative}
+  .card .tag{position:absolute;top:16px;right:16px;font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-4)}
+  .card h3{font-family:var(--display);font-weight:620;font-size:18.5px;color:var(--ink);margin:0 0 6px;letter-spacing:-.01em}
+  .card p{margin:0;font-size:15.5px;color:var(--ink-3);line-height:1.5}
+  .card.new{animation:settle .7s ease both}
+  .card .price{display:inline-block;margin-top:12px;font-family:var(--mono);font-size:11px;padding:3px 10px;border-radius:999px;background:rgba(46,125,91,.12);color:#2E7D5B}
+  .card .price.warn{background:rgba(181,133,43,.14);color:#B5852B}
+  @keyframes settle{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+
+  /* the interview: agent asks in sans, the HUMAN is the serif — their words are the quoted material */
+  .ask{margin:26px 0 0;padding-left:18px;border-left:3px solid var(--sapphire)}
+  .ask .who{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--sapphire);margin-bottom:6px}
+  .ask p{margin:0;font-size:17.5px;color:var(--ink)}
+  .answer{margin:18px 0 0 18px;font-family:var(--serif);font-style:italic;font-size:21px;line-height:1.5;color:var(--ink-2)}
+  .answer::before{content:'— ';color:var(--brass)}
+
+  /* the blended input: the document's next line, not a chat box */
+  .writeline{margin:22px 0 0 18px;display:flex;align-items:flex-start;gap:12px}
+  .writeline .bar{width:3px;align-self:stretch;background:var(--brass);border-radius:2px;animation:breathe 1.6s ease-in-out infinite}
+  @keyframes breathe{50%{opacity:.35}}
+  .writeline input{flex:1;border:0;outline:0;background:transparent;font-family:var(--serif);font-style:italic;font-size:21px;color:var(--ink);padding:2px 0;border-bottom:1px dashed var(--rule-strong)}
+  .writeline input::placeholder{color:var(--ink-4)}
+  .writeline input:focus{border-bottom-color:var(--brass)}
+  .hint{margin:8px 0 0 33px;font-family:var(--mono);font-size:10.5px;color:var(--ink-4);letter-spacing:.08em}
+
+  .hidden{display:none}
+  @media (prefers-reduced-motion:reduce){.card.new{animation:none}.writeline .bar{animation:none}}
+</style>
+</head>
+<body>
+<div class="rail"><i id="railfill"></i></div>
+<main class="doc">
+  <div class="kicker">qubit agent studio · session dossier</div>
+  <h1>The agent you're building.</h1>
+  <p class="lede">This page <b>is</b> the conversation. Your architect writes sections into it, asks you one thing at a time, and your answers become part of the record below.</p>
+
+  <!-- 01 · already-fossilized exchange: shows how history reads -->
+  <section>
+    <div class="sec-head"><span class="no">01</span><h2>Your baseline</h2><span class="why">everyone starts here</span></div>
+    <div class="cards">
+      <div class="card"><span class="tag">🔒 locked</span><h3>wiki-brain spine</h3><p>The agent's memory — a folder of plain-markdown notes it reads and writes. Everything else reads from here.</p></div>
+      <div class="card"><span class="tag">🔒 locked</span><h3>chief-of-staff shell</h3><p>The agent itself: its identity, your voice, and the read→decide→act loop. Capable, but does nothing special yet.</p></div>
+    </div>
+    <div class="ask"><div class="who">architect asked</div><p>Before we add anything — where do most of your tasks actually live day-to-day?</p></div>
+    <div class="answer">Mostly Linear, but half of them arrive by email and never make it in.</div>
+  </section>
+
+  <!-- 02 · the live beat: question + blended input -->
+  <section id="live">
+    <div class="sec-head"><span class="no">02</span><h2>Taming the inbox</h2><span class="why">from your answer above</span></div>
+    <div class="cards">
+      <div class="card new"><span class="tag">recommended</span><h3>Tasks</h3><p>Sweeps your inbox and turns loose asks into a triaged todo list in Linear — nothing falls through.</p><span class="price warn">needs Linear</span></div>
+    </div>
+    <div class="ask"><div class="who">architect asks</div><p id="q2">Roughly how many emails land on you per day — and how many of those secretly contain a task?</p></div>
+    <div class="answer hidden" id="a2"></div>
+    <div class="writeline" id="wl"><span class="bar"></span><input id="inp" placeholder="write your answer into the dossier…" autocomplete="off"></div>
+    <div class="hint" id="hint">↵ ENTER — YOUR WORDS BECOME PART OF THIS PAGE</div>
+  </section>
+
+  <!-- 03 · prepared next beat, revealed on answer -->
+  <section class="hidden" id="next">
+    <div class="sec-head"><span class="no">03</span><h2>Your mornings</h2><span class="why">next topic</span></div>
+    <div class="cards">
+      <div class="card new"><span class="tag">candidate</span><h3>Daily debrief</h3><p>A morning brief that sweeps your inbox, calendar and queues and tells you what to actually focus on today.</p><span class="price warn">needs Google</span></div>
+    </div>
+    <div class="ask"><div class="who">architect asks</div><p>Walk me through the first 20 minutes of your workday — what do you check, in what order?</p></div>
+    <div class="writeline"><span class="bar"></span><input placeholder="write your answer into the dossier…"></div>
+  </section>
+</main>
+<script>
+  const inp=document.getElementById('inp');
+  inp.addEventListener('keydown',e=>{
+    if(e.key!=='Enter'||!inp.value.trim())return;
+    const a=document.getElementById('a2');a.textContent=inp.value.trim();a.classList.remove('hidden');
+    document.getElementById('wl').remove();document.getElementById('hint').remove();
+    const nx=document.getElementById('next');nx.classList.remove('hidden');
+    document.getElementById('railfill').style.height='58%';
+    nx.scrollIntoView({behavior:'smooth',block:'start'});
+    nx.querySelector('input').focus({preventScroll:true});
+  });
+</script>
+<script src="proofing-room.js"></script>
+</body>
+</html>

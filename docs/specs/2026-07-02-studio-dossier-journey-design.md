@@ -15,12 +15,29 @@ Also builds on the landed ` ```studio ` journey (PR #6: extractor, shelfSync, wo
 and **absorbs ROADMAP item 3 (raw-skills packaging)** as slice D0 — implementing the design
 already fixed in `docs/specs/2026-07-02-workshop-lean-distribution-design.md` §5, because the
 finale's First Breath and launch command depend on it (§6).
-**Proofing artifacts** (gitignored, `.superpowers/brainstorm/journey-page-feel/`):
-`v1b-dossier-journey.html` — the chosen direction, interactive (undo, choice cards, journey
-rail, signature close); `v1-dossier.html`, `v2-canvas.html`, `v3-stage.html` — the explored
-alternatives Lucas reviewed and passed on.
+**Proofing artifacts — COMMITTED at `docs/mockups/dossier-journey/` (open them in a browser
+before implementing; they are the visual truth this spec describes):
+`v1b-dossier-journey.html`** — the chosen direction, fully interactive (chapters, choice
+cards, journey rail with phase milestones, rewrite ↺ with card-reopen, stale/re-settle);
+**`v1c-finale.html`** — the approved finale sequence (§6: sign → bind → assemble → first
+breath → launch card; click "Build my agent" to run it). `v1-dossier.html` is v1b's simpler
+ancestor; `v2-canvas.html` / `v3-stage.html` are the explored alternatives Lucas reviewed
+and passed on (kept for design rationale). `proofing-room.js` is the review-comment overlay
+each mockup loads — not product code. Mockups load fonts from a running studio
+(`http://127.0.0.1:8765`) and fall back to system faces without it.
 
 ## 1. The thesis
+
+**What "dossier" means here (definition for a fresh session):** the dossier is the workshop
+studio's participant page rebuilt as a *living document about the agent being built* —
+a single scrolling page of numbered, titled chapters that the architect (the `claude -p`
+chat) writes as the interview progresses. It replaces the chat transcript: instead of
+bubbles, the agent's words render as chapter body text, the participant's answers are
+typeset into the page as permanent serif quotations, and the text input is a bare "writing
+line" at the document's live edge. The page IS the conversation's rendered form — every
+beat is still one chat turn under the hood. See `docs/mockups/dossier-journey/
+v1b-dossier-journey.html` (the journey) and `v1c-finale.html` (the ending) — open them and
+interact before writing any code.
 
 Today the workshop journey is a chat: bubbles on the left, panels on the right. This spec
 replaces it (workshop mode only) with **a document the participant authors with their

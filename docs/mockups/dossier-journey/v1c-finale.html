@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>V1.5 finale — sign · bind · assemble · first breath · launch</title>
+<style>
+  @font-face { font-family:'Bricolage Grotesque'; src:url('http://127.0.0.1:8765/static/fonts/BricolageGrotesque.ttf') format('truetype'); font-weight:200 800; font-display:swap; }
+  @font-face { font-family:'Hanken Grotesk'; src:url('http://127.0.0.1:8765/static/fonts/HankenGrotesk.ttf') format('truetype'); font-weight:100 900; font-display:swap; }
+  @font-face { font-family:'JetBrains Mono'; src:url('http://127.0.0.1:8765/static/fonts/JetBrainsMono-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+  @font-face { font-family:'Crimson Pro'; src:url('http://127.0.0.1:8765/static/fonts/CrimsonPro-Italic.woff2') format('woff2'); font-weight:400; font-style:italic; font-display:swap; }
+  :root{
+    --canvas:#FFFFFF; --band:#F7FAFC; --sapphire:#306FA8; --sapphire-hover:#1E4C80;
+    --tint:#EEF4FA; --tint-2:#DBE8F3; --brass:#C2791A; --brass-tint:#F6EDDC;
+    --ink:#141A21; --ink-2:#3A4550; --ink-3:#6B7681; --ink-4:#9AA4AD;
+    --rule:rgba(20,26,33,.10); --rule-strong:rgba(20,26,33,.20); --ok:#2E7D5B;
+    --r-card:14px; --sh-sm:0 1px 2px rgba(20,26,33,.04),0 2px 8px rgba(20,26,33,.05);
+    --sh-md:0 2px 6px rgba(20,26,33,.06),0 10px 28px rgba(20,26,33,.09);
+    --display:'Bricolage Grotesque',system-ui,sans-serif;
+    --body:'Hanken Grotesk',system-ui,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --serif:'Crimson Pro',Georgia,serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--band);color:var(--ink-2);font-family:var(--body);font-size:17px;line-height:1.55;overflow-x:hidden}
+  .wrap{max-width:760px;margin:0 auto;padding:56px 32px 20vh}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+
+  /* ═══ BEAT 0: the dossier's final chapter, ready to sign ═══ */
+  .closing{border-top:2px solid var(--ink);padding-top:26px;transition:opacity .6s ease}
+  h2{font-family:var(--display);font-weight:600;font-size:24px;color:var(--ink);margin:0 0 18px}
+  .manifest{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 26px}
+  .m{font-family:var(--mono);font-size:11.5px;padding:5px 12px;border-radius:999px;background:var(--tint);border:1px solid var(--tint-2);color:var(--sapphire)}
+  .m.lock{background:var(--band);border-color:var(--rule);color:var(--ink-3)}
+  .sig-row{display:flex;align-items:flex-end;gap:26px;flex-wrap:wrap}
+  .sigline{flex:1;min-width:240px;position:relative}
+  .sigline .name{font-family:var(--serif);font-style:italic;font-size:32px;color:var(--ink);padding:0 4px 8px;border-bottom:1.5px solid var(--ink);min-height:46px;position:relative;overflow:hidden}
+  .sigline .name .inkmask{position:absolute;inset:0;background:linear-gradient(90deg,transparent 0,transparent 100%);pointer-events:none}
+  .sigline .cap{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-4);margin-top:7px}
+  .buildbtn{border:0;border-radius:12px;background:var(--sapphire);color:#fff;font-family:var(--display);font-weight:620;font-size:18px;padding:16px 30px;cursor:pointer;box-shadow:var(--sh-md);transition:background .15s,transform .15s}
+  .buildbtn:hover{background:var(--sapphire-hover);transform:translateY(-2px)}
+  /* signing: the name strokes in */
+  .signing .name{color:transparent}
+  .signing .name b{font-weight:400;color:var(--ink);background:linear-gradient(90deg,var(--ink) 0 100%) no-repeat;-webkit-background-clip:text;background-clip:text;
+    animation:inkin 1.4s cubic-bezier(.2,.7,.2,1) both}
+  @keyframes inkin{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
+
+  /* ═══ BEAT 1: the binding — the dossier compresses into a ToC card ═══ */
+  .stagebox{margin-top:56px;min-height:420px;position:relative}
+  .beat{position:absolute;inset:0;opacity:0;pointer-events:none;transition:opacity .7s ease}
+  .beat.on{opacity:1;pointer-events:auto}
+  .toc{max-width:420px;margin:0 auto;background:var(--canvas);border:1px solid var(--rule);border-radius:var(--r-card);box-shadow:var(--sh-md);padding:22px 26px;transform:scale(1);transition:transform .8s cubic-bezier(.2,.7,.2,1)}
+  .toc h3{font-family:var(--display);font-size:16px;color:var(--ink);margin:0 0 12px}
+  .toc .row{display:flex;justify-content:space-between;font-size:13.5px;padding:6px 0;border-top:1px dashed var(--rule)}
+  .toc .row b{font-family:var(--mono);font-weight:400;font-size:11px;color:var(--brass)}
+  .toc .row i{font-family:var(--serif);color:var(--ink-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+  .toc .stamp{margin-top:14px;font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-4);text-align:center}
+  .beat .beatcap{position:absolute;top:-34px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.15em;text-transform:uppercase;color:var(--ink-3)}
+
+  /* ═══ BEAT 2: the assembly — anatomy fills in, log runs beneath ═══ */
+  .anatomy{max-width:440px;margin:0 auto}
+  .organ{display:flex;align-items:center;gap:14px;background:var(--canvas);border:1px solid var(--rule);border-radius:12px;
+    padding:13px 18px;margin-bottom:10px;opacity:.25;transform:translateX(-10px);transition:all .45s cubic-bezier(.2,.7,.2,1)}
+  .organ.in{opacity:1;transform:none;border-color:var(--tint-2);box-shadow:var(--sh-sm)}
+  .organ .ic{width:30px;height:30px;border-radius:8px;background:var(--tint);display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .organ.spinepart .ic{background:var(--brass-tint)}
+  .organ b{font-family:var(--display);font-weight:620;font-size:15.5px;color:var(--ink)}
+  .organ span{font-size:12.5px;color:var(--ink-3);display:block}
+  .organ .tick{margin-left:auto;font-family:var(--mono);color:var(--ink-4);font-size:13px}
+  .organ.in .tick{color:var(--ok)}
+  .buildlog{max-width:440px;margin:16px auto 0;font-family:var(--mono);font-size:11px;color:var(--ink-4);height:54px;overflow:hidden;line-height:18px}
+  .buildlog div{animation:logup .3s ease both}
+  @keyframes logup{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* ═══ BEAT 3: first breath ═══ */
+  .breath{text-align:center;padding-top:30px}
+  .chip{display:inline-flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;padding:6px 14px;border-radius:999px;background:var(--tint);border:1px solid var(--tint-2);color:var(--ink-3);transition:all .5s ease}
+  .chip .dot{width:7px;height:7px;border-radius:50%;background:var(--ink-4)}
+  .chip.alive{color:var(--sapphire);border-color:var(--sapphire)}
+  .chip.alive .dot{background:var(--sapphire);animation:pulse 1.8s ease-in-out infinite}
+  @keyframes pulse{50%{opacity:.4;transform:scale(.75)}}
+  .firstwords{margin:36px auto 0;max-width:560px;font-family:var(--display);font-weight:520;font-size:clamp(21px,3.4vw,28px);line-height:1.35;letter-spacing:-.015em;color:var(--ink);text-align:left;min-height:150px}
+  .firstwords .caret{display:inline-block;width:3px;height:1em;background:var(--sapphire);vertical-align:-2px;animation:blink 1s steps(1) infinite;margin-left:2px}
+  @keyframes blink{50%{opacity:0}}
+
+  /* ═══ BEAT 4: the launch card ═══ */
+  .launch{max-width:480px;margin:0 auto;background:var(--canvas);border:1.5px solid var(--sapphire);border-radius:16px;box-shadow:var(--sh-md);padding:28px 30px}
+  .launch .lk{font-family:var(--mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--sapphire);margin-bottom:4px}
+  .launch h3{font-family:var(--serif);font-style:italic;font-weight:400;font-size:34px;color:var(--ink);margin:0 0 16px}
+  .launch .parts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+  .launch .parts .m{font-size:10.5px;padding:4px 10px}
+  .launch .ints{font-family:var(--mono);font-size:11px;color:var(--ok);margin-bottom:20px}
+  .cmd{display:flex;align-items:center;gap:10px;background:var(--ink);border-radius:10px;padding:12px 16px;margin-bottom:18px}
+  .cmd code{flex:1;font-family:var(--mono);font-size:13px;color:#E8EEF4}
+  .cmd button{border:0;border-radius:7px;background:rgba(255,255,255,.14);color:#fff;font-family:var(--mono);font-size:10.5px;padding:6px 11px;cursor:pointer}
+  .cmd button:hover{background:rgba(255,255,255,.26)}
+  .try{border-top:1px dashed var(--rule);padding-top:14px}
+  .try .t{font-family:var(--mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-4);margin-bottom:8px}
+  .try div{font-size:14.5px;color:var(--ink-2);padding:3px 0}
+  .try div::before{content:'▸ ';color:var(--brass)}
+
+  .skipper{position:fixed;bottom:18px;right:20px;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;color:var(--ink-4);background:var(--canvas);border:1px solid var(--rule);border-radius:999px;padding:6px 13px;cursor:pointer}
+  .hidden{display:none}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <div class="kicker">qubit agent studio · session dossier · the close</div>
+
+  <!-- BEAT 0: sign -->
+  <section class="closing" id="b0">
+    <h2><span style="font-family:var(--mono);font-size:12px;color:var(--brass)">05</span> Sign &amp; build</h2>
+    <div class="manifest">
+      <span class="m lock">🔒 wiki-brain</span><span class="m lock">🔒 cos-shell</span>
+      <span class="m">tasks · standard sweep</span><span class="m">daily debrief · weekdays 7:30</span>
+    </div>
+    <div class="sig-row">
+      <div class="sigline"><div class="name" id="signame">atlas</div><div class="cap">signed — this is the agent I want</div></div>
+      <button class="buildbtn" id="build">Build my agent<i style="font-style:normal;margin-left:8px">▶</i></button>
+    </div>
+  </section>
+
+  <div class="stagebox" id="stage">
+    <!-- BEAT 1: the binding -->
+    <div class="beat" id="b1">
+      <div class="beatcap">■ binding your dossier — everything you told me becomes its memory</div>
+      <div class="toc" id="toc">
+        <h3>The atlas dossier</h3>
+        <div class="row"><b>§01 BASELINE</b><i>"tasks live in Linear… half arrive by email"</i></div>
+        <div class="row"><b>§02 INBOX</b><i>"standard — leave me the judgment calls"</i></div>
+        <div class="row"><b>§03 MORNINGS</b><i>"weekdays 7:30 — weekends are mine"</i></div>
+        <div class="row"><b>§04 NAME</b><i>"atlas"</i></div>
+        <div class="stamp">4 chapters · 6 answers · signed 2026-07-03</div>
+      </div>
+    </div>
+
+    <!-- BEAT 2: the assembly -->
+    <div class="beat" id="b2">
+      <div class="beatcap">■ assembling atlas</div>
+      <div class="anatomy">
+        <div class="organ spinepart" data-log="copy chief-of-staff/references → vault seeded"><span class="ic">🧠</span><div><b>wiki-brain spine</b><span>its memory — your dossier is page one</span></div><span class="tick">✓</span></div>
+        <div class="organ spinepart" data-log="compose cos-shell → identity written: atlas"><span class="ic">⚙️</span><div><b>chief-of-staff shell</b><span>identity, your voice, read→decide→act</span></div><span class="tick">✓</span></div>
+        <div class="organ" data-log="copy skills/tasks → sweep=standard"><span class="ic">📥</span><div><b>tasks</b><span>inbox → triaged Linear list · standard sweep</span></div><span class="tick">✓</span></div>
+        <div class="organ" data-log="copy skills/briefing → weekdays 07:30"><span class="ic">☀️</span><div><b>daily debrief</b><span>morning brief · weekdays 7:30</span></div><span class="tick">✓</span></div>
+        <div class="organ" data-log="personalize pass → your answers written into 4 skills"><span class="ic">✍️</span><div><b>personalization</b><span>the architect writes your dossier into it</span></div><span class="tick">✓</span></div>
+      </div>
+      <div class="buildlog" id="blog"></div>
+    </div>
+
+    <!-- BEAT 3: first breath -->
+    <div class="beat breath" id="b3">
+      <span class="chip" id="chip"><i class="dot"></i><span id="chiptext">architect</span></span>
+      <div class="firstwords" id="fw"></div>
+    </div>
+
+    <!-- BEAT 4: launch card -->
+    <div class="beat" id="b4">
+      <div class="beatcap">■ your agent</div>
+      <div class="launch">
+        <div class="lk">agent · built 2026-07-03</div>
+        <h3>atlas</h3>
+        <div class="parts">
+          <span class="m lock">🔒 wiki-brain</span><span class="m lock">🔒 cos-shell</span>
+          <span class="m">tasks</span><span class="m">daily debrief</span>
+        </div>
+        <div class="ints">integrations · linear ✓ · google ✓</div>
+        <div class="cmd"><code>cd dist/atlas-cos &amp;&amp; claude</code><button onclick="navigator.clipboard&&navigator.clipboard.writeText('cd dist/atlas-cos && claude');this.textContent='COPIED ✓'">COPY</button></div>
+        <div class="try">
+          <div class="t">three things to ask it first</div>
+          <div>"sweep my inbox" — watch it triage into Linear</div>
+          <div>"brief me" — tomorrow 7:30 it does this on its own</div>
+          <div>"remember that Sam prefers async" — page one of its memory</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<button class="skipper hidden" id="skip">SKIP ▸▸</button>
+
+<script>
+  const $=s=>document.querySelector(s);
+  const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let skipping=false;
+  $('#skip').addEventListener('click',()=>skipping=true);
+  const wait=async ms=>{ if(!skipping&&!reduced) await sleep(ms); };
+  const show=id=>{document.querySelectorAll('.beat').forEach(b=>b.classList.remove('on'));$(id).classList.add('on');};
+
+  $('#build').addEventListener('click', async function(){
+    this.disabled=true; $('#skip').classList.remove('hidden');
+    /* BEAT 0 — the signing: the name inks in */
+    const nm=$('#signame'); const txt=nm.textContent; nm.innerHTML='<b>'+txt+'</b>'; nm.closest('section').classList.add('signing');
+    this.textContent='✓ signed'; await wait(1600);
+    $('#b0').style.opacity='.35';
+
+    /* BEAT 1 — the binding */
+    show('#b1'); $('#stage').scrollIntoView({behavior:'smooth',block:'center'}); await wait(2200);
+    $('#toc').style.transform='scale(.62) translateY(-30px)'; await wait(700);
+
+    /* BEAT 2 — the assembly */
+    show('#b2');
+    const organs=[...document.querySelectorAll('.organ')], blog=$('#blog');
+    for(const o of organs){
+      o.classList.add('in');
+      blog.insertAdjacentHTML('afterbegin','<div>$ '+o.dataset.log+'</div>');
+      await wait(850);
+    }
+    await wait(700);
+
+    /* BEAT 3 — first breath */
+    show('#b3'); await wait(900);
+    $('#chiptext').textContent='atlas · live'; $('#chip').classList.add('alive'); await wait(1100);
+    const words=`Morning, Lucas. I'm atlas.\nYou told me your tasks drown in email — I'll sweep them into Linear, and your first brief lands tomorrow at 7:30.\nWant to try me now?`;
+    const fw=$('#fw'); fw.innerHTML='<span id="tw"></span><span class="caret"></span>';
+    const tw=$('#tw');
+    if(skipping||reduced){ tw.textContent=words; }
+    else{ for(const ch of words){ tw.textContent+=ch; await sleep(ch==='\n'?260:26); if(skipping){tw.textContent=words;break;} } }
+    fw.style.whiteSpace='pre-wrap'; await wait(1800);
+
+    /* BEAT 4 — the launch card */
+    show('#b4'); $('#skip').classList.add('hidden');
+  });
+</script>
+<script src="proofing-room.js"></script>
+</body>
+</html>
