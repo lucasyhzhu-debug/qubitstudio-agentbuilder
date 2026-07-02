@@ -96,3 +96,28 @@ def test_architect_mode_still_byte_identical(tmp_path):
     from studio.system_prompt import write_system_prompt, build_system_prompt
     out = write_system_prompt(tmp_path / "sp.md")
     assert out.read_text(encoding="utf-8") == build_system_prompt()
+
+
+# --- dossier spec §3.3: the chapter contract ---
+_PHASE_SET = ("welcome", "baseline", "skills", "personalize", "name", "build", "connect")
+
+def test_workshop_chapter_contract_present():
+    p = build_workshop_prompt()
+    assert '"chapter"' in p
+    for phase in _PHASE_SET:
+        assert phase in p
+    assert "REUSE the current title" in p
+    assert "Do NOT restate the chapter title" in p
+
+def test_chapter_contract_in_every_workshop_variant():
+    for kw in ({}, {"onboarding": True}, {"participant": _P}):
+        assert '"chapter"' in build_workshop_prompt(**kw)
+
+def test_architect_has_no_chapter_contract():
+    from studio.system_prompt import build_system_prompt
+    assert '"chapter"' not in build_system_prompt()
+
+def test_architect_mode_byte_identical_after_chapter(tmp_path):
+    from studio.system_prompt import write_system_prompt, build_system_prompt
+    out = write_system_prompt(tmp_path / "sp.md")
+    assert out.read_text(encoding="utf-8") == build_system_prompt()

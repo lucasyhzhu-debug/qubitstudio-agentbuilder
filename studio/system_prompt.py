@@ -180,6 +180,23 @@ _ASK_CONTRACT = """
   short and do NOT restate the options in text.
 """
 
+_CHAPTER_CONTRACT = """
+# Writing the page (the dossier)
+
+- You are writing a DOCUMENT, not chatting. The participant sees your words as the body
+  text of a numbered chapter on a single scrolling page about the agent they're building.
+- EVERY turn, include a "chapter" object in the studio block (same fence):
+  "chapter": { "title": "Taming the inbox", "phase": "skills" }
+- `title` = the section you are writing. REUSE the current title to continue the open
+  section; give a NEW title to open a new one. Open a new chapter when the topic
+  genuinely turns (a new skill area, naming, building); continue for follow-ups and
+  acknowledgements. Keep titles short and human ("Taming the inbox", never "Skills
+  recommendation phase") — at most 80 characters.
+- `phase` = where the journey is, exactly one of:
+  welcome | baseline | skills | personalize | name | build | connect
+- Do NOT restate the chapter title in your prose — the page draws the heading itself.
+"""
+
 _ONBOARDING_CONTRACT = """
 # The onboarding walk (this session starts BEFORE the interview)
 
@@ -230,6 +247,7 @@ def build_workshop_prompt(catalog_path: Path | None = None,
     parts.append("# The substrate & the shelf\n\n" + _render_catalog(catalog))
     parts.append(_WORKSHOP_CONTRACT)
     parts.append(_ASK_CONTRACT)
+    parts.append(_CHAPTER_CONTRACT)
     if onboarding:
         parts.append(_ONBOARDING_CONTRACT)
     return "\n\n".join(parts)
