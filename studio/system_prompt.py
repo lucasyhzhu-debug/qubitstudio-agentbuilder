@@ -90,11 +90,12 @@ def build_system_prompt(architect_dir: Path | None = None) -> str:
 
 
 def write_system_prompt(out_path: Path, architect_dir: Path | None = None,
-                        mode: str = "architect", catalog_path: Path | None = None) -> Path:
+                        mode: str = "architect", catalog_path: Path | None = None,
+                        participant: dict | None = None, onboarding: bool = False) -> Path:
     out_path = Path(out_path)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    content = (build_workshop_prompt(catalog_path) if mode == "workshop"
-               else build_system_prompt(architect_dir))
+    content = (build_workshop_prompt(catalog_path, participant=participant, onboarding=onboarding)
+               if mode == "workshop" else build_system_prompt(architect_dir))
     out_path.write_text(content, encoding="utf-8")
     return out_path
 
@@ -151,11 +152,73 @@ def _render_catalog(catalog: dict) -> str:
     return "\n".join(lines)
 
 
-def build_workshop_prompt(catalog_path: Path | None = None) -> str:
+_ASK_CONTRACT = """
+# Asking questions (the card UI)
+
+- Whenever you offer the participant a small closed set of choices, ALSO emit it as an
+  "ask" object inside the studio block (same fence). Shape:
+  "ask": { "id": "triage-depth", "title": "How aggressive should inbox triage be?",
+           "why": "one line of context",
+           "options": [ {"id": "a", "label": "Summarize only", "why": "daily digest, you act"},
+                        {"id": "b", "label": "Draft replies",  "why": "it writes, you send"} ],
+           "multi": false }
+- Give every option a one-line consequence in "why". At most ONE pending ask at a time;
+  omit "ask" entirely when nothing is pending.
+- The participant's answer arrives as a normal message starting with [card] — a clicked
+  choice, a custom-typed answer, or a skip. After emitting an ask, keep the prose above it
+  short and do NOT restate the options in text.
+"""
+
+_ONBOARDING_CONTRACT = """
+# The onboarding walk (this session starts BEFORE the interview)
+
+- Messages starting with [studio event] come from the studio itself, not the participant.
+  Never quote them back; react to what they report.
+- The walk, in order — narrate each step and point the participant to the panel on their
+  right, ONE step at a time:
+  1. Greet the participant warmly by name. Ask them to drop their CV, LinkedIn
+     screenshots, and anything they've written into the panel on the right. Reassure them:
+     everything stays on their machine.
+  2. As [studio event] messages report registered files/folders, acknowledge briefly and
+     invite more or tell them to continue when ready.
+  3. When asked where the mind-palace should live, explain it in one breath: one folder
+     they own, plain files — everything you'll learn about them, their people, and your
+     own lessons lives there.
+  4. When a [studio event] delivers the distilled profile, react WITH SPECIFICS — name
+     real details you learned (roles, orgs, themes). This is the proof you actually read
+     their materials. If the event says materials were registered but not distilled, say
+     you'll read them as you work together instead.
+  5. If an event says the participant skipped a step, accept it gracefully and move on.
+  6. Then flow straight into the normal interview (one topic at a time). Same
+     conversation, no reset.
+- Keep emitting the full studio block every turn throughout (picks stays [] until the
+  interview produces recommendations).
+"""
+
+
+def _participant_section(p: dict) -> str:
+    profile = (p.get("profile_text") or "")[:6000]
+    return (
+        "# The participant\n\n"
+        f"- Name: {p.get('name', '')} — greet and refer to them by name.\n"
+        f"- Their second brain (your mind-palace) lives at: {p.get('second_brain', '')}\n"
+        f"- Materials they shared: {p.get('materials_index', '') or '(none)'}\n\n"
+        "Their standing profile (distilled from their own materials — treat as ground truth):\n\n"
+        f"{profile}\n"
+    )
+
+
+def build_workshop_prompt(catalog_path: Path | None = None,
+                          participant: dict | None = None,
+                          onboarding: bool = False) -> str:
     path = catalog_path or (_STUDIO_DIR / "catalog.json")
     catalog = json.loads(path.read_text(encoding="utf-8"))
-    return "\n\n".join([
-        _WORKSHOP_ROLE_INTRO,
-        "# The substrate & the shelf\n\n" + _render_catalog(catalog),
-        _WORKSHOP_CONTRACT,
-    ])
+    parts = [_WORKSHOP_ROLE_INTRO]
+    if participant:
+        parts.append(_participant_section(participant))
+    parts.append("# The substrate & the shelf\n\n" + _render_catalog(catalog))
+    parts.append(_WORKSHOP_CONTRACT)
+    parts.append(_ASK_CONTRACT)
+    if onboarding:
+        parts.append(_ONBOARDING_CONTRACT)
+    return "\n\n".join(parts)
