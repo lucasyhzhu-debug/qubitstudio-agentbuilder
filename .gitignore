@@ -9,3 +9,4 @@ studio/.cache/
 eval-runs/
 .DS_Store
 Thumbs.db
+.claude/handoff/
