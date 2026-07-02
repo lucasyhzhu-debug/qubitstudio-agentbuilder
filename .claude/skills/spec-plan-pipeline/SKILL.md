@@ -98,6 +98,8 @@ Start from a synced remote main: `git fetch origin`, then make local `main` == `
 makes `pull --rebase` choke). Confirm `git status` is clean before branching — do NOT build on a stale base.
 Create a fresh branch `feat/<slug>` off that synced `main`, then dispatch a subagent to implement
 the plan at `docs/plans/<slug>.md`, task-by-task.
+Subagent models: never Haiku — Sonnet 5 minimum, Opus if in doubt, Fable for anything complex
+(Opus once Fable access ends 2026-07-07). Repeating task shapes get a dedicated agent proposed.
 Verify first (confirm against real code before coding): <verify-first list from the plan shipshape>.
 
 When implementation is complete, run this repo's QA close-out before declaring done:
@@ -108,6 +110,16 @@ When implementation is complete, run this repo's QA close-out before declaring d
 Re-run the tests after the fixes; only then is the phase done. Public repo: scan the final diff
 for secrets/personal values before any push.
 ```
+
+## [QS] Implementation strategy — subagent models
+
+When the execution session dispatches implementers/reviewers (subagent-driven development or any
+Agent fan-out): **never Haiku**. Sonnet 5 is the floor; **Opus** when in doubt; **Fable** for
+anything kind of complex (final whole-branch reviews, subtle concurrency, cross-file integration).
+Once Fable access ends (**2026-07-07**), complex work goes to **Opus**. If a specific task shape
+keeps repeating across phases, propose and create a dedicated agent (`.claude/agents/*.md`) for it
+instead of re-dispatching ad-hoc subagents. This overrides skill guidance that says "use the
+cheapest tier for mechanical tasks."
 
 ## [QS] Red flags — STOP
 
