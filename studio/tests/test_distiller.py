@@ -38,6 +38,16 @@ async def test_nonzero_exit_raises(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_missing_cli_raises(tmp_path, monkeypatch):
+    monkeypatch.setattr("studio.distiller.resolve_claude", lambda: None)
+    async def never_spawn(*a, **k):                   # must bail before any exec
+        pytest.fail("create_subprocess_exec should not be reached when the CLI is missing")
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", never_spawn)
+    with pytest.raises(RuntimeError):
+        await distill([tmp_path])
+
+
+@pytest.mark.asyncio
 async def test_timeout_raises(tmp_path, monkeypatch):
     class _Proc:
         returncode = None
