@@ -3,8 +3,8 @@
 ## Connectors model
 
 chief-of-staff reaches **Gmail, Google Calendar, and Linear** through your **native claude.ai connectors** —
-not through plugin-hosted MCP servers. Make sure those three connectors are connected in your Claude
-session. The only server the plugin runs itself is **Discord** (locally, via `npx -y mcp-discord`).
+not through agent-hosted MCP servers. Make sure those three connectors are connected in your Claude
+session. The only server the agent runs itself is **Discord** (locally, via `npx -y mcp-discord`).
 
 ## Install (composed agent home)
 
