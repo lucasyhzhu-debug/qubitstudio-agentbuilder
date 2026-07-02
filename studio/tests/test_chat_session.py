@@ -1,4 +1,5 @@
 from pathlib import Path
+import pytest
 from studio.chat_session import ChatSession, dedup_text
 from studio import stream_parser as sp
 
@@ -89,7 +90,7 @@ def test_extract_pass_workshop_mode_sets_studio(tmp_path):
     s = ChatSession(session_id="11111111-1111-1111-1111-111111111111",
                     system_prompt_path=sp_path, catalog_ids={"crm", "tasks"})
     s._extract('hi\n```studio\n{"picks": ["crm"], "name": "my-cos", "ready": false}\n```')
-    assert s.studio == {"picks": ["crm"], "name": "my-cos", "ready": False}
+    assert s.studio == {"picks": ["crm"], "name": "my-cos", "ready": False, "ask": None}
 
 def test_extract_pass_keeps_prior_studio_on_garbage(tmp_path):
     sp_path = tmp_path / "sp.md"; sp_path.write_text("p", encoding="utf-8")
@@ -98,4 +99,39 @@ def test_extract_pass_keeps_prior_studio_on_garbage(tmp_path):
                     system_prompt_path=sp_path, catalog_ids={"crm"})
     s._extract('```studio\n{"picks": ["crm"]}\n```')
     s._extract('no block this turn')
-    assert s.studio == {"picks": ["crm"], "name": None, "ready": False}
+    assert s.studio == {"picks": ["crm"], "name": None, "ready": False, "ask": None}
+
+@pytest.mark.asyncio
+async def test_concurrent_sends_serialize(tmp_path, monkeypatch):
+    # Two overlapping send() calls must not run two `claude -p --resume` subprocesses
+    # at once (onboarding-cards spec §5.4.8): spawn/finish pairs must not interleave.
+    import asyncio as aio
+    order = []
+
+    class _FakeProc:
+        returncode = 0
+        stderr = None
+        def __init__(self):
+            self.stdout = self
+        def __aiter__(self):
+            return self
+        async def __anext__(self):
+            raise StopAsyncIteration
+        async def wait(self):
+            return 0
+
+    async def fake_exec(*argv, **kw):
+        order.append("spawn")
+        await aio.sleep(0.05)      # long enough for the other task to try to enter
+        order.append("live")
+        return _FakeProc()
+
+    monkeypatch.setattr(aio, "create_subprocess_exec", fake_exec)
+    s = _sess(tmp_path)
+
+    async def drain(msg):
+        async for _ in s.send(msg):
+            pass
+
+    await aio.gather(drain("a"), drain("b"))
+    assert order == ["spawn", "live", "spawn", "live"]   # serialized, not interleaved

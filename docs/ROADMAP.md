@@ -20,16 +20,16 @@ migration + raw skills) and `docs/specs/2026-07-02-workshop-studio-r1-personaliz
    the "first-run handshake" requirement below (status chip flips to "agent live" on the first
    streamed token). All slices landed (B1 journey floor + A reskin + B2 panel); full suite
    120 green incl. a real-turn workshop smoke.
-   - **Onboarding journey + guided card framework** — **specced + planned** (spec:
+   - ~~**Onboarding journey + guided card framework**~~ — **shipped** (v0.3.0; spec:
      `docs/specs/2026-07-02-studio-onboarding-cards-design.md`, plan:
-     `docs/plans/onboarding-cards.md`, both shipshape-gated; **implement only after item 2
-     lands** — the plan's Task 0 gates on it). First-launch walk: fade-in welcome → live agent
-     narrates materials intake (CV/LinkedIn/writings, distilled by a scoped `claude -p Read`
-     pass into `<second-brain>/profile.md`) → participant chooses the second-brain home, which
-     becomes compose's `vault_dir` (covers the "Custom vault location" requirement below).
-     Plus the reusable card primitive + ` ```studio ` `ask` channel (visual AskUserQuestion)
-     that r1-B personalize and the connect wizard adopt later. Slices: C1 ask-cards floor →
-     C2 backend → C3 walk.
+     `docs/plans/onboarding-cards.md`, both shipshape-gated). First-launch walk: fade-in
+     welcome → live agent narrates materials intake (CV/LinkedIn/writings, distilled by a
+     scoped `claude -p Read` pass into `<second-brain>/profile.md`) → participant chooses the
+     second-brain home, which becomes compose's `vault_dir` (covers the "Custom vault location"
+     requirement below). Plus the reusable card primitive + ` ```studio ` `ask` channel (visual
+     AskUserQuestion) that r1-B personalize and the connect wizard adopt later. All slices
+     landed (C1 ask-cards + C2 backend + C3 walk); full suite 162 green incl. a live distill
+     smoke; PDF-read probe confirmed.
 3. **Raw-skills packaging** — composer emits an agent-home dir (`.claude/skills/`,
    `.claude/agents/`, root `.mcp.json`, generated `CLAUDE.md`, `vault/`, `.env`); final step
    becomes `cd <dir> && claude`. Kill plugin.json/marketplace.json emission + the `/plugin`

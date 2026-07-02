@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.3.0 — 2026-07-03 — Onboarding journey + guided cards
+
+- **First-launch onboarding walk (workshop mode).** Fade-in name screen → "Welcome, {name}." →
+  the studio reveals with the live agent narrating: a files card takes CV/LinkedIn
+  screenshots/writing (drag-drop staged into gitignored `studio/.cache/`, or folders linked in
+  place; 20 MB/file / 40 files / 100 MB caps), then a mind-palace card picks the **second
+  brain** — one participant-owned folder (repo-interior rejected) that receives the materials,
+  a distilled `profile.md`, and later becomes compose's `vault_dir`: one memory, two readers.
+  A scoped `claude -p --allowed-tools Read` distiller (`studio/distiller.py`) writes the
+  profile; every failure is non-fatal (stub profile — onboarding always completes; every card
+  has "skip for now"). Returning launches inject the participant profile into the workshop
+  prompt (head-capped at 6,000 chars) so the agent greets you knowing you.
+- **Guided card framework + visual ask channel.** New `cards.js`/`cards.css` primitive
+  (rise/fold/baton/morph; question/files/path kinds; reduced-motion safe) in a dedicated right
+  rail. The workshop agent can now pose choices as an `ask` object in its ` ```studio ` block —
+  rendered as a clickable card (options + open text + skip) whose answer returns as a `[card]`
+  message; `[card]`/`[studio event]` messages never render as user bubbles. One
+  `claude -p --resume` per session is now enforced twice: a frontend send queue and a
+  per-session `asyncio.Lock`.
+- **Tests:** suite grows 121 → 162 (onboarding module, distiller, server endpoints, ask
+  extractor, turn serialization, skip-all regression), including a live distill smoke over
+  fictional fixtures. Verified live: PDFs are read by the distiller (probe), doctor green.
+
 ## 0.2.0 — 2026-07-02 — QubitStudio journey
 
 - **Conversation-driven journey (workshop mode, now the default).** The studio chat is

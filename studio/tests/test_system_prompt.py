@@ -60,3 +60,39 @@ def test_write_system_prompt_default_is_architect_unchanged(tmp_path):
     from studio.system_prompt import write_system_prompt, build_system_prompt
     out = write_system_prompt(tmp_path / "sp.md")
     assert out.read_text(encoding="utf-8") == build_system_prompt()
+
+
+# --- onboarding-cards spec §4.3 + §5.5 ---
+_P = {"name": "Ada", "second_brain": "C:/tmp/sb",
+      "profile_text": "# Ada\n\nAnalyst at Babbage & Co.", "materials_index": "cv.pdf"}
+
+def test_workshop_ask_contract_always_present():
+    for kw in ({}, {"onboarding": True}, {"participant": _P}):
+        p = build_workshop_prompt(**kw)
+        assert '"ask"' in p and "[card]" in p
+
+def test_participant_section_injected():
+    p = build_workshop_prompt(participant=_P)
+    assert "The participant" in p and "Ada" in p and "Babbage" in p and "C:/tmp/sb" in p
+
+def test_participant_profile_capped():
+    # "HEADMARK" is 8 chars, so a head-cap [:6000] keeps HEADMARK + 5992 x's and
+    # drops TAILMARK; a tail-cap regression ([-6000:]) would do the opposite.
+    big = dict(_P, profile_text="HEADMARK" + "x" * 20000 + "TAILMARK")
+    p = build_workshop_prompt(participant=big)
+    assert "HEADMARK" in p and "TAILMARK" not in p
+    assert "x" * 5992 in p and "x" * 5993 not in p
+
+def test_onboarding_contract_only_when_flagged():
+    assert "studio event" in build_workshop_prompt(onboarding=True)
+    assert "studio event" not in build_workshop_prompt()
+
+def test_write_system_prompt_threads_kwargs(tmp_path):
+    from studio.system_prompt import write_system_prompt
+    out = write_system_prompt(tmp_path / "wp.md", mode="workshop", participant=_P, onboarding=False)
+    assert "Ada" in out.read_text(encoding="utf-8")
+
+def test_architect_mode_still_byte_identical(tmp_path):
+    from studio.system_prompt import write_system_prompt, build_system_prompt
+    out = write_system_prompt(tmp_path / "sp.md")
+    assert out.read_text(encoding="utf-8") == build_system_prompt()
