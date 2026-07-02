@@ -11,7 +11,10 @@ engaging/energizing — this spec is that bar applied to the whole participant s
 `docs/plans/onboarding-cards.md`) — **in flight on `feat/onboarding-cards-impl` at time of
 writing**. This spec targets the tree AFTER that slice lands and reuses its contracts (§7.4);
 it must not be planned into implementation until onboarding-cards merges (collision risk §10.1).
-Also builds on the landed ` ```studio ` journey (PR #6: extractor, shelfSync, workshop mode).
+Also builds on the landed ` ```studio ` journey (PR #6: extractor, shelfSync, workshop mode),
+and **absorbs ROADMAP item 3 (raw-skills packaging)** as slice D0 — implementing the design
+already fixed in `docs/specs/2026-07-02-workshop-lean-distribution-design.md` §5, because the
+finale's First Breath and launch command depend on it (§6).
 **Proofing artifacts** (gitignored, `.superpowers/brainstorm/journey-page-feel/`):
 `v1b-dossier-journey.html` — the chosen direction, interactive (undo, choice cards, journey
 rail, signature close); `v1-dossier.html`, `v2-canvas.html`, `v3-stage.html` — the explored
@@ -213,22 +216,41 @@ SKIP affordance always visible; `prefers-reduced-motion` collapses every beat to
    the D1 §4.3 embed's visible face; the raw log stays reachable behind a disclosure.
 4. **First Breath.** The page goes quiet; the status chip hands over — `architect` →
    `<name> · live` (sapphire pulse). Then the composed agent's first words stream in, typed:
-   a REAL one-turn `claude -p` greeting run with cwd = the composed agent home, prompted to
-   greet the participant by name and reference their actual choices. **Gated on ROADMAP
-   item 3 (raw-skills packaging)** — the turn needs the agent-home form (`.claude/skills/`
-   + `CLAUDE.md`) to load as an agent. Until item 3 lands, this beat renders a static
-   "first words" card quoting the personalized identity instead (flagged fallback, not a
-   silent cut).
+   a REAL one-turn `claude -p` greeting run with cwd = the composed agent home (D0's
+   raw-skills form is what makes the agent loadable this way), tool-less, prompted to greet
+   the participant by name and reference their actual choices — the same subprocess plumbing
+   as `ChatSession`, one turn, new endpoint `POST /api/first-breath` (server spawns it with
+   the agent-home cwd; SSE-streams tokens into the beat). If the turn errors or exceeds a
+   ~20s budget, the beat falls back to a static first-words card quoting the personalized
+   identity (flagged fallback — the ceremony never hangs the room).
 5. **The Launch Card.** The birth certificate: name in serif, parts manifest, integrations
-   green, the exact launch command (`cd dist/<name>-cos && claude` post-item-3; the
-   `/plugin marketplace add …` pair before it — read from the composer's `install` field,
-   never hardcoded) with a copy button, and "three things to ask it first" derived from
-   picks (each skill's `brief` supplies its line).
+   green, the exact launch command — `cd dist/<name>-cos && claude` — read from the
+   composer's `install` field (never hardcoded; D0 rewrites that field), with a copy button,
+   and "three things to ask it first" derived from picks (each skill's `brief` supplies its
+   line).
 
-Beats 1–3 + 5 ship with D1 (they re-skin surfaces D1 already owns); beat 4's live turn is a
-small follow-on wired when item 3 lands.
+D0 makes beats 4–5 real; beats 1–3 + 5 re-skin surfaces D1 already owns. If D1 ever ships
+ahead of D0 (cut-line inversion), beat 4 uses the static fallback and the launch card shows
+the composer's then-current install field — flagged, not silent.
 
 ## 7. Slices (each independently shippable, in order)
+
+### 7.0 D0 — raw-skills packaging (the destination becomes real)
+
+Implements `docs/specs/2026-07-02-workshop-lean-distribution-design.md` §5 — the design is
+already fixed there; this slice is its execution, absorbed here because the finale depends
+on it. The composer emits an **agent home** instead of a plugin: `.claude/skills/<id>/…`,
+`.claude/agents/context-gatherer.md`, root `.mcp.json`, a generated `CLAUDE.md` (identity +
+name + the participant's personalization), `vault/`, `.env` — and **stops emitting**
+`.claude-plugin/plugin.json` + `marketplace.json`. `composer.py`'s `install` field becomes
+`cd <dir> && claude`; `keys.py`/`server.py` `.env` mechanics unchanged (same tree, same
+file). Includes the **reference-path invariant test**: every reference mentioned in a
+shipped SKILL.md resolves from the agent-home root. Substrate cleanup (ROADMAP "Cleanup /
+later": `chief-of-staff/.claude-plugin/`, `marketplace.json`, plugin-install wording in the
+substrate README/INSTALL) rides along — docs-only substrate edits, placeholder-contract
+scan mandatory. **D0 touches no contested frontend files and is the ONE slice executable
+before onboarding-cards lands** — it is also the highest-leverage slice for the workshop
+room (participants type `cd <dir> && claude` and talk to what they built).
 
 ### 7.1 D1 — the dossier shell + interview journey (the floor)
 
@@ -265,12 +287,21 @@ bubble suppression · `cards.js` card primitive + rise/fold/baton/morph motion �
 - **Conversation persistence across studio restarts** (ROADMAP product requirement) — not
   this spec; the dossier renders live-session beats only. (The beat list is the natural
   future persistence unit; noted, not built.)
-- **Connect guide content** (ROADMAP item 7) and **raw-skills packaging** (item 3).
+- **Connect guide content** (ROADMAP item 7). (Raw-skills packaging is NO LONGER a
+  non-goal — it is slice D0.)
 - **No new deps, no build step** — vanilla JS + CSS, stdlib-only server additions.
 - **`chief-of-staff/` and `agent-architect/` untouched.**
 
 ## 9. Testing
 
+- **D0 composer** (`test_composer_*.py`): output tree is agent-home form (`.claude/skills/`
+  present; `plugin.json`/`marketplace.json` ABSENT); `install` field is the `cd` form; the
+  reference-path invariant (every reference named in a shipped SKILL.md resolves from the
+  agent-home root); generated `CLAUDE.md` carries the agent name; placeholder-contract grep
+  on the substrate diff.
+- **First breath** (`test_server.py` + integration): `/api/first-breath` streams tokens for
+  a composed home and falls back cleanly on error/timeout; one real-turn smoke with a real
+  composed agent (fresh uuid4 session id).
 - **Extractor** (`test_studio_extractor.py`): chapter valid/malformed/absent; unknown phase;
   title >80 chars; blocks vocabulary (valid, unknown type skipped, malformed → `[]`);
   chapter failure never kills picks/ask sync.
@@ -286,13 +317,18 @@ bubble suppression · `cards.js` card primitive + rise/fold/baton/morph motion �
 ## 10. Risks
 
 1. **Branch collision (live now):** onboarding-cards is mid-implementation in the same
-   repo. This spec lands as docs on `main` safely; the **plan must not be executed** until
-   `feat/onboarding-cards-impl` merges, then the implementation branch bases on that. The
-   execution handoff must restate this gate.
-2. **Model contract compliance:** the agent may omit/mangle `chapter` under pressure. Fallback
+   repo. This spec lands as docs on `main` safely; **D1–D3 must not be executed** until
+   `feat/onboarding-cards-impl` merges, then the implementation branch bases on that.
+   **D0 is exempt** (composer/substrate-side, no contested files) and may execute
+   immediately on its own branch. The execution handoff must restate this gate per slice.
+2. **Packaging switch day-of-workshop:** D0 changes the participant install flow the night
+   before the room. Mitigation: the reference-path invariant test + a fresh-machine dress
+   rehearsal (ROADMAP "Cleanup / later" E2E item) before the room; the old plugin form
+   remains one `git revert` away.
+3. **Model contract compliance:** the agent may omit/mangle `chapter` under pressure. Fallback
    (append to open chapter) keeps the page whole; ⟳ regenerate is the in-room recovery; the
    integration smoke keeps the prompt honest.
-3. **One page, growing DOM:** a session is tens of beats — trivial. Token streaming into the
+4. **One page, growing DOM:** a session is tens of beats — trivial. Token streaming into the
    open chapter reuses the existing per-turn render throttle.
-4. **Fence discipline:** `chapter` lives inside the existing ```studio block — no new fence,
+5. **Fence discipline:** `chapter` lives inside the existing ```studio block — no new fence,
    so the spec/json/studio disjointness rules are untouched.
