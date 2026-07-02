@@ -5,6 +5,7 @@
 
 /* trigger button in the header */
 #shelfbtn {
+  margin-left: auto;  /* header spacer: brand + status left, controls right */
   font-size: 12px;
   font-family: var(--mono);
   padding: 5px 14px;
