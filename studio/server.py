@@ -1,5 +1,6 @@
 """FastAPI backend for agent-studio. Local single-user; state in memory. Bind 127.0.0.1 only."""
 from __future__ import annotations
+import asyncio
 import json
 import uuid
 from pathlib import Path
@@ -9,7 +10,9 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from studio import composer as _composer
+from studio import distiller as _distiller
 from studio import keys
+from studio import onboarding as _onboarding
 from studio import smokes
 from studio import tweaker
 from studio.chat_session import ChatSession
@@ -37,6 +40,7 @@ app = FastAPI(title="agent-studio")
 SESSIONS: dict[str, ChatSession] = {}
 EXPORTS: dict[str, dict] = {}
 BUILDING: set[str] = set()
+_DISTILL_TASK: asyncio.Task | None = None    # materials distill runs in the background
 
 
 @app.post("/api/session/new")
@@ -54,7 +58,22 @@ async def new_session(req: Request) -> JSONResponse:
         write_system_prompt(_SYSTEM_PROMPT)  # idempotent; refreshes from current architect refs
         SESSIONS[sid] = ChatSession(session_id=sid, system_prompt_path=_SYSTEM_PROMPT)
     else:
-        write_system_prompt(_WORKSHOP_PROMPT, mode="workshop")
+        state = _onboarding.load_state()
+        participant, onboarding_mode = None, False
+        sb = Path(state["second_brain"]) if state.get("second_brain") else None
+        if state.get("completed_at") and sb is not None and (sb / "profile.md").exists():
+            mats = state.get("materials", {})
+            participant = {
+                "name": state.get("name", ""),
+                "second_brain": str(sb),
+                "profile_text": (sb / "profile.md").read_text(encoding="utf-8"),
+                "materials_index": ", ".join(mats.get("copied", []) + mats.get("folders", [])),
+            }
+        elif not state.get("completed_at"):
+            onboarding_mode = True
+        # completed but second brain missing -> neither section (degrade, review I4)
+        write_system_prompt(_WORKSHOP_PROMPT, mode="workshop",
+                            participant=participant, onboarding=onboarding_mode)
         SESSIONS[sid] = ChatSession(session_id=sid, system_prompt_path=_WORKSHOP_PROMPT,
                                     catalog_ids=_catalog_ids())
     return JSONResponse({"session_id": sid, "mode": mode})
@@ -143,7 +162,11 @@ async def compose_endpoint(req: Request) -> StreamingResponse:
         if not slug:
             yield _sse_preflight_error("couldn't make a plugin name from that — use some letters or numbers (a-z, 0-9)")
             return
-        vault = _composer._REPO / "dist" / f"{slug}-vault"
+        state = _onboarding.load_state()
+        if state.get("completed_at") and state.get("second_brain"):
+            vault = Path(state["second_brain"])       # spec §5.3: the second brain IS the vault
+        else:
+            vault = _composer._REPO / "dist" / f"{slug}-vault"
         async for ev in _composer.compose(picks, name, _composer._REPO / "dist", vault):
             yield _sse(ev)
 
@@ -216,6 +239,98 @@ async def catalog() -> JSONResponse:
     except (FileNotFoundError, json.JSONDecodeError):
         data = {"baseline": {"items": []}, "shelf": {"items": []}}
     return JSONResponse(data)
+
+
+# ── Onboarding (onboarding-cards spec §5.2) ───────────────────────────────────
+def _ok(state: dict) -> JSONResponse:
+    return JSONResponse({"ok": True, **state, "completed": bool(state.get("completed_at"))})
+
+
+def _bad(e: Exception) -> JSONResponse:
+    return JSONResponse({"ok": False, "message": str(e)}, status_code=400)
+
+
+@app.get("/api/onboarding")
+async def onboarding_state() -> JSONResponse:
+    return _ok(_onboarding.load_state())
+
+
+@app.post("/api/onboarding/name")
+async def onboarding_name(req: Request) -> JSONResponse:
+    body = await req.json()
+    try:
+        return _ok(_onboarding.set_name(body.get("name", "")))
+    except ValueError as e:
+        return _bad(e)
+
+
+@app.post("/api/onboarding/materials")
+async def onboarding_materials(req: Request) -> JSONResponse:
+    body = await req.json()
+    try:
+        if body.get("folder"):
+            return _ok(_onboarding.register_folder(body["folder"]))
+        f = body.get("file") or {}
+        return _ok(_onboarding.stage_file(f.get("name", ""), f.get("b64", "")))
+    except ValueError as e:
+        return _bad(e)
+
+
+@app.post("/api/onboarding/materials/done")
+async def onboarding_materials_done() -> JSONResponse:
+    global _DISTILL_TASK
+    sources = _onboarding.materials_sources()
+    if sources and _DISTILL_TASK is None:
+        _DISTILL_TASK = asyncio.create_task(_distiller.distill(sources))
+    mats = _onboarding.load_state().get("materials", {})
+    return JSONResponse({"ok": True, "copied": mats.get("copied", []),
+                         "folders": mats.get("folders", [])})
+
+
+@app.post("/api/onboarding/second-brain")
+async def onboarding_second_brain(req: Request) -> JSONResponse:
+    body = await req.json()
+    try:
+        return _ok(_onboarding.set_second_brain(body.get("path", "")))
+    except ValueError as e:
+        return _bad(e)
+
+
+@app.post("/api/onboarding/complete")
+async def onboarding_complete() -> StreamingResponse:
+    async def stream():
+        global _DISTILL_TASK
+        state = _onboarding.load_state()
+        if not state.get("second_brain"):
+            yield _sse_preflight_error("choose your second brain location first")
+            return
+        task = _DISTILL_TASK
+        if task is None:
+            # Studio restarted between materials/done and here (review I1): start inline.
+            # set_second_brain already MOVED staged files into <sb>/inbox/onboarding/, so
+            # materials_sources() may be empty; fall back to that dir as a source.
+            sources = _onboarding.materials_sources()
+            if not sources:
+                moved = Path(state["second_brain"]) / "inbox" / "onboarding"
+                if moved.is_dir():
+                    sources = [moved]
+            task = asyncio.create_task(_distiller.distill(sources)) if sources else None
+        yield _sse({"type": "stage", "name": "distill", "status": "running"})
+        text = None
+        if task is not None:
+            try:
+                text = await task
+            except Exception:
+                text = None                 # non-fatal (spec §5.6) — stub profile below
+        _DISTILL_TASK = None
+        yield _sse({"type": "stage", "name": "distill", "status": "ok" if text else "fail"})
+        profile_path = _onboarding.write_profile(text)
+        yield _sse({"type": "profile",
+                    "text": profile_path.read_text(encoding="utf-8"),
+                    "distilled": bool(text)})
+        yield _sse({"type": "done"})
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
 
 
 @app.get("/")
