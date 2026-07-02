@@ -1,7 +1,8 @@
 # Studio onboarding journey + guided card framework
 
 **Date:** 2026-07-02
-**Status:** Draft — pending shipshape gate 1
+**Status:** Reviewed — shipshape gate 1 passed with revisions applied (see
+`docs/reviews/shipshape-studio-onboarding-cards-spec-2026-07-02.md`)
 **Owner:** Lucas
 **Target:** QubitStudio "Build Your Own Chief of Staff" workshop
 **Depends on:** the QubitStudio journey slice (`docs/specs/2026-07-02-studio-qubitstudio-journey-design.md`,
@@ -75,6 +76,8 @@ asks, per-skill personalization (r1-B, later), and the connect/key walkthroughs 
   `keys` is **reserved for the connect slice** (schema noted here so it isn't redesigned:
   numbered steps, an open-URL button, paste fields, a Test action wired to `/api/keys/test`).
 - `progress` and `why` are optional; `options[].id` defaults to `a`, `b`, … when absent.
+- Every card renders a visible **"skip for now"** unless `skippable: false` — the room must
+  never stall on a card (review I6).
 - Answers are a single shape for every kind:
   `{card_id, choices: ["a"], custom: "…"|null, skipped: false, payload: {...}|null}`
   (`payload` carries kind-specific data — registered files, the chosen path).
@@ -99,7 +102,7 @@ producer sends a chat message (§4.2); later producers route to their own endpoi
 | Move | Behavior |
 |---|---|
 | **rise** | New card enters: 10px translate-up + fade, ~300ms, the same curve as the welcome fade-in (`cubic-bezier(.2,.7,.2,1)`). One card rises at a time |
-| **fold** | Answered card compresses to a one-line receipt ("07:30 weekdays ✓") and dims. History stays visible in the rail — never modal |
+| **fold** | Answered card compresses to a one-line receipt ("07:30 weekdays ✓", length-capped ~60 chars) and dims. History stays visible in the rail — never modal |
 | **baton** | Exactly one hot surface. `baton('card')` disables the chat composer (visible sleep state: dashed border, "the architect will ask for you in a moment…"); `baton('composer')` wakes it. The sapphire border marks the holder |
 | **morph** | A finished sequence is replaced by what it built — onboarding cards become the "Your agent" panel; connect cards will become the green integrations row |
 
@@ -174,10 +177,10 @@ files stage in `studio/.cache/onboarding-inbox/` until the second brain exists, 
 |---|---|
 | `GET /api/onboarding` | → full state + `completed: bool` |
 | `POST /api/onboarding/name` | `{name}` (trimmed, 1–60 chars) → saved |
-| `POST /api/onboarding/materials` | `{files: [{name, b64}]}` → filenames sanitized (basename only, no traversal), each ≤ 20 MB, ≤ 40 total → staged. Or `{folder}` → expanduser → must exist and be a dir → registered |
+| `POST /api/onboarding/materials` | **one file per request** `{file: {name, b64}}` (per-chip progress falls out for free) → filename sanitized (basename only, no traversal), ≤ 20 MB each, ≤ 40 files and ≤ ~100 MB total per run → staged. Or `{folder}` → expanduser → must exist and be a dir → registered |
 | `POST /api/onboarding/materials/done` | starts the distiller as a background `asyncio` task over the staging dir + registered folders → `{ok, copied, folders}` |
 | `POST /api/onboarding/second-brain` | `{path}` → expanduser → absolute; **rejected if inside the repo checkout** (public-repo protection); `mkdir(parents=True, exist_ok=True)`; staged files move to `<sb>/inbox/onboarding/`; `materials.md` index written (copied names + linked folder paths) |
-| `POST /api/onboarding/complete` | SSE: awaits the distiller task (cap 180 s), writes `<sb>/profile.md` (or the fallback stub, §5.6), sets `completed_at`, streams `stage` events then `{"type":"profile","text":…}` then `done` |
+| `POST /api/onboarding/complete` | SSE: **400 (preflight error event) if no second brain is set** (order violation); if the distiller task is absent (studio restarted mid-onboarding) it is **started inline, never awaited-on-nothing**; awaits (cap 180 s), writes `<sb>/profile.md` (or the fallback stub, §5.6), sets `completed_at`, streams `stage` events then `{"type":"profile","text":…}` then `done` |
 
 Default second-brain suggestion shown by the path card: `~/second-brain`.
 
@@ -215,6 +218,15 @@ The workshop session starts at the reveal and runs the whole walk. The UI sends 
    begins — same session, no seam.
 6. During onboarding turns the agent still emits the studio block (`picks: []` until the
    interview produces recommendations) — the extractor is already tolerant of empty picks.
+7. **Skip is always available** (review I6): each card's "skip for now" advances the walk;
+   skipping everything completes onboarding with the stub profile (name only). Every skip is
+   reported via `[studio event] participant skipped <step>` so the agent adapts instead of
+   waiting. A stuck participant — or a misbehaving model — can never stall the room.
+8. **Turn serialization (Critical C1).** One `claude -p --resume` per session at a time,
+   enforced at both ends: the frontend routes ALL sends (participant messages and
+   `[studio event]`s) through a single outbound queue that waits for the in-flight turn's
+   `done`; `ChatSession` gains a per-instance `asyncio.Lock` around `send()` so a second
+   caller awaits instead of forking a concurrent subprocess on the same session id.
 
 ### 5.5 Prompt changes (`system_prompt.py`)
 
@@ -223,7 +235,9 @@ The workshop session starts at the reveal and runs the whole walk. The UI sends 
 - `participant` (dict: `name`, `second_brain`, `profile_text`, `materials_index`) → a
   `# The participant` section: greet and refer to them by name; the profile text (head-capped
   at ~6,000 chars) is their standing context. Injected on **every** workshop session once
-  onboarding is complete — the architect knows them every launch.
+  onboarding is complete — the architect knows them every launch. **Degrade, never 500:** if
+  the second brain or `profile.md` is missing at `session/new` (moved/deleted), the
+  participant section is skipped and the UI may offer the wizard again (`?onboard=1` path).
 - `onboarding=True` → a `# The onboarding walk` contract: the beats of §5.4, the
   `[studio event]` convention ("messages in brackets come from the studio, not the
   participant — never quote them back"), react-with-specifics instruction, then hand off into
@@ -240,11 +254,18 @@ async def distill(source_dirs: list[Path], timeout: int = 180) -> str   # stdout
 ```
 
 Prompt (fixed): read every file under the given directories — CVs (PDF), LinkedIn
-screenshots (images — the Read tool handles both), writing samples — and return a concise
-markdown owner profile: identity & career arc, current focus, people/orgs in orbit, working
-style & voice, notable specifics worth remembering. No preamble, ≤ ~150 lines,
-non-interactive. `cwd` = the staging dir; subprocess + `wait_for` timeout + nonzero-exit
-handling copied from `tweaker._run_voice_pass`.
+screenshots (images), writing samples — and return a concise markdown owner profile:
+identity & career arc, current focus, people/orgs in orbit, working style & voice, notable
+specifics worth remembering. **For large linked folders, read a representative sample
+(~30 files, prefer recent/top-level) and say what was sampled vs read fully; note unreadable
+files rather than failing.** No preamble, ≤ ~150 lines, non-interactive.
+Evidence: a live probe during review confirmed this exact argv shape reads markdown AND
+genuinely views images; PDF is a **verify-first item for the plan** (probe a real CV PDF —
+if weak, the files-card copy nudges "CV as PDF or text; LinkedIn as screenshots" wording
+accordingly). The staging dir is **always created** (a folders-only participant must not
+break the spawn); `cwd` = the staging dir, falling back to the system temp dir when empty.
+Subprocess + `wait_for` timeout + nonzero-exit handling copied from
+`tweaker._run_voice_pass`.
 
 **Non-fatal by design:** on any failure `complete` writes a stub profile (`# <name>` + the
 materials index + "not yet distilled") and the `[studio event]` says the materials are
@@ -253,11 +274,15 @@ registered but unread — the agent adapts, onboarding still completes. This is 
 
 ### 5.7 Frontend (`studio/static/onboard.js`, new; `app.js`/`index.html` edits)
 
-`onboard.js` is the onboarding **producer**: overlay screens (name → welcome → reveal), the
-files/path cards via `window.cards`, event-message sending, the complete-SSE consumer, and
-the morph hand-off to `renderAgentPanel`. `app.js` gains: the `GET /api/onboarding` gate in
-`start()`, `[card]`/`[studio event]` bubble suppression, ask-card rendering on `done`, and
-the baton hooks on the composer. Status chip: unchanged states, plus during the walk it reads
+`onboard.js` is the onboarding **producer**: overlay screens (name → welcome — participant
+name HTML-escaped with the existing app.js idiom — → reveal), the files/path cards via
+`window.cards`, event-message sending (through the §5.4 send queue), the complete-SSE
+consumer, and the morph hand-off to `renderAgentPanel`. **During the walk `onboard.js` owns
+the `#blueprint` aside**: app.js gates both its `renderAgentPanel(null)` empty-state paint
+and the per-`done` repaint on onboarding status until the morph hands the panel back —
+otherwise the first `done` event would wipe the hot card (review I7). `app.js` also gains:
+the `GET /api/onboarding` gate in `start()`, `[card]`/`[studio event]` bubble suppression,
+ask-card rendering on `done`, and the baton hooks on the composer. Status chip: unchanged states, plus during the walk it reads
 `onboarding` until the first streamed token flips it to `agent live` (the journey's handshake
 rule, untouched).
 
@@ -282,17 +307,22 @@ Backend (pytest, test-per-module):
 - `test_system_prompt.py` (extend): participant section includes name + profile text +
   cap; onboarding contract present only when `onboarding=True`; ask contract in both
   workshop variants; architect mode byte-identical (existing tests).
+- `test_chat_session.py` (extend): two concurrent `send()` calls serialize — the second
+  subprocess spawns only after the first turn completes (C1).
 - `test_onboarding.py` (new): state round-trip; name validation; b64 staging with filename
-  sanitization (traversal attempt → basename); size/count caps; folder validation; second-
-  brain creation + staged-file move + `materials.md`; **repo-path rejection**; completed
-  flag; re-run overwrite.
+  sanitization (traversal attempt → basename); size/count/total caps; folder validation;
+  second-brain creation + staged-file move + `materials.md`; **repo-path rejection**;
+  completed flag; re-run overwrite; **complete without second brain → preflight error**;
+  **complete with no background task → distiller started inline** (restart resilience);
+  staging dir created for a folders-only run.
 - `test_distiller.py` (new): argv shape (variadic `--allowed-tools Read`, one `--add-dir`
   per source); prompt mentions the dirs; timeout/nonzero-exit raise (subprocess mocked, same
   idiom as the tweaker tests).
 - `test_server.py` (extend): endpoint happy paths + validation errors; `session/new`
   injects participant when complete / onboarding contract when not (prompt cache file
-  content asserted); compose vault override (monkeypatched composer); `complete` SSE shape
-  with a mocked distiller.
+  content asserted); **state complete but second brain missing → participant section
+  skipped, no error**; compose vault override (monkeypatched composer); `complete` SSE
+  shape with a mocked distiller.
 - `test_smoke_integration.py` (extend, marked integration): one real `distill()` over a
   two-file fixture (a small `.md` + a `.png`) asserting non-empty markdown comes back.
 
@@ -309,7 +339,8 @@ repo). Nothing personal can enter a commit.
 
 | Risk | Mitigation |
 |---|---|
-| Live narration drifts off the walk | Every gate is server/UI-driven — the agent only narrates; the onboarding contract is short and imperative; malformed asks/blocks are dropped tolerantly; worst case the participant still completes via cards |
+| Live narration drifts off the walk | Every gate is server/UI-driven — the agent only narrates; the onboarding contract is short and imperative; malformed asks/blocks are dropped tolerantly; skip-for-now on every card (§5.4.7) means the participant completes even if the model stalls |
+| Overlapping turns corrupt the session (C1) | Frontend send queue + per-session `asyncio.Lock` in `ChatSession.send()` (§5.4.8) — one `--resume` subprocess at a time, tested |
 | Distiller slow or failing on the night | Overlapped with the path decision; 180 s cap; non-fatal stub fallback (§5.6); one real integration smoke before the room |
 | Base64 uploads bloat memory | 20 MB/file, 40-file caps enforced server-side; workshop materials are CVs and screenshots |
 | Filename/path abuse | Basename-only sanitization on staged files; second-brain path expanded, absolute, repo-interior rejected |
