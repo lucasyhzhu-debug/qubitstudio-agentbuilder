@@ -20,7 +20,18 @@ from studio.system_prompt import write_system_prompt
 _HERE = Path(__file__).resolve().parent
 _STATIC = _HERE / "static"
 _SYSTEM_PROMPT = _HERE / ".cache" / "architect-system-prompt.md"
+_WORKSHOP_PROMPT = _HERE / ".cache" / "workshop-system-prompt.md"
 _CATALOG = _HERE / "catalog.json"
+
+
+def _catalog_ids() -> set[str]:
+    try:
+        data = json.loads(_CATALOG.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return set()
+    return {it["id"] for it in data.get("shelf", {}).get("items", [])
+            if isinstance(it, dict) and it.get("id")}
+
 
 app = FastAPI(title="agent-studio")
 SESSIONS: dict[str, ChatSession] = {}
@@ -29,11 +40,24 @@ BUILDING: set[str] = set()
 
 
 @app.post("/api/session/new")
-async def new_session() -> JSONResponse:
-    write_system_prompt(_SYSTEM_PROMPT)  # idempotent; refreshes from current architect refs
+async def new_session(req: Request) -> JSONResponse:
+    # Tolerant body parse: absent/empty/invalid body -> workshop default (spec §4.1).
+    try:
+        body = await req.json()
+    except Exception:
+        body = {}
+    mode = body.get("mode") if isinstance(body, dict) else None
+    if mode not in ("workshop", "architect"):
+        mode = "workshop"
     sid = str(uuid.uuid4())
-    SESSIONS[sid] = ChatSession(session_id=sid, system_prompt_path=_SYSTEM_PROMPT)
-    return JSONResponse({"session_id": sid})
+    if mode == "architect":
+        write_system_prompt(_SYSTEM_PROMPT)  # idempotent; refreshes from current architect refs
+        SESSIONS[sid] = ChatSession(session_id=sid, system_prompt_path=_SYSTEM_PROMPT)
+    else:
+        write_system_prompt(_WORKSHOP_PROMPT, mode="workshop")
+        SESSIONS[sid] = ChatSession(session_id=sid, system_prompt_path=_WORKSHOP_PROMPT,
+                                    catalog_ids=_catalog_ids())
+    return JSONResponse({"session_id": sid, "mode": mode})
 
 
 @app.post("/api/session/load")

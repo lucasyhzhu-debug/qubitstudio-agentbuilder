@@ -8,7 +8,7 @@ class _FakeSession:
     async def send(self, msg):
         yield {"type": "token", "text": "Hi "}
         yield {"type": "token", "text": "there"}
-        yield {"type": "done", "spec": self.spec}
+        yield {"type": "done", "spec": self.spec, "studio": None}
 
 def test_new_session_returns_id():
     c = TestClient(server.app)
@@ -84,3 +84,35 @@ def test_load_rejects_junk():
     c = TestClient(server.app)
     r = c.post("/api/session/load", json={"spec": {"nope": 1}})
     assert r.status_code == 400
+
+def test_new_session_defaults_to_workshop():
+    c = TestClient(server.app)
+    r = c.post("/api/session/new")               # bare POST, no body — must keep working
+    assert r.status_code == 200 and r.json()["mode"] == "workshop"
+    sid = r.json()["session_id"]
+    assert server.SESSIONS[sid].catalog_ids       # shelf ids wired in
+    assert "crm" in server.SESSIONS[sid].catalog_ids
+
+def test_new_session_architect_mode():
+    c = TestClient(server.app)
+    r = c.post("/api/session/new", json={"mode": "architect"})
+    assert r.json()["mode"] == "architect"
+    assert server.SESSIONS[r.json()["session_id"]].catalog_ids is None
+
+def test_new_session_junk_mode_falls_back_to_workshop():
+    c = TestClient(server.app)
+    r = c.post("/api/session/new", json={"mode": "banana"})
+    assert r.json()["mode"] == "workshop"
+
+def test_chat_done_carries_studio(monkeypatch):
+    class _FakeStudioSession:
+        spec = None
+        async def send(self, msg):
+            yield {"type": "token", "text": "hi"}
+            yield {"type": "done", "spec": None, "studio": {"picks": ["crm"], "name": None, "ready": False}}
+    c = TestClient(server.app)
+    sid = c.post("/api/session/new").json()["session_id"]
+    server.SESSIONS[sid] = _FakeStudioSession()
+    with c.stream("POST", "/api/chat", json={"session_id": sid, "message": "hi"}) as r:
+        body = "".join(r.iter_text())
+    assert '"picks"' in body and '"crm"' in body
