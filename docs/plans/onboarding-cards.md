@@ -490,7 +490,9 @@ def test_stage_file_caps():
 
 def test_register_folder_must_exist(tmp_path):
     d = tmp_path / "essays"; d.mkdir()
-    assert str(d) in ob.register_folder(str(d))["materials"]["folders"][0]
+    out = ob.register_folder(str(d))
+    # Compare Paths, not substrings — resolve() may fold drive-letter case on Windows.
+    assert Path(out["materials"]["folders"][0]) == d.resolve()
     with pytest.raises(ValueError):
         ob.register_folder(str(tmp_path / "nope"))
 
@@ -923,7 +925,8 @@ def test_onboarding_complete_inline_distill_and_profile(monkeypatch, tmp_path):
     server._DISTILL_TASK = None                      # restart-lost-task path (review I1)
     with c.stream("POST", "/api/onboarding/complete") as r:
         body = "".join(r.iter_text())
-    assert "engines" in body and '"type": "done"' in body.replace('","', '", "') or "done" in body
+    assert "engines" in body
+    assert '"type": "profile"' in body
     assert (tmp_path / "sb" / "profile.md").exists()
     assert ob.completed() is True
 
@@ -1246,9 +1249,18 @@ git commit -m "feat(studio): onboarding endpoints, participant-aware sessions, s
   }
 
   function morph(html) {
-    if (!root) return;
-    root.classList.add('morphing');
-    setTimeout(() => { root.innerHTML = html; root.classList.remove('morphing', 'cards-rail'); }, 220);
+    // Resolves AFTER the swap — callers must await before repainting the same element
+    // (review C1: a fire-and-forget timeout here would wipe whatever they paint next).
+    return new Promise((res) => {
+      if (!root) return res();
+      const el = root;
+      el.classList.add('morphing');
+      setTimeout(() => {
+        el.innerHTML = html;
+        el.classList.remove('morphing', 'cards-rail');
+        res();
+      }, 220);
+    });
   }
 
   window.cards = { mount, show, queue, fold, morph, baton, onBaton };
@@ -1359,11 +1371,18 @@ git commit -m "feat(studio): guided card framework — rise/fold/baton/morph, qu
 - Consumes: `window.cards` (Task 7); `ev.studio.ask` (Tasks 1/6); post-journey `send()`/`MODE`/`SEED`/`renderAgentPanel`.
 - Produces: `queueSend(message) -> Promise` (ALL sends go through it — spec §5.4.8); `window.startWorkshopSession(seed)` (Task 9 calls it); `HIDDEN_MSG` regex suppression; `cards.onBaton` composer hook; ask-card rendering. `window.onboardingActive` flag gates panel repaints (review I7).
 
-- [ ] **Step 1: index.html — script/style tags.** Add BEFORE the `app.js` script tag:
+- [ ] **Step 1: index.html — script/style tags + ask rail.** Add BEFORE the `app.js` script tag:
 
 ```html
 <link rel="stylesheet" href="/static/cards.css">
 <script src="/static/cards.js"></script>
+```
+
+And inside the right-panel `<aside>`, immediately BEFORE the `#blueprint` element (review
+I2 — ask cards must survive the per-turn panel repaint, so they live in their own rail):
+
+```html
+<div id="askrail"></div>
 ```
 
 - [ ] **Step 2: app.js — send queue + suppression.** Below the `SEED` constant add:
@@ -1403,7 +1422,7 @@ if (window.cards) {
 // The architect's ask (spec §4.2): render the card, send the answer as a [card] message.
 function renderAskCard(ask) {
   if (!window.cards || document.querySelector(`.card[data-card-id="${CSS.escape(ask.id)}"]`)) return;
-  window.cards.mount($('#blueprint'));
+  window.cards.mount($('#askrail'));   // own rail — panel repaints never wipe asks (review I2)
   window.cards.show({ ...ask, producer: 'ask', kind: 'question', eyebrow: 'the architect asks' },
     (a) => {
       let receipt, reply;
@@ -1551,14 +1570,17 @@ git commit -m "feat(studio): send queue, ask cards, composer baton — C1 slice 
     const nameInput = $('#ob-name-input');
     if (state && state.name) nameInput.value = state.name;
     nameInput.focus();
+    // Persistent listener with a re-entrancy guard — `{once:true}` would brick the form
+    // if the first submit had an empty name (review I3).
     $('#ob-name-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = nameInput.value.trim();
-      if (!name) return;
+      if (!name || nameInput.disabled) return;
+      nameInput.disabled = true;
       const out = await post('/api/onboarding/name', { name });
-      if (!out.ok) { alert(out.message); return; }
+      if (!out.ok) { alert(out.message); nameInput.disabled = false; return; }
       welcome(name);
-    }, { once: true });
+    });
   }
 
   function welcome(name) {
@@ -1649,7 +1671,11 @@ git commit -m "feat(studio): send queue, ask cards, composer baton — C1 slice 
       } else {
         const path = document.querySelector('.card[data-card-id="ob-path"] .card-path').value.trim();
         const out = await post('/api/onboarding/second-brain', { path: path || '~/second-brain' });
-        if (!out.ok) { alert(out.message); return pathStep(); }
+        if (!out.ok) {
+          alert(out.message);
+          window.cards.fold('ob-path', '✗ try again');   // fold the failed card first (review I4)
+          return pathStep();                             // fresh card prepends — fold() targets it next
+        }
       }
       window.cards.fold('ob-path', 'home chosen ✓');
       completeStep();
@@ -1676,7 +1702,7 @@ git commit -m "feat(studio): send queue, ask cards, composer baton — C1 slice 
     const note = distilled ? 'Distilled profile:' : 'Materials registered but not yet distilled. Stub profile:';
     await window.queueSend(`[studio event] second brain created at ${state.second_brain}. ${note}\n${profile}`);
     window.onboardingActive = false;
-    window.cards.morph('');                       // clear the rail…
+    await window.cards.morph('');                 // clear the rail — resolves AFTER the swap (review C1)
     if (typeof renderAgentPanel === 'function') renderAgentPanel(null);   // …hand back the panel
     window.cards.baton('composer');               // the interview is live
   }
