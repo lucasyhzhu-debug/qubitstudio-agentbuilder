@@ -31,3 +31,32 @@ def test_slicer_kept_q0_dropped_render_setup():
     p = build_system_prompt()
     assert "Q0" in p              # quiz content survived the Q10-section excision
     assert "render_setup" not in p  # sliced out of both architecture-spec.md (§11) and quiz-bank.md (Q10 section)
+
+
+# --- workshop mode (QubitStudio journey spec §4.2) ---
+from studio.system_prompt import build_workshop_prompt
+
+def test_workshop_includes_catalog_and_contract():
+    p = build_workshop_prompt()
+    for skill_id in ("crm", "briefing", "scheduling", "tasks", "intake", "drain"):
+        assert skill_id in p                  # every shelf id injected
+    assert "wiki-brain" in p                  # baseline injected
+    assert "```studio" in p                   # emit-the-block instruction
+    assert "superpowers" in p.lower()         # ignore-skill-injection guard kept
+
+def test_workshop_excludes_architect_machinery():
+    p = build_workshop_prompt()
+    assert "Q0" not in p                      # no quiz
+    assert "```spec" not in p                 # no spec contract
+    assert "render_setup" not in p
+
+def test_write_system_prompt_workshop_mode(tmp_path):
+    from studio.system_prompt import write_system_prompt
+    out = write_system_prompt(tmp_path / "wp.md", mode="workshop")
+    text = out.read_text(encoding="utf-8")
+    assert "```studio" in text and "crm" in text
+
+def test_write_system_prompt_default_is_architect_unchanged(tmp_path):
+    from studio.system_prompt import write_system_prompt, build_system_prompt
+    out = write_system_prompt(tmp_path / "sp.md")
+    assert out.read_text(encoding="utf-8") == build_system_prompt()

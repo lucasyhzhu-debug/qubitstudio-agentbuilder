@@ -68,3 +68,7 @@ environment variable is needed or read.
 > **Note:** `.plugin` export and the live browser flows are validated by user-run manual QA
 > (`.\studio\run.ps1`) and the opt-in `pytest studio -m integration` smoke — both spawn a real `claude`
 > build, so they run on your machine, not in the build sandbox.
+
+## Fonts
+
+Fonts in studio/static/fonts/ are OFL-licensed (Bricolage Grotesque, Hanken Grotesk, JetBrains Mono, Crimson Pro), copied from the qubit-site repo. Per-family copyright notices and the full SIL OFL 1.1 license text are in `studio/static/fonts/LICENSES.md`.

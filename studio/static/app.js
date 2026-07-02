@@ -1,11 +1,26 @@
 const $ = (s) => document.querySelector(s);
-let sessionId = null, currentSpec = null;
+let sessionId = null, currentSpec = null, agentLive = false;
+
+// ?mode=architect keeps the generic plugin-design interview reachable (spec §4.1/§4.7).
+const MODE = new URLSearchParams(location.search).get('mode') === 'architect' ? 'architect' : 'workshop';
+const SEED = MODE === 'architect' ? 'Begin the agent-architect interview.' : 'Begin the workshop interview.';
+if (MODE === 'architect') { const a = $('#advanced'); if (a) a.open = true; }
+
+function setStatus(text, live) {
+  const el = $('#status');
+  el.innerHTML = '<i class="dot"></i>' + text.replace(/[<>&]/g, '');
+  el.classList.toggle('live', !!live);
+}
 
 async function start() {
-  const r = await fetch('/api/session/new', { method: 'POST' });
+  const r = await fetch('/api/session/new', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: MODE }),
+  });
   sessionId = (await r.json()).session_id;
-  $('#status').textContent = 'ready';
-  send('Begin the agent-architect interview.');  // seed Q0
+  setStatus('ready');
+  if (MODE === 'workshop') renderAgentPanel(null);
+  send(SEED);  // seed the first turn
 }
 
 // Render assistant markdown -> sanitized HTML (bold, headings, lists, code, links).
@@ -31,14 +46,14 @@ function addBubble(who, text) {
 // a not-yet-closed trailing block so the fence/JSON never flashes mid-stream.
 function stripSpec(text) {
   return text
-    .replace(/```(?:spec|json)[\s\S]*?```/g, '')  // closed blocks
-    .replace(/```(?:spec|json)[\s\S]*$/, '')       // an unclosed trailing block (mid-stream)
+    .replace(/```(?:spec|json|studio)[\s\S]*?```/g, '')  // closed blocks
+    .replace(/```(?:spec|json|studio)[\s\S]*$/, '')       // an unclosed trailing block (mid-stream)
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
 
 async function send(message) {
-  if (message !== 'Begin the agent-architect interview.') addBubble('user', message);
+  if (message !== SEED) addBubble('user', message);
   const bubble = addBubble('assistant', '');
   const r = await fetch('/api/chat', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -52,9 +67,16 @@ async function send(message) {
       const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
       if (!line) continue;
       const ev = JSON.parse(line);
-      if (ev.type === 'token') { acc += ev.text; bubble.innerHTML = renderMarkdown(stripSpec(acc)); scrollLog(); }
+      if (ev.type === 'token') {
+        if (!agentLive) { agentLive = true; setStatus('agent live', true); }  // verifiable handshake
+        acc += ev.text; bubble.innerHTML = renderMarkdown(stripSpec(acc)); scrollLog();
+      }
       else if (ev.type === 'error') { acc += '\n\n**[error]** ' + ev.message; bubble.innerHTML = renderMarkdown(stripSpec(acc)); }
-      else if (ev.type === 'done' && ev.spec) renderBlueprint(ev.spec);
+      else if (ev.type === 'done') {
+        if (ev.spec) renderBlueprint(ev.spec);
+        if (ev.studio && typeof window.shelfSync === 'function') window.shelfSync(ev.studio);
+        if (MODE === 'workshop') renderAgentPanel(ev.studio);
+      }
     }
   }
 }
@@ -81,6 +103,46 @@ function renderBlueprint(spec) {
       card.classList.add('flash'); setTimeout(() => card.classList.remove('flash'), 900);
     });
   }
+}
+
+// ── "Your agent" panel (workshop mode) — the conversation's live mirror ──
+let catalogCache = null;
+async function getCatalog() {
+  if (!catalogCache) {
+    try { catalogCache = await (await fetch('/api/catalog')).json(); }
+    catch { catalogCache = { baseline: { items: [] }, shelf: { items: [] } }; }
+  }
+  return catalogCache;
+}
+
+async function renderAgentPanel(studio) {
+  const cat = await getCatalog();
+  const byId = new Map((cat.shelf?.items || []).map((i) => [i.id, i]));
+  const picks = (studio?.picks || []).map((id) => byId.get(id)).filter(Boolean);
+  const ints = [...new Set(picks.flatMap((i) => i.requires || []))];
+  const row = (name, tagLabel, locked) =>
+    `<div class="ya-row ${locked ? 'locked' : ''}"><span>${name}</span><span class="ya-tag">${tagLabel}</span></div>`;
+  // A participant's typed-but-unsent name must survive the next re-render (each chat
+  // turn calls this fresh); only fall back to the agent's suggested name when the
+  // field is untouched. Mirrors shelf.js's renderBody() keep/restore idiom.
+  const keep = $('#ya-name')?.value?.trim();
+  $('#blueprint').innerHTML = DOMPurify.sanitize(`
+    <div class="bp-card ya">
+      <h3>Your agent</h3>
+      ${(cat.baseline?.items || []).map((b) => row(b.name, '🔒 baseline', true)).join('')}
+      ${picks.length
+        ? picks.map((p) => row(p.name, p.cost?.label || '', false)).join('')
+        : '<p class="ya-empty">Talk to the architect — your agent takes shape here.</p>'}
+      <h3>Integrations</h3>
+      <div class="ya-ints">${ints.length ? ints.map((i) => `<span class="int-chip">${i}</span>`).join('') : '<span class="ya-empty">none yet</span>'}</div>
+      <label class="kr-field">Agent name
+        <input id="ya-name" type="text" maxlength="60" value="${escAttr(keep || studio?.name || '')}" placeholder="e.g. my-cos"></label>
+      <button type="button" id="ya-build" ${picks.length ? '' : 'disabled'}>Build my agent ▶</button>
+    </div>`);
+  const build = $('#ya-build');
+  if (build) build.addEventListener('click', () => {
+    if (typeof window.shelfBuild === 'function') window.shelfBuild($('#ya-name').value.trim());
+  });
 }
 
 $('#composer').addEventListener('submit', (e) => {
@@ -365,7 +427,7 @@ $('#loadfile').addEventListener('change', async (e) => {
     headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ spec }) });
   if (!r.ok) { alert('Invalid spec.json'); return; }
   sessionId = (await r.json()).session_id; currentSpec = null; renderBlueprint(spec);
-  $('#status').textContent = 'loaded';
+  setStatus('loaded');
 });
 
 start();
