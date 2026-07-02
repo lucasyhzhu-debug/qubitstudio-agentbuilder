@@ -1,7 +1,7 @@
 # Studio SapphireOS reskin + conversation-driven journey
 
 **Date:** 2026-07-02
-**Status:** Draft — pending shipshape gate
+**Status:** Reviewed — shipshape gate 1 passed (see `docs/reviews/shipshape-studio-sapphireos-journey-spec-2026-07-02.md`)
 **Owner:** Lucas
 **Target:** QubitStudio "Build Your Own Chief of Staff" workshop, Friday 2026-07-03
 **Depends on:** v0.1.0 migration (shipped) · qubit-site design system (`github.com/Nicegarrry/qubit-site`, `app/globals.css`)
@@ -74,8 +74,8 @@ layer left behind.
 Copy from `qubit-site/public/fonts/` into `studio/static/fonts/` with the same `@font-face`
 declarations: BricolageGrotesque.ttf (variable 200–800), HankenGrotesk.ttf + italic (variable),
 JetBrainsMono-Regular/-Medium.woff2, CrimsonPro-Regular/-Italic.woff2. All four are OFL-licensed
-Google Fonts — safe for the public repo (~1.5 MB total, local-first so no CDN dependency in the
-room). Add `# fonts are OFL (see qubit-site)` provenance note in `studio/README.md`.
+Google Fonts — safe for the public repo (~756 KB total, measured; local-first so no CDN
+dependency in the room). Add `# fonts are OFL (see qubit-site)` provenance note in `studio/README.md`.
 
 ### 3.3 Component translation (signature moves)
 
@@ -114,7 +114,8 @@ reskin except the qmark/wordmark markup in `index.html`.
 ### 4.1 Session modes (`server.py`, `system_prompt.py`)
 
 `POST /api/session/new` accepts optional JSON body `{"mode": "workshop" | "architect"}`;
-**default `workshop`** (no body → workshop). `write_system_prompt` gains the mode: architect
+**default `workshop`**. Body parsing is tolerant: absent, empty, or invalid JSON body → the
+workshop default (the endpoint currently takes no body at all — a bare POST must keep working). `write_system_prompt` gains the mode: architect
 mode writes today's prompt unchanged; workshop mode writes `build_workshop_prompt()`. Cache
 files split: `.cache/architect-system-prompt.md` / `.cache/workshop-system-prompt.md` so modes
 don't clobber each other. The UI reaches architect mode via `?mode=architect` on the page URL
@@ -155,23 +156,30 @@ spec artifact isn't this journey's output. Architect mode keeps them all.
 ### 4.3 Studio-block extraction (`studio_extractor.py`, new)
 
 Sibling of `spec_extractor.py`, same shape: `extract_studio(assistant_text, catalog_ids) ->
-dict | None`. Last ` ```studio ` fence wins; `json.loads`; validation: dict, `picks` a list —
-unknown ids are **dropped with the valid remainder kept** (a hallucinated id must not kill the
-sync), `name` str|None, `ready` coerced to bool. Returns None on malformed JSON so the caller
-keeps prior state. `ChatSession` gains `self.studio` alongside `self.spec`; `send()` runs both
-extractors and the `done` event carries `{"type":"done", "spec":…, "studio":…}` (either may be
-None). `app.js:stripSpec` regex extends to `(?:spec|json|studio)` so the block never flashes
-in chat.
+dict | None`. Matches **only** ` ```studio ` fences — no ` ```json ` fallback (` ```json ` is
+the *spec* extractor's fallback; sharing it would create cross-mode ambiguity). Last fence
+wins; `json.loads`; validation: dict with `picks` **present as a list** (required — this is
+what distinguishes a studio block structurally), unknown ids **dropped with the valid
+remainder kept** (a hallucinated id must not kill the sync), `name` str|None, `ready` coerced
+to bool. Returns None on malformed JSON so the caller keeps prior state. Fence-boundary note:
+` ```studio ` cannot false-match `spec_extractor._FENCE` (its regex requires `\s*\n`
+immediately after `spec|json` — verified in review), so the two extractors are fully disjoint.
+
+`ChatSession` gains `catalog_ids: set[str] | None = None` in its constructor and
+`self.studio: dict | None`. The server passes the catalog's shelf ids **only for workshop
+sessions**; `catalog_ids is None` → studio extraction is skipped entirely (architect sessions
+never run it). `send()` yields `{"type":"done", "spec":…, "studio":…}` (either may be None).
+`app.js:stripSpec` regex extends to `(?:spec|json|studio)` so the block never flashes in chat.
 
 ### 4.4 Chat→shelf sync (frontend)
 
-`shelf.js` exposes one new function on `window`: `shelfSync({picks, name})` — replaces the
-`selected` map with the catalog items for `picks` (marking cards `.on.recommended`, with a
-mono `✓ recommended` eyebrow), fills `.shelf-name` if empty and `name` given, re-renders foot +
-badge. User toggles after a sync still work (the map is the single source of truth; the next
-sync from a later turn re-asserts the agent's view — acceptable for the workshop: the agent is
-told the current picks in the conversation, so divergence self-corrects conversationally).
-`app.js` calls `window.shelfSync(ev.studio)` on `done` when `ev.studio` exists.
+`shelf.js` exposes one new function on `window`: `shelfSync({picks, name})`. Every entry in
+the `selected` map carries an **origin tag** — `user` (added by hand in the drawer) or `agent`
+(added by a sync). A sync **replaces only agent-sourced picks and never removes user-sourced
+ones** (a participant's manual add must not be silently clobbered by the agent's next turn);
+synced cards get `.on.recommended` with a mono `✓ recommended` eyebrow. `name` fills
+`.shelf-name` only if the field is empty. Re-renders foot + badge. `app.js` calls
+`window.shelfSync(ev.studio)` on `done` when `ev.studio` exists.
 
 ### 4.5 The right panel — "Your agent" (workshop mode)
 
@@ -188,9 +196,10 @@ surface via the header button.
 
 Seed message becomes `'Begin the workshop interview.'` in workshop mode (architect mode keeps
 the current string); the `app.js:41` suppress check matches whichever seed was sent. Status
-chip: `starting…` (grey) → on session `ready` → on **first streamed token** flip to `agent
-live` with the sapphire pulsing dot — the roadmap's "verifiable handshake, not a silent
-spinner", with zero new endpoints.
+chip — full state machine (today's states kept): `starting…` (grey) → `ready` (session
+created) → on **first streamed token** `agent live` with the sapphire pulsing dot; `loaded`
+(spec upload path) and error rendering unchanged. This is the roadmap's "verifiable handshake,
+not a silent spinner", with zero new endpoints.
 
 ### 4.7 Advanced-path demotion
 
@@ -226,8 +235,11 @@ Backend (pytest, `studio/tests/`, per the test-per-module pattern):
 - `test_server.py` (extend): `session/new` default is workshop (cache file written);
   `{"mode":"architect"}` selects architect prompt; chat `done` event carries `studio` (mocked
   ChatSession, same monkeypatch idiom as `test_chat_streams_tokens_then_done`).
-- `test_smoke_integration.py`: keep `test_one_real_turn`; add a workshop-mode real-turn variant
-  asserting the reply contains a parseable ` ```studio ` block (marked slow like its sibling).
+- `test_smoke_integration.py`: `test_one_real_turn` needs **no change** — it calls
+  `write_system_prompt` directly (architect builder) and bypasses the server default, so the
+  workshop default flip cannot break it (verified in review). Add a workshop-mode real-turn
+  variant asserting the reply contains a parseable ` ```studio ` block (marked integration
+  like its sibling).
 
 Frontend (no JS runner in repo): manual verification via `python -m studio` — checklist in the
 plan (reskin legibility across chat/shelf/wizard/build panel; shelfSync on a real conversation;
@@ -244,4 +256,4 @@ public OFL binaries; palette is public site CSS).
 | Model emits malformed/hallucinated studio blocks | Extractor returns None / drops unknown ids; prior state kept; UI never crashes on a bad block |
 | Reskin breaks legibility in a corner (wizard fail states, build log) | §3.4 audit + manual checklist over every panel; single theme keeps the matrix small |
 | Two people editing `index.html` (A ∥ B1) | A owns `<header>`; B1 touches only `app.js`/`shelf.js`; B2 rebases on both |
-| Fonts bloat the public repo | ~1.5 MB one-time, local-first for a flaky-wifi room — accepted |
+| Fonts bloat the public repo | ~756 KB one-time (measured), local-first for a flaky-wifi room — accepted |
