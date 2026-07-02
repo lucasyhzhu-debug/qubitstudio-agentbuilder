@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.2.0 — 2026-07-02 — QubitStudio journey
+
+- **Conversation-driven journey (workshop mode, now the default).** The studio chat is
+  chief-of-staff-aware: a catalog-injected workshop system prompt interviews the participant
+  about their working life and emits the build state each turn in a ` ```studio ` fenced block
+  (`{picks, name, ready}`). A new server-side extractor (`studio/studio_extractor.py`) parses it,
+  the SSE `done` event carries it, and the browser syncs the skill shelf (agent picks tagged
+  "✓ recommended"; manual picks always survive syncs) and a new **"Your agent" panel** — the
+  conversation's live mirror with baseline rows, price tags, integration chips, and a Build
+  button. `?mode=architect` keeps the original plugin-design interview unchanged.
+- **SapphireOS reskin.** Studio restyled to qubit-site's design system: light-only token set,
+  qubit wordmark header with a live status chip (pulses "agent live" on the first streamed
+  token — the verifiable first-run handshake), and 7 self-hosted OFL fonts (Bricolage Grotesque,
+  Hanken Grotesk, JetBrains Mono, Crimson Pro; licenses in `studio/static/fonts/LICENSES.md`).
+  Architect-path controls (spec load/export) demoted to a collapsed "advanced" disclosure.
+- **Tests:** suite grows 98 → 120, including a real-turn workshop smoke (a live `claude` turn
+  must emit a parseable ` ```studio ` block). Integration smokes now use fresh session ids
+  (`claude --session-id` permanently consumes an id).
+
 ## 0.1.0 — 2026-07-02 — Migration
 
 - Surgically migrated from the private `Consulting-Agents` mono-repo (source commit `4bf4142`):
