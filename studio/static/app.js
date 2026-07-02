@@ -6,6 +6,12 @@ const MODE = new URLSearchParams(location.search).get('mode') === 'architect' ? 
 const SEED = MODE === 'architect' ? 'Begin the agent-architect interview.' : 'Begin the workshop interview.';
 if (MODE === 'architect') { const a = $('#advanced'); if (a) a.open = true; }
 
+// The dossier is the workshop skin (dossier spec §1); ?ui=chat keeps the old workshop
+// chat reachable on the SAME backend (same session, extractor, endpoints) — the
+// in-room escape hatch until dossier parity is proven at a dress rehearsal.
+const UI = (MODE === 'workshop' && new URLSearchParams(location.search).get('ui') !== 'chat')
+  ? 'dossier' : 'chat';
+
 // ── Send queue ────────────────────────────────────────────────────────────
 // ALL sends — participant submit, seed, [card] answers, [studio event]s — go through
 // ONE promise chain so a programmatic send can never overlap an in-flight turn
@@ -25,6 +31,12 @@ window.onboardingActive = false;   // Task 9 flips this; gates the agent-panel r
 if (window.cards) {
   window.cards.onBaton((holder) => {
     $('#composer').classList.toggle('asleep', holder === 'card');
+    if (holder === 'composer' && !window.onboardingActive) {
+      // dossier + C3: the floating dock retires when the walk hands the baton back;
+      // an ask that arrived mid-walk renders into the document now (gate-2 R6)
+      document.body.classList.remove('onboarding');
+      if (window.dossierActive && window.dossier.renderPendingAsk) window.dossier.renderPendingAsk();
+    }
   });
 }
 
@@ -54,6 +66,7 @@ function setStatus(text, live) {
   el.innerHTML = '<i class="dot"></i>' + text.replace(/[<>&]/g, '');
   el.classList.toggle('live', !!live);
 }
+window.setStatus = setStatus;
 
 // Used by onboard.js after the reveal (Task 9): create the session, seed the walk.
 // Seeding goes through queueSend so it can never overlap a later programmatic send.
@@ -66,24 +79,78 @@ window.startWorkshopSession = async function (seed) {
     body: JSON.stringify({ mode: MODE }),
   });
   sessionId = (await r.json()).session_id;
+  if (UI === 'dossier') sessionStorage.setItem('dossier-session', sessionId);
   setStatus('ready');
   lastSeed = seed || SEED;
   return queueSend(lastSeed);  // seed the first turn
 };
 
+// Beats replay (dossier spec §4.1): dossier.js restores a stored session on reload.
+window.resumeSession = function (sid) { sessionId = sid; setStatus('ready'); };
+
+// gate-2 C1: ?ui=chat is a SAME-SESSION escape hatch, not a restart — resume the
+// stored dossier session and replay its beats as plain bubbles. The stored id is
+// cleared only on a definitive 404 (gate-2 I6), never on a network failure.
+const SEED_MSGS = ['Begin the workshop interview.', 'Begin onboarding.'];
+async function tryChatResume() {
+  const sid = sessionStorage.getItem('dossier-session');
+  if (!sid) return false;
+  let out;
+  try {
+    const r = await fetch(`/api/session/${sid}/beats`);
+    if (r.status === 404) { sessionStorage.removeItem('dossier-session'); return false; }
+    if (!r.ok) return false;
+    out = await r.json();
+  } catch { return false; }
+  if (!out.beats || !out.beats.length) return false;
+  window.resumeSession(sid);
+  out.beats.forEach((b) => {
+    const u = String(b.user || '');
+    if (!HIDDEN_MSG.test(u) && !SEED_MSGS.includes(u)) addBubble('user', u);
+    addBubble('assistant', stripSpec(b.prose || ''));
+  });
+  const last = out.beats[out.beats.length - 1].studio;
+  if (last) {
+    if (typeof window.shelfSync === 'function') window.shelfSync(last);
+    renderAgentPanel(last);
+    if (last.ask && !window.onboardingActive) renderAskCard(last.ask);
+  }
+  return true;
+}
+
 async function start() {
-  // Onboarding gate (Task 9): first launch (or ?onboard=1) hands the whole boot to the
-  // walk — it creates the session and seeds the first turn itself.
+  let replayed = false;
+  if (UI === 'dossier') {
+    await window.dossier.activate();                 // resolves once the catalog is in (R7)
+    replayed = await window.dossier.tryReplay();     // reload mid-journey: document restored
+  } else if (MODE === 'workshop') {
+    replayed = await tryChatResume();                // gate-2 C1: same session, plainer skin
+  }
+  // Onboarding gate: first launch (or ?onboard=1) hands the boot to the walk — it
+  // creates the session and seeds the first turn itself. In dossier mode the C3 walk
+  // mounts as a floating dock above the document until D3 re-skins it (spec §7.1).
   if (MODE === 'workshop') {
     const ob = await (await fetch('/api/onboarding')).json();
     const force = new URLSearchParams(location.search).get('onboard') === '1';
-    if ((force || !ob.completed) && window.onboardWalk) {
-      window.onboardWalk.begin(ob);
-      return;                          // the walk calls startWorkshopSession itself
+    if (!ob.completed || force) {
+      // gate-2 S3: a reload mid-intake must resume the walk on the SAME replayed
+      // session. Task 20 (D3) provides dossier.resumeIntake; until it lands, a
+      // replayed-but-incomplete boot continues on the document (the C3 overlay can't
+      // re-enter mid-flight — it would mint a NEW session) — the accepted D1a–D2
+      // window, closed by D3.
+      if (replayed && !force && UI === 'dossier' && window.dossier.resumeIntake) {
+        window.dossier.resumeIntake(ob);
+        return;
+      }
+      if (!replayed && window.onboardWalk) {
+        if (UI === 'dossier') document.body.classList.add('onboarding');
+        window.onboardWalk.begin(ob);
+        return;                          // the walk calls startWorkshopSession itself
+      }
     }
+    if (replayed) return;                // the resumed session continues; never re-seed (C1)
+    if (UI === 'chat' && !window.onboardingActive) renderAgentPanel(null);
   }
-  // Empty-state paint — gated by onboardingActive so Task 9's walk owns the panel.
-  if (MODE === 'workshop' && !window.onboardingActive) renderAgentPanel(null);
   return window.startWorkshopSession(SEED);
 }
 
@@ -93,6 +160,7 @@ async function start() {
 function renderMarkdown(text) {
   return DOMPurify.sanitize(marked.parse(text, { breaks: true, gfm: true }));
 }
+window.renderMarkdown = renderMarkdown;
 
 function scrollLog() { $('#log').scrollTop = $('#log').scrollHeight; }
 
@@ -115,43 +183,62 @@ function stripSpec(text) {
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
+window.stripSpec = stripSpec;
 
 async function send(message) {
-  if (message !== lastSeed && !HIDDEN_MSG.test(message)) addBubble('user', message);
-  const bubble = addBubble('assistant', '');
-  const r = await fetch('/api/chat', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ session_id: sessionId, message }),
-  });
-  const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = '', acc = '';
-  while (true) {
-    const { value, done } = await reader.read(); if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let i; while ((i = buf.indexOf('\n\n')) >= 0) {
-      const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
-      if (!line) continue;
-      const ev = JSON.parse(line);
-      if (ev.type === 'token') {
-        if (!agentLive) { agentLive = true; setStatus('agent live', true); }  // verifiable handshake
-        acc += ev.text; bubble.innerHTML = renderMarkdown(stripSpec(acc)); scrollLog();
-      }
-      else if (ev.type === 'error') { acc += '\n\n**[error]** ' + ev.message; bubble.innerHTML = renderMarkdown(stripSpec(acc)); }
-      else if (ev.type === 'done') {
-        // While the onboarding walk owns #blueprint (and the shared cards mount root),
-        // neither a stray spec paint nor an ask card may touch it: renderBlueprint would
-        // wipe the walk's cards, and renderAskCard re-mounts cards onto #askrail, which
-        // would strand the walk's fold/show targets (Task 9).
-        if (ev.spec && !window.onboardingActive) renderBlueprint(ev.spec);
-        if (ev.studio && typeof window.shelfSync === 'function') window.shelfSync(ev.studio);
-        if (MODE === 'workshop' && !window.onboardingActive) renderAgentPanel(ev.studio);
-        // A walk-suppressed ask is stashed, not dropped — onboard.js replays it after
-        // the handback (final review I6).
-        if (ev.studio && ev.studio.ask) {
-          if (!window.onboardingActive) renderAskCard(ev.studio.ask);
-          else window._pendingAsk = ev.studio.ask;
+  const inDossier = UI === 'dossier';
+  if (!inDossier && message !== lastSeed && !HIDDEN_MSG.test(message)) addBubble('user', message);
+  const bubble = inDossier ? null : addBubble('assistant', '');
+  let acc = '';
+  try {
+    const r = await fetch('/api/chat', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sessionId, message }),
+    });
+    const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = '';
+    while (true) {
+      const { value, done } = await reader.read(); if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let i; while ((i = buf.indexOf('\n\n')) >= 0) {
+        const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
+        if (!line) continue;
+        const ev = JSON.parse(line);
+        if (ev.type === 'token') {
+          if (!agentLive) { agentLive = true; setStatus('agent live', true); }  // verifiable handshake
+          acc += ev.text;
+          if (inDossier) window.dossier.onToken(acc);
+          else { bubble.innerHTML = renderMarkdown(stripSpec(acc)); scrollLog(); }
+        }
+        else if (ev.type === 'error') {
+          if (inDossier) window.dossier.onError(ev.message);
+          else { acc += '\n\n**[error]** ' + ev.message; bubble.innerHTML = renderMarkdown(stripSpec(acc)); }
+        }
+        else if (ev.type === 'done') {
+          // The shelf drawer stays truthful in BOTH skins (§4.4: it's the kept overlay).
+          if (ev.studio && typeof window.shelfSync === 'function') window.shelfSync(ev.studio);
+          if (inDossier) {
+            window.dossier.onDone(ev);
+            continue;
+          }
+          // ?ui=chat / architect: the landed behavior, byte-for-byte.
+          if (ev.spec && !window.onboardingActive) renderBlueprint(ev.spec);
+          if (MODE === 'workshop' && !window.onboardingActive) renderAgentPanel(ev.studio);
+          if (ev.studio && ev.studio.ask) {
+            if (!window.onboardingActive) renderAskCard(ev.studio.ask);
+            else window._pendingAsk = ev.studio.ask;
+          }
         }
       }
     }
+  } catch (e) {
+    // gate-2 I6: server death mid-turn — queueSend's .catch(()=>{}) swallows the
+    // rejection, so the failure must surface HERE: the dossier gets its brass line +
+    // re-armed writing line; the chat skin gets an error bubble. The stored session id
+    // is NEVER touched on a network failure — only a beats 404 clears it (tryReplay),
+    // so a reload after the server returns still resumes the same session.
+    const msg = (e && e.message) || 'connection lost — is the studio still running?';
+    if (inDossier) window.dossier.onError(msg);
+    else if (bubble) { acc += '\n\n**[error]** ' + msg; bubble.innerHTML = renderMarkdown(stripSpec(acc)); }
   }
 }
 
@@ -394,6 +481,16 @@ function wirePersonalize(ev) {
 // doesn't overwrite the compose result already on screen); omitted, both
 // fall back to the original behavior.
 async function streamBuild(url, body, opts = {}) {
+  // gate-2 C2: the dossier takeover hides .rightrail, which contains #buildpanel — a
+  // drawer build there would stream into a display:none subtree. Until D1c relocates
+  // the panel into the closing chapter, float the rail as a fixed dock (the Task 8
+  // onboarding-dock pattern). Self-retiring: D1c's beginBuild moves #buildpanel OUT of
+  // .rightrail before calling streamBuild, so the condition stops matching.
+  const bp = document.getElementById('buildpanel');
+  if (UI === 'dossier' && bp && bp.closest('.rightrail')) {
+    document.body.classList.add('dz-dock-build');
+    bp.hidden = false;
+  }
   const statusMap = {}; const comps = {};
   renderStepper('', statusMap);
   const r = await fetch(url, {
@@ -462,6 +559,7 @@ async function streamBuild(url, body, opts = {}) {
     }
   }
 }
+window.streamBuild = streamBuild;
 
 function resetBuildPanel() {
   $('#blueprint').hidden = true; $('#buildpanel').hidden = false;

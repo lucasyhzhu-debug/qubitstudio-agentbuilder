@@ -89,7 +89,14 @@
   function toggle(id) {
     const it = (catalog.shelf.items || []).find((x) => x.id === id);
     if (!it) return;
-    if (selected.has(id)) selected.delete(id); else selected.set(id, { it, origin: 'user' });
+    let verb;
+    if (selected.has(id)) { selected.delete(id); verb = 'removed'; }
+    else { selected.set(id, { it, origin: 'user' }); verb = 'added'; }
+    // Dossier §4.4: report manual shelf changes to the agent, which re-asserts
+    // whole-state picks — the signed manifest can then never diverge from the shelf.
+    if (document.body.classList.contains('dossier') && typeof window.queueSend === 'function') {
+      window.queueSend(`[studio event] participant ${verb} ${id} via the shelf`);
+    }
     renderBody();  // re-render so on/recommended states stay truthful
   }
 
