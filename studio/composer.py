@@ -47,27 +47,60 @@ def scaffold_vault(vault_dir: Path, owner_name: str, picks: list[str]) -> None:
     if "drain" in picks:
         (vault_dir / "meta/chief-of-staff/drain-state.json").write_text("{}", encoding="utf-8")
 
-_SHELL = [".claude-plugin", ".mcp.json", "marketplace.json", "agents", "references"]
 _ALL_SKILLS = ["briefing", "capture", "crm", "drain", "intake", "scheduling", "tasks"]
 
-def copy_plugin(tree: Path, picks: list[str]) -> None:
+
+def _rewrite_reference_paths(text: str, skill_id: str | None) -> str:
+    """Rewrite path mentions in a copied SKILL.md or agents/*.md to be
+    AGENT-HOME-ROOT-relative (the lean spec §5 invariant). The substrate speaks in four
+    forms (grep-verified): `chief-of-staff/skills/<sk>/references/…`,
+    `chief-of-staff/references/…`, bare `references/…` meaning THIS skill's dir, and the
+    cross-skill shorthand `<sk>/references/…`. In the home, substrate refs live under
+    `skills/<sk>/references/` and shared refs under `references/`; SKILL.md bodies live
+    under `.claude/skills/`. `skill_id=None` is the agents/*.md mode (gate-2 I5): an
+    agent file has no "this skill's dir", so its bare `references/…` already means the
+    home root and step 1 is skipped. Deterministic string pass — same class as
+    delucas(). Order matters: the bare form first (the lookbehind keeps it off the
+    prefixed forms), prefixes after."""
+    if skill_id:
+        # 1. bare `references/…` (start of a path) → this skill's substrate dir
+        text = re.sub(r"(?<![\w/\-.])references/", f"skills/{skill_id}/references/", text)
+    # 2. cross-skill shorthand `briefing/references/…` → `skills/briefing/references/…`
+    for sk in _ALL_SKILLS:
+        text = re.sub(rf"(?<![\w/\-.]){sk}/references/", f"skills/{sk}/references/", text)
+    # 3. full substrate prefixes drop their chief-of-staff/ root
+    text = text.replace("chief-of-staff/skills/", "skills/")
+    text = text.replace("chief-of-staff/references/", "references/")
+    # 4. cross-skill SKILL.md mentions live under .claude/ in the home
+    text = re.sub(r"(?<![\w/\-.])skills/([\w\-]+)/SKILL\.md", r".claude/skills/\1/SKILL.md", text)
+    return text
+
+
+def copy_home(tree: Path, picks: list[str]) -> None:
+    """Copy the substrate into an AGENT HOME (lean spec §5), not a plugin: picked
+    SKILL.md under .claude/skills/, agents under .claude/agents/, .mcp.json + shared
+    references/ at the root. EVERY skill's references/ ships (inert markdown, kills the
+    hard-dep class) at its unchanged `skills/<sk>/references/` location; only PICKED
+    skills' SKILL.md ship (what Claude actually triggers on). Reference mentions in
+    every shipped SKILL.md AND agents/*.md are rewritten home-root-relative (I5)."""
     tree = Path(tree)
-    tree.mkdir(parents=True, exist_ok=True)
-    for item in _SHELL:
-        src = _COS / item
-        if not src.exists():
-            continue
-        dst = tree / item
-        shutil.copytree(src, dst) if src.is_dir() else shutil.copy2(src, dst)
-    # Copy the shared substrate: EVERY skill's references/ (inert markdown, kills the hard-dep class),
-    # but only the PICKED skills' SKILL.md (what Claude actually triggers on).
+    (tree / ".claude" / "skills").mkdir(parents=True, exist_ok=True)
+    shutil.copy2(_COS / ".mcp.json", tree / ".mcp.json")
+    (tree / ".claude" / "agents").mkdir(parents=True, exist_ok=True)
+    for agent_md in sorted((_COS / "agents").glob("*.md")):
+        text = agent_md.read_text(encoding="utf-8")
+        (tree / ".claude" / "agents" / agent_md.name).write_text(
+            _rewrite_reference_paths(text, None), encoding="utf-8")
+    shutil.copytree(_COS / "references", tree / "references")
     for sk in _ALL_SKILLS:
         refs = _COS / "skills" / sk / "references"
         if refs.exists():
             shutil.copytree(refs, tree / "skills" / sk / "references")
     for sk in picks:
-        (tree / "skills" / sk).mkdir(parents=True, exist_ok=True)
-        shutil.copy2(_COS / "skills" / sk / "SKILL.md", tree / "skills" / sk / "SKILL.md")
+        dst = tree / ".claude" / "skills" / sk
+        dst.mkdir(parents=True, exist_ok=True)
+        text = (_COS / "skills" / sk / "SKILL.md").read_text(encoding="utf-8")
+        (dst / "SKILL.md").write_text(_rewrite_reference_paths(text, sk), encoding="utf-8")
 
 _LINEAR_TEAM = "d885fd34-71e6-4e8b-8fc6-da4f6bbf1875"
 _LINEAR_PROJ = "504fb62b-28ba-4140-9031-1f03e189c70c"
@@ -164,7 +197,7 @@ async def compose(picks, owner_name, outdir, vault_dir) -> AsyncIterator[dict]:
         yield _stage("generate", "running")
         scaffold_vault(vault_dir, owner_name, picks)
         yield {"type": "component", "key": "vault", "status": "ok"}
-        copy_plugin(staging, picks)
+        copy_home(staging, picks)
         for sk in picks:
             yield {"type": "component", "key": f"skill:{sk}", "status": "ok"}
         yield _stage("generate", "ok")
