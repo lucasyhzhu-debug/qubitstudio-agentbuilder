@@ -8,6 +8,7 @@
   const sel = (s) => document.querySelector(s);
   const selected = new Map();   // id -> { it, origin: 'user' | 'agent' }
   let catalog = null;
+  let pendingSync = null;       // studio block that arrived before the catalog loaded
 
   const btn = sel('#shelfbtn');
   const drawer = sel('#shelf-drawer');
@@ -127,7 +128,8 @@
   // Chat→shelf sync (spec §4.4): the agent's studio block re-asserts ITS picks only.
   // User-added picks are never removed by a sync; agent picks no longer recommended drop.
   function shelfSync(studio) {
-    if (!catalog || !studio) return;
+    if (!studio) return;
+    if (!catalog) { pendingSync = studio; return; }  // buffer; init() replays it post-load
     const picks = new Set(studio.picks || []);
     for (const [id, v] of [...selected]) {
       if (v.origin === 'agent' && !picks.has(id)) selected.delete(id);
@@ -151,6 +153,7 @@
       catalog = { baseline: { items: [] }, shelf: { items: [] } };
     }
     renderBody();
+    if (pendingSync) { const s = pendingSync; pendingSync = null; shelfSync(s); }
   }
 
   btn.addEventListener('click', open);

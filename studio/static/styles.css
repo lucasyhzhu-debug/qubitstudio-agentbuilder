@@ -115,6 +115,7 @@ header button:hover { border-color: var(--sapphire); color: var(--sapphire); }
    right after it instead of splitting the free space into two gaps. */
 #advanced { position: relative; }
 #advanced summary { cursor: pointer; list-style: none; padding: 6px 10px; border-radius: var(--r-btn); }
+#advanced summary::-webkit-details-marker { display: none; }  /* Chromium ignores list-style here */
 #advanced summary:hover { color: var(--sapphire); }
 #advanced[open] { display: flex; align-items: center; gap: 8px; }
 
