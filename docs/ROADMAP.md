@@ -19,6 +19,16 @@ migration + raw skills) and `docs/specs/2026-07-02-workshop-studio-r1-personaliz
    to qubit-site's SapphireOS system (light-only — supersedes the theme-toggle draft). Covers
    the "first-run handshake" requirement below (status chip flips on first streamed token).
    Slices: B1 journey floor → A reskin → B2 panel; cut anywhere leaves a working workshop.
+   - **Onboarding journey + guided card framework** — **specced + planned** (spec:
+     `docs/specs/2026-07-02-studio-onboarding-cards-design.md`, plan:
+     `docs/plans/onboarding-cards.md`, both shipshape-gated; **implement only after item 2
+     lands** — the plan's Task 0 gates on it). First-launch walk: fade-in welcome → live agent
+     narrates materials intake (CV/LinkedIn/writings, distilled by a scoped `claude -p Read`
+     pass into `<second-brain>/profile.md`) → participant chooses the second-brain home, which
+     becomes compose's `vault_dir` (covers the "Custom vault location" requirement below).
+     Plus the reusable card primitive + ` ```studio ` `ask` channel (visual AskUserQuestion)
+     that r1-B personalize and the connect wizard adopt later. Slices: C1 ask-cards floor →
+     C2 backend → C3 walk.
 3. **Raw-skills packaging** — composer emits an agent-home dir (`.claude/skills/`,
    `.claude/agents/`, root `.mcp.json`, generated `CLAUDE.md`, `vault/`, `.env`); final step
    becomes `cd <dir> && claude`. Kill plugin.json/marketplace.json emission + the `/plugin`
@@ -40,7 +50,9 @@ migration + raw skills) and `docs/specs/2026-07-02-workshop-studio-r1-personaliz
 
 - **Custom vault location.** Participants choose where the agent's local wiki-brain vault lives
   (default `<agent-home>/vault/`, always local to their machine). A compose/personalize field;
-  every `{{VAULT_PATH}}` substitution honors it.
+  every `{{VAULT_PATH}}` substitution honors it. → **specced + planned** as the "second brain"
+  choice in the onboarding-cards slice (item 2 follow-on): the onboarding-chosen directory
+  becomes compose's `vault_dir`.
 - **First-run GUI↔agent handshake.** The first agent a participant ever uses is the agent-builder
   itself, via the GUI talking to `claude -p`. On first studio start the UI must *verifiably* show
   it is talking to the agent (surfaced handshake/echo, not a silent spinner). → **planned** in
