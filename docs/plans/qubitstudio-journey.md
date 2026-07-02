@@ -1,4 +1,4 @@
-# SapphireOS Reskin + Conversation-Driven Journey — Implementation Plan
+# QubitStudio Journey — Reskin + Conversation-Driven Shelf — Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -8,7 +8,7 @@
 
 **Tech Stack:** FastAPI + vanilla JS (no build step), pytest, self-hosted OFL fonts.
 
-**Spec:** `docs/specs/2026-07-02-studio-sapphireos-journey-design.md` (shipshape-reviewed; read it first).
+**Spec:** `docs/specs/2026-07-02-studio-qubitstudio-journey-design.md` (shipshape-reviewed; read it first).
 
 **Flagged deviations (deliberate, not omissions):**
 - ROADMAP/CHANGELOG updates are NOT a task here — they ride the pipeline's landing PR (spec-plan-pipeline step 6).
@@ -16,7 +16,7 @@
 
 ## Global Constraints
 
-- Branch: `feat/sapphireos-journey` (already exists with the spec). Commit per task.
+- Branch: `feat/qubitstudio-journey` (already exists with the spec). Commit per task.
 - Repo is PUBLIC — no real keys/tokens/ids/emails in any commit. Fonts are OFL (allowed).
 - `chief-of-staff/` and `agent-architect/` are NOT touched by any task.
 - Architect mode must stay byte-identical: `build_system_prompt()` and its 5 tests unchanged.
@@ -151,7 +151,7 @@ git commit -m "feat(studio): studio-block extractor for the workshop journey"
 - [ ] **Step 1: Write the failing tests** (append to `studio/tests/test_system_prompt.py`)
 
 ```python
-# --- workshop mode (SapphireOS journey spec §4.2) ---
+# --- workshop mode (QubitStudio journey spec §4.2) ---
 from studio.system_prompt import build_workshop_prompt
 
 def test_workshop_includes_catalog_and_contract():
@@ -188,7 +188,7 @@ Expected: existing 5 PASS; new 4 FAIL — `ImportError: cannot import name 'buil
 - [ ] **Step 3: Implement** (append to `studio/system_prompt.py`; also add `import json` at the top)
 
 ```python
-# ── Workshop mode (SapphireOS journey spec §4.2) ─────────────────────────────
+# ── Workshop mode (QubitStudio journey spec §4.2) ─────────────────────────────
 _STUDIO_DIR = Path(__file__).resolve().parent
 
 _WORKSHOP_ROLE_INTRO = """You are **agent-architect**, the guide for the QubitStudio
@@ -338,7 +338,7 @@ from studio.studio_extractor import extract_studio
         self.started = False
         self.spec: dict | None = None
         # Workshop sessions get the shelf ids; None means architect mode — the studio
-        # extractor never runs (SapphireOS journey spec §4.3).
+        # extractor never runs (QubitStudio journey spec §4.3).
         self.catalog_ids = catalog_ids
         self.studio: dict | None = None
 
@@ -871,7 +871,7 @@ Adapt the existing selectors in place (keep layout/grid rules; this task changes
 
 ```bash
 git add studio/static/index.html studio/static/styles.css studio/static/shelf.css studio/static/app.js
-git commit -m "feat(studio): SapphireOS reskin — nav, chat, cards, shelf, wizard"
+git commit -m "feat(studio): QubitStudio reskin — nav, chat, cards, shelf, wizard"
 ```
 
 ---

@@ -1,11 +1,11 @@
-# Studio SapphireOS reskin + conversation-driven journey
+# Studio QubitStudio reskin + conversation-driven journey
 
 **Date:** 2026-07-02
-**Status:** Reviewed — shipshape gate 1 passed (see `docs/reviews/shipshape-studio-sapphireos-journey-spec-2026-07-02.md`)
+**Status:** Reviewed — shipshape gate 1 passed (see `docs/reviews/shipshape-studio-qubitstudio-journey-spec-2026-07-02.md`)
 **Owner:** Lucas
 **Target:** QubitStudio "Build Your Own Chief of Staff" workshop, Friday 2026-07-03
-**Depends on:** v0.1.0 migration (shipped) · qubit-site design system (`github.com/Nicegarrry/qubit-site`, `app/globals.css`)
-**Supersedes:** `docs/specs/2026-07-02-studio-theme-toggle-design.md` (uncommitted draft — its
+**Depends on:** v0.1.0 migration (shipped) · the SapphireOS design system from qubit-site (`github.com/Nicegarrry/qubit-site`, `app/globals.css`). Naming: the workshop product is **QubitStudio** (a SapphireOS × Ikigai AI Ventures partnership); "SapphireOS" below names only the design system we adopt
+**Supersedes:** `docs/specs/2026-07-02-studio-theme-toggle-design.md` (superseded draft, committed for the record — its
 dark/light toggle is dropped; its hardcoded-color audit is folded into §3.4)
 
 ## 1. Problem
@@ -37,7 +37,7 @@ Two defects in the participant-facing studio, both visible in the first minute o
 | Generic architect path | **Kept, demoted** — `mode="architect"` on session creation; header export controls collapse behind an "advanced" disclosure | Removal: load-bearing (13 tests at v0.1.0; export path tested) and it's the post-workshop growth path |
 | Chat→shelf channel | **A second fenced block ` ```studio `** parsed server-side like ` ```spec ` | Tool calls / MCP: the chat is deliberately tool-less (`--allowed-tools ""`); fenced-block extraction is the proven pattern (`spec_extractor.py`) |
 
-## 3. Unit A — SapphireOS reskin (`studio/static/` only)
+## 3. Unit A — QubitStudio reskin (`studio/static/` only)
 
 ### 3.1 Tokens
 
@@ -218,7 +218,7 @@ designed to grow (e.g. a future `personalize` key) but ships with the three fiel
 1. **B1 — workshop prompt + studio extractor + session mode + chat→shelf sync** (§4.1–4.4, 4.6).
    The dissonance fix. Floor if the evening dies here: the agent talks chief-of-staff and the
    shelf follows it.
-2. **A — SapphireOS reskin** (§3). Pure static; parallelizable with B1 (different files except
+2. **A — QubitStudio reskin** (§3). Pure static; parallelizable with B1 (different files except
    `index.html`, coordinate the header block).
 3. **B2 — "Your agent" panel + advanced demotion** (§4.5, 4.7). Stretch; the shelf badge +
    drawer already show the synced state without it.
