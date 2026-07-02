@@ -212,17 +212,28 @@ SKIP affordance always visible; `prefers-reduced-motion` collapses every beat to
 3. **The Assembly.** The bound card slides into an *anatomy* view: wiki-brain spine clicks
    in, shell around it, each picked skill slots in with a tick, personalization last —
    while the REAL compose/tweak log lines run as mono captions beneath (the existing build
-   stream, re-skinned; truth under the theater). This replaces the raw build-panel log as
-   the D1 §4.3 embed's visible face; the raw log stays reachable behind a disclosure.
+   stream, re-skinned; truth under the theater). **Ticks are event-driven, never timed**:
+   each organ ticks when its corresponding build-stream event arrives. The copy beats land
+   fast (compose is deterministic file copying — by design it cannot fail creatively); the
+   personalization organ then HOLDS with the live `claude -p` tweaker output scrolling in
+   its caption — the room watches Claude write the participant's specifics into their
+   agent, which is the point. No fixed timers anywhere in the sequence. This replaces the
+   raw build-panel log as the D1 §4.3 embed's visible face; the raw log stays reachable
+   behind a disclosure.
 4. **First Breath.** The page goes quiet; the status chip hands over — `architect` →
    `<name> · live` (sapphire pulse). Then the composed agent's first words stream in, typed:
    a REAL one-turn `claude -p` greeting run with cwd = the composed agent home (D0's
    raw-skills form is what makes the agent loadable this way), tool-less, prompted to greet
    the participant by name and reference their actual choices — the same subprocess plumbing
    as `ChatSession`, one turn, new endpoint `POST /api/first-breath` (server spawns it with
-   the agent-home cwd; SSE-streams tokens into the beat). If the turn errors or exceeds a
-   ~20s budget, the beat falls back to a static first-words card quoting the personalized
-   identity (flagged fallback — the ceremony never hangs the room).
+   the agent-home cwd; SSE-streams tokens into the beat). **No integration keys are needed
+   for this** — building and talking run on the participant's existing Claude Code auth;
+   only service-touching skills need the connect step. First Breath therefore lands BEFORE
+   connect, and the greeting prompt tells the agent which integrations are still unconnected
+   so its first words can hand the participant into the connect chapters ("I'm ready to
+   sweep your inbox as soon as we connect Linear — that's our next page"). If the turn
+   errors or exceeds a ~20s budget, the beat falls back to a static first-words card quoting
+   the personalized identity (flagged fallback — the ceremony never hangs the room).
 5. **The Launch Card.** The birth certificate: name in serif, parts manifest, integrations
    green, the exact launch command — `cd dist/<name>-cos && claude` — read from the
    composer's `install` field (never hardcoded; D0 rewrites that field), with a copy button,
