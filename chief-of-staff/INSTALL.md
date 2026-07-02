@@ -6,22 +6,20 @@ chief-of-staff reaches **Gmail, Google Calendar, and Linear** through your **nat
 not through plugin-hosted MCP servers. Make sure those three connectors are connected in your Claude
 session. The only server the plugin runs itself is **Discord** (locally, via `npx -y mcp-discord`).
 
-## Install (from this repo's marketplace)
+## Install (composed agent home)
 
-The `consulting-agents` marketplace already points at this repo (`D:\Claude\Consulting-Agents`), so:
-
-```powershell
-claude "/plugin install chief-of-staff@consulting-agents"
-```
-
-If the marketplace isn't registered yet:
+This substrate is not installed directly — the QubitStudio studio **composes** it into a
+personal agent home under `dist/<name>-cos/` (run `python -m studio` and follow the
+journey). The composed agent is a raw-skills directory: `.claude/skills/`, a generated
+`CLAUDE.md` identity, and a root `.mcp.json`. To launch it:
 
 ```powershell
-claude "/plugin marketplace add D:\Claude\Consulting-Agents"
-claude "/plugin install chief-of-staff@consulting-agents"
+cd dist/<name>-cos
+claude
 ```
 
-Then restart Claude Code.
+Your agent lives in that folder — skills trigger when Claude Code runs there. No
+marketplace, no `/plugin install`, no restart step.
 
 ## Required environment variables
 
