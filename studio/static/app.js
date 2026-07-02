@@ -368,8 +368,11 @@ function keyRowHtml(integration) {
 }
 
 function installLineHtml(ev) {
+  // D0's raw-skills form: no marketplace, no restart (lean spec §5). The install field
+  // is `cd <dir> ; claude` (gate-2 S4 — `;` parses in PS 5.1 where `&&` doesn't); the
+  // existing ' ; ' split renders it as two lines: cd, then claude.
   return `<pre class="install">${ev.install.split(' ; ').join('\n')}</pre>
-    <p>Restart Claude Code after installing.</p>`;
+    <p>Your agent lives in that folder — run this in a terminal and talk to it.</p>`;
 }
 
 // Wires the Test buttons + the "finish at home" reveal inside a freshly-rendered

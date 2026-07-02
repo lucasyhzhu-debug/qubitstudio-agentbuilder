@@ -165,3 +165,31 @@ calendar/channel.
 | Every participant's Google email added as a test user | Step 3.5 | Roster count == test user count on the consent screen |
 | Credentials handout filled in (facilitator rows only) | Step 4 | Ready to hand out at check-in — not committed anywhere |
 | `WORKSHOP_DEFAULTS` values ready to inject into the studio | Step 4 (table) | Same 4–5 values as the handout's facilitator rows, nothing per-person |
+
+---
+
+## Running the room (day-of) — the dossier journey's recovery moves
+
+Everything above is pre-work; this section is for whoever is driving the room live.
+Participant pre-work lives in the root `README.md`.
+
+| Symptom | Move |
+|---|---|
+| A chapter rendered mangled (broken markdown, wrong content) | Hover the chapter head → **⟳ regenerate** — the architect rewrites that chapter's prose in place; the participant's answers and cards are preserved. This is the "try that again" button. |
+| A participant answered wrong / changed their mind | Hover the answer → **↺ rewrite** — the answer melts back into the writing line; chapters below go stale until the architect re-settles. |
+| Page looks stuck / browser hiccup | **Reload the page.** The dossier replays its beats from the live server and re-renders the document — chapters, fossilized answers (answered choice-cards return as fossils, not re-armed cards), and the build/launch state. Error turns aren't part of the record and aren't replayed. A studio RESTART starts fresh — don't restart `python -m studio` unless the server itself is dead. |
+| The dossier misbehaves and the room can't wait | **`?ui=chat`** on the same URL — the classic workshop chat RESUMES the same session (prior turns replay as plain bubbles; the next message continues the conversation). Same journey, plainer skin. Kept until dossier parity is proven at a dress rehearsal. |
+| First breath (the agent's first words) shows the "offline greeting" card | Expected fallback when the one-turn greeting errors or exceeds its ~20s budget. The composed agent is fine — the launch command below the card is real; have the participant run it. |
+| Architect chat needed (generic plugin design, spec download) | `?mode=architect` — the original two-pane interview, untouched. |
+
+### Standing facts (day-of)
+
+- Every visible agent word is real model output (one `claude -p` turn per beat) — there
+  is no scripted narration to fall back on except the flagged first-breath card.
+- The launch command is real from the moment the launch card renders — integration
+  chips fill in as keys connect; keys are never required to build or to talk locally.
+- After a successful build the ceremony's button reads **Rebuild** and stays live.
+  Rebuilding recreates `dist/<name>-cos/` — connected keys (`.env`) must be re-entered,
+  but the agent's vault (its memory) is PRESERVED across the rebuild.
+- Google connect: primary path = participant's own OAuth client (pre-work); escape
+  hatch = the shared client (Step 3 above).
