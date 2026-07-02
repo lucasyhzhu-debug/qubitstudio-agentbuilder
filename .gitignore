@@ -10,3 +10,6 @@ eval-runs/
 .DS_Store
 Thumbs.db
 .claude/handoff/
+
+# visual-companion proofing artifacts (brainstorming sessions)
+.superpowers/
