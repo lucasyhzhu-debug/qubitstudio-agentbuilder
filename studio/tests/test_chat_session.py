@@ -72,3 +72,30 @@ def test_argv_never_uses_shell_metachars_inline(tmp_path):
     s = _sess(tmp_path)
     argv = s.build_argv("hi; rm -rf /")
     assert "hi; rm -rf /" in argv
+
+def test_catalog_ids_default_none_and_studio_none(tmp_path):
+    s = _sess(tmp_path)
+    assert s.catalog_ids is None and s.studio is None
+
+def test_extract_pass_architect_mode_skips_studio(tmp_path):
+    # catalog_ids None -> studio extraction never runs, even on a studio-looking text
+    s = _sess(tmp_path)
+    s._extract('```studio\n{"picks": ["crm"]}\n```')
+    assert s.studio is None
+
+def test_extract_pass_workshop_mode_sets_studio(tmp_path):
+    sp_path = tmp_path / "sp.md"; sp_path.write_text("p", encoding="utf-8")
+    from studio.chat_session import ChatSession
+    s = ChatSession(session_id="11111111-1111-1111-1111-111111111111",
+                    system_prompt_path=sp_path, catalog_ids={"crm", "tasks"})
+    s._extract('hi\n```studio\n{"picks": ["crm"], "name": "my-cos", "ready": false}\n```')
+    assert s.studio == {"picks": ["crm"], "name": "my-cos", "ready": False}
+
+def test_extract_pass_keeps_prior_studio_on_garbage(tmp_path):
+    sp_path = tmp_path / "sp.md"; sp_path.write_text("p", encoding="utf-8")
+    from studio.chat_session import ChatSession
+    s = ChatSession(session_id="11111111-1111-1111-1111-111111111111",
+                    system_prompt_path=sp_path, catalog_ids={"crm"})
+    s._extract('```studio\n{"picks": ["crm"]}\n```')
+    s._extract('no block this turn')
+    assert s.studio == {"picks": ["crm"], "name": None, "ready": False}

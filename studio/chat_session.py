@@ -13,6 +13,7 @@ from typing import AsyncIterator
 
 from studio import stream_parser as sp
 from studio.spec_extractor import extract_spec
+from studio.studio_extractor import extract_studio
 
 
 def resolve_claude() -> str | None:
@@ -38,13 +39,29 @@ def dedup_text(event: dict, saw_delta: bool) -> tuple[str, bool]:
 
 
 class ChatSession:
-    def __init__(self, session_id: str, system_prompt_path: Path, claude_bin: str | None = None):
+    def __init__(self, session_id: str, system_prompt_path: Path, claude_bin: str | None = None,
+                 catalog_ids: set[str] | None = None):
         self.session_id = session_id
         self.system_prompt_path = str(system_prompt_path)
         # full resolved path to the shim (CP1); falls back to "claude" for non-Windows/tests.
         self.claude_bin = claude_bin or resolve_claude() or "claude"
         self.started = False
         self.spec: dict | None = None
+        # Workshop sessions get the shelf ids; None means architect mode — the studio
+        # extractor never runs (QubitStudio journey spec §4.3).
+        self.catalog_ids = catalog_ids
+        self.studio: dict | None = None
+
+    def _extract(self, text: str) -> None:
+        """End-of-turn extraction pass: spec always, studio only for workshop sessions.
+        Either extractor returning None keeps the prior state."""
+        new_spec = extract_spec(text)
+        if new_spec is not None:
+            self.spec = new_spec
+        if self.catalog_ids is not None:
+            new_studio = extract_studio(text, self.catalog_ids)
+            if new_studio is not None:
+                self.studio = new_studio
 
     def build_argv(self, user_msg: str) -> list[str]:
         # Tool-less via --allowed-tools "" (single value — the brain.mjs:152 form), so the variadic
@@ -94,7 +111,5 @@ class ChatSession:
             return
 
         self.started = True
-        new_spec = extract_spec("".join(full_text))
-        if new_spec is not None:
-            self.spec = new_spec
-        yield {"type": "done", "spec": self.spec}
+        self._extract("".join(full_text))
+        yield {"type": "done", "spec": self.spec, "studio": self.studio}
