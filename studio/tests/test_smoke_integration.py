@@ -52,3 +52,22 @@ async def test_real_distill_returns_profile():
     # brief wrote `out and "Lovelace" in out or "Ada" in out` — explicit parens preserve
     # the evident intent: non-empty AND (Lovelace OR Ada).
     assert out and ("Lovelace" in out or "Ada" in out)
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_real_workshop_turn_emits_chapter(tmp_path):
+    # The chapter contract must make a REAL claude turn emit a parseable chapter
+    # with a valid phase (dossier spec §10).
+    sp = write_system_prompt(tmp_path / "wp.md", mode="workshop")
+    ids = {"crm", "briefing", "scheduling", "tasks", "intake", "drain"}
+    s = ChatSession(session_id=str(uuid.uuid4()),
+                    system_prompt_path=sp, catalog_ids=ids)
+    events = [ev async for ev in s.send(
+        "I drown in email and track work in Linear. Begin the interview.")]
+    done = events[-1]
+    assert done["type"] == "done" and done.get("studio") is not None
+    ch = done["studio"].get("chapter")
+    assert ch is not None, "no parseable chapter in a real turn"
+    assert ch["phase"] in {"welcome", "baseline", "skills", "personalize",
+                           "name", "build", "connect"}
+    assert s.beats and s.beats[-1]["studio"] == done["studio"]

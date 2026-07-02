@@ -41,6 +41,9 @@ SESSIONS: dict[str, ChatSession] = {}
 EXPORTS: dict[str, dict] = {}
 BUILDING: set[str] = set()
 _DISTILL_TASK: asyncio.Task | None = None    # materials distill runs in the background
+LAST_COMPOSE: dict | None = None   # this studio run's last successful compose done event
+                                   # (+ picks) — piggybacked on the beats payload (gate-2
+                                   # S6) and consumed by the first-breath endpoint (D1c)
 
 
 @app.post("/api/session/new")
@@ -109,6 +112,20 @@ async def chat(req: Request) -> StreamingResponse:
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
+@app.get("/api/session/{session_id}/beats")
+async def session_beats(session_id: str) -> JSONResponse:
+    """Beats replay (dossier spec §4.1): the accumulated turns of a live session so a
+    page reload re-renders the whole document. Survives reloads, NOT studio restarts
+    (sessions are in-memory — spec §8 non-goal). `last_compose` rides along (gate-2 S6)
+    so the page can restore its launch/connect state (`lastDone`) too."""
+    session = SESSIONS.get(session_id)
+    if session is None:
+        return JSONResponse({"error": "unknown session"}, status_code=404)
+    return JSONResponse({"session_id": session_id,
+                         "beats": getattr(session, "beats", []),
+                         "last_compose": LAST_COMPOSE})
+
+
 @app.get("/api/spec")
 async def get_spec(session_id: str) -> JSONResponse:
     session = SESSIONS.get(session_id)
@@ -168,6 +185,9 @@ async def compose_endpoint(req: Request) -> StreamingResponse:
         else:
             vault = _composer._REPO / "dist" / f"{slug}-cos" / "vault"   # lean §5: <home>/vault/ default
         async for ev in _composer.compose(picks, name, _composer._REPO / "dist", vault):
+            if ev.get("type") == "done":
+                global LAST_COMPOSE
+                LAST_COMPOSE = {**ev, "picks": list(picks)}
             yield _sse(ev)
 
     return StreamingResponse(stream(), media_type="text/event-stream")

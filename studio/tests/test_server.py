@@ -248,3 +248,68 @@ def test_compose_default_vault_is_in_home(monkeypatch, tmp_path):
     with c.stream("POST", "/api/compose", json={"picks": ["crm"], "name": "my cos"}) as r:
         "".join(r.iter_text())
     assert seen["vault"] == server._composer._REPO / "dist" / "my-cos-cos" / "vault"
+
+# --- beats replay endpoint (dossier spec §4.1/§10) ---
+
+def test_beats_endpoint_unknown_session_404():
+    c = TestClient(server.app)
+    assert c.get("/api/session/not-a-session/beats").status_code == 404
+
+def test_beats_endpoint_returns_accumulated_and_last_compose():
+    c = TestClient(server.app)
+    sid = c.post("/api/session/new").json()["session_id"]
+    server.SESSIONS[sid].beats = [
+        {"user": "Begin the workshop interview.",
+         "prose": 'Welcome to the studio.\n```studio\n{"picks": []}\n```',
+         "studio": {"picks": [], "name": None, "ready": False, "ask": None,
+                    "chapter": {"title": "Welcome", "phase": "welcome", "blocks": []}}},
+        {"user": "I drown in email.",
+         "prose": 'Noted.\n```studio\n{"picks": ["tasks"]}\n```',
+         "studio": {"picks": ["tasks"], "name": None, "ready": False, "ask": None,
+                    "chapter": None}},
+    ]
+    server.LAST_COMPOSE = None
+    out = c.get(f"/api/session/{sid}/beats").json()
+    assert out["session_id"] == sid and len(out["beats"]) == 2
+    # prose + studio state sufficient to re-render the document (spec §10)
+    assert "Welcome to the studio." in out["beats"][0]["prose"]
+    assert out["beats"][0]["studio"]["chapter"]["phase"] == "welcome"
+    assert out["beats"][1]["studio"]["picks"] == ["tasks"]
+    assert out["last_compose"] is None      # no build yet this studio run
+    # gate-2 S6: the payload piggybacks the server's last compose so a reload
+    # restores lastDone — replayed connect chapters keep their live key rows.
+    server.LAST_COMPOSE = {"plugin_path": "x", "install": "cd x ; claude",
+                           "integrations": ["linear"], "picks": ["tasks"]}
+    out = c.get(f"/api/session/{sid}/beats").json()
+    assert out["last_compose"]["install"] == "cd x ; claude"
+    server.LAST_COMPOSE = None              # leave the module global clean
+
+def test_compose_done_captured_for_replay_and_first_breath(monkeypatch, tmp_path):
+    # gate-2 S6: compose_endpoint records its own done event in LAST_COMPOSE — the
+    # beats payload (above) and Task 14's first breath both read it.
+    _ob(monkeypatch, tmp_path)
+    server.LAST_COMPOSE = None
+    async def fake_compose(picks, name, outdir, vault_dir):
+        yield {"type": "done", "grade": "composed", "plugin_path": str(tmp_path),
+               "vault_path": "v", "integrations": ["linear"], "install": "cd x ; claude"}
+    monkeypatch.setattr(server._composer, "compose", fake_compose)
+    c = TestClient(server.app)
+    with c.stream("POST", "/api/compose", json={"picks": ["tasks"], "name": "atlas"}) as r:
+        "".join(r.iter_text())
+    assert server.LAST_COMPOSE["plugin_path"] == str(tmp_path)
+    assert server.LAST_COMPOSE["picks"] == ["tasks"]
+
+def test_chat_done_carries_chapter_through_sse(monkeypatch):
+    class _FakeChapterSession:
+        spec = None
+        async def send(self, msg):
+            yield {"type": "done", "spec": None,
+                   "studio": {"picks": [], "name": None, "ready": False, "ask": None,
+                              "chapter": {"title": "Taming the inbox", "phase": "skills",
+                                          "blocks": []}}}
+    c = TestClient(server.app)
+    sid = c.post("/api/session/new").json()["session_id"]
+    server.SESSIONS[sid] = _FakeChapterSession()
+    with c.stream("POST", "/api/chat", json={"session_id": sid, "message": "hi"}) as r:
+        body = "".join(r.iter_text())
+    assert '"chapter"' in body and "Taming the inbox" in body
