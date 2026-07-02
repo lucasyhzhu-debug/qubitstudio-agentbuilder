@@ -30,11 +30,17 @@ migration + raw skills) and `docs/specs/2026-07-02-workshop-studio-r1-personaliz
      AskUserQuestion) that r1-B personalize and the connect wizard adopt later. All slices
      landed (C1 ask-cards + C2 backend + C3 walk); full suite 162 green incl. a live distill
      smoke; PDF-read probe confirmed.
-3. **Raw-skills packaging** — composer emits an agent-home dir (`.claude/skills/`,
-   `.claude/agents/`, root `.mcp.json`, generated `CLAUDE.md`, `vault/`, `.env`); final step
-   becomes `cd <dir> && claude`. Kill plugin.json/marketplace.json emission + the `/plugin`
-   install copy in GUI/README. Includes the **reference-path invariant** test (every reference
-   mentioned in a shipped SKILL.md resolves from the agent-home root). Lean spec §5.
+3. **The dossier journey (absorbs raw-skills packaging as slice D0)** — **specced + planned**
+   (spec: `docs/specs/2026-07-02-studio-dossier-journey-design.md`, plan:
+   `docs/plans/studio-dossier-journey.md`, both shipshape-gated ×2; mockups committed at
+   `docs/mockups/dossier-journey/`). The workshop surface becomes a living document — numbered
+   chapters the architect writes, serif fossilized answers, journey rail, rewrite ⟲ /
+   regenerate ⟳, and the sign→bind→assemble→first-breath→launch finale. Slices in order,
+   each shippable: **D0** raw-skills packaging (agent-home emission per lean spec §5 +
+   reference-path invariant + `cd <dir> ; claude` install line — the old item-3 scope) →
+   **D1a** dossier shell (chapters, writing line, beats replay, `?ui=chat` escape hatch) →
+   **D1b** revision verbs → **D1c** finale + `POST /api/first-breath` → **D2** connect as
+   chapters (typed blocks + `wireKeyRow`) → **D3** intake as opening chapters. 21 TDD tasks.
 4. **r1-A: always-on** — `studio/scheduler.py` + `POST /api/schedule` + wizard step; per-OS task
    (schtasks S4U hidden / launchd / cron) with the safe headless flags (`--strict-mcp-config` +
    empty MCP config), cwd = the agent home. r1 spec §4.
