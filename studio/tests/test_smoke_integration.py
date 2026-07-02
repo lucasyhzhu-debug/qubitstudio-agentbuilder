@@ -41,3 +41,14 @@ async def test_one_real_workshop_turn(tmp_path):
     assert done["type"] == "done"
     assert done.get("studio") is not None, "no parseable ```studio block in a real turn"
     assert isinstance(done["studio"]["picks"], list)
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_real_distill_returns_profile():
+    # The distiller must produce non-empty markdown from real mixed materials.
+    from studio.distiller import distill
+    fixtures = Path(__file__).parent / "fixtures" / "onboarding"
+    out = await distill([fixtures])
+    # brief wrote `out and "Lovelace" in out or "Ada" in out` — explicit parens preserve
+    # the evident intent: non-empty AND (Lovelace OR Ada).
+    assert out and ("Lovelace" in out or "Ada" in out)
