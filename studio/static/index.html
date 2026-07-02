@@ -5,7 +5,11 @@
 <link rel="stylesheet" href="/static/styles.css">
 <link rel="stylesheet" href="/static/shelf.css"></head>
 <body>
-  <header><b>agent-studio</b> <span id="status">starting…</span>
+  <header>
+    <span class="qmark"><i></i><i></i><i></i><i class="fill"></i></span>
+    <span class="wordmark">qubit</span>
+    <span class="brand-eyebrow">Agent Studio</span>
+    <span id="status" class="status-chip"><i class="dot"></i><span class="st"></span>starting…</span>
     <button id="shelfbtn" title="Browse the skill shelf, add capabilities, and build your installable agent">Skill shelf ▦<span class="count">0</span></button>
     <input id="loadfile" type="file" accept="application/json" hidden>
     <button id="load">Load spec.json</button>

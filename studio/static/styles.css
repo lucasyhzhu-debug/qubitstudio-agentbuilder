@@ -35,24 +35,50 @@ html, body {
 
 body {
   background: var(--band);
-  color: var(--ink);
+  color: var(--ink-2);
   font-family: var(--body);
-  line-height: 1.55;
+  font-size: 16px;
+  line-height: 1.45;
   -webkit-font-smoothing: antialiased;
   display: flex;
   flex-direction: column;
 }
+h1, h2, h3, h4 { font-family: var(--display); color: var(--ink); letter-spacing: -0.02em; }
+
+button, .brief-btn {
+  font-family: var(--body); font-weight: 600; border-radius: var(--r-btn);
+  transition: background .15s ease, transform .18s ease, border-color .15s ease;
+}
 
 /* ── Header ── */
 header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 20px;
-  background: var(--canvas);
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 12px;
+  height: 62px; padding: 0 20px;
+  background: rgba(255,255,255,.92);
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--rule);
   flex-shrink: 0;
 }
+.qmark { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 22px; height: 22px; }
+.qmark i { border: 1.5px solid var(--sapphire); border-radius: 3px; }
+.qmark i.fill { background: var(--sapphire); }
+.wordmark { font-family: var(--wordmark); font-size: 21px; color: var(--ink); }
+.brand-eyebrow, .eyebrow {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+  text-transform: uppercase; letter-spacing: .14em; color: var(--ink-3);
+}
+.status-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: var(--mono); font-size: 11px; color: var(--ink-3);
+  padding: 4px 10px; border: 1px solid var(--tint-2); border-radius: var(--r-pill);
+  background: var(--tint);
+}
+.status-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-4); }
+.status-chip.live { color: var(--sapphire); }
+.status-chip.live .dot { background: var(--sapphire); animation: pulse 1.8s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; transform: scale(1); } 50% { opacity: .45; transform: scale(.8); } }
+@media (prefers-reduced-motion: reduce) { .status-chip.live .dot { animation: none; } }
 
 #evalstoggle {
   display: flex;
@@ -64,28 +90,16 @@ header {
   user-select: none;
 }
 
-header b {
-  font-size: 15px;
-  color: var(--sapphire);
-  font-family: var(--mono);
-  letter-spacing: .04em;
+header button, #load, #download, #export {
+  background: var(--canvas); border: 1.5px solid var(--rule-strong); color: var(--ink-2);
 }
-
-#status {
-  font-size: 12px;
-  color: var(--ink-3);
-  font-family: var(--mono);
-  flex: 1;
-}
+header button:hover { border-color: var(--sapphire); color: var(--sapphire); }
 
 #download {
   font-size: 12px;
   font-family: var(--mono);
   padding: 5px 14px;
   border-radius: 6px;
-  border: 1px solid var(--rule);
-  background: var(--band);
-  color: var(--ink);
   cursor: pointer;
   transition: border-color .15s;
 }
@@ -93,11 +107,6 @@ header b {
 #download:disabled {
   opacity: .4;
   cursor: not-allowed;
-}
-
-#download:not(:disabled):hover {
-  border-color: var(--sapphire);
-  color: var(--sapphire);
 }
 
 /* ── Main two-column grid ── */
@@ -117,6 +126,7 @@ main {
 }
 
 #log {
+  background: var(--band);
   flex: 1;
   overflow-y: auto;
   padding: 16px;
@@ -139,15 +149,18 @@ main {
   background: var(--sapphire);
   color: #fff;
   align-self: flex-end;
-  border-radius: 10px 10px 2px 10px;
+  border-radius: 12px;
+  border-bottom-right-radius: 4px;
 }
 
 .bubble.assistant {
-  background: var(--band);
-  color: var(--ink);
+  background: var(--canvas);
+  color: var(--ink-2);
   border: 1px solid var(--rule);
   align-self: flex-start;
-  border-radius: 10px 10px 10px 2px;
+  border-radius: 12px;
+  border-bottom-left-radius: 4px;
+  box-shadow: var(--sh-sm);
   white-space: normal;  /* rendered HTML handles its own wrapping */
 }
 
@@ -242,9 +255,11 @@ main {
 }
 
 #composer button[type="submit"]:hover {
-  background: var(--sapphire);
-  color: #fff;
+  background: var(--sapphire-hover);
 }
+
+:focus-visible { outline: none; box-shadow: 0 0 0 3px rgba(48,111,168,.35); border-radius: 4px; }
+input:focus, textarea:focus { border-color: var(--sapphire); box-shadow: 0 0 0 3px rgba(48,111,168,.15); }
 
 /* ── Blueprint pane ── */
 #blueprint {
@@ -268,17 +283,19 @@ main {
 .bp-card {
   background: var(--canvas);
   border: 1px solid var(--rule);
-  border-radius: 12px;
+  border-radius: var(--r-card);
+  box-shadow: var(--sh-sm);
   padding: 14px 16px;
 }
 
 .bp-card h3 {
   margin: 0 0 8px;
-  font-size: 11px;
+  font-size: 10.5px;
+  font-weight: 500;
   font-family: var(--mono);
   letter-spacing: .14em;
   text-transform: uppercase;
-  color: var(--sapphire);
+  color: var(--ink-3);
 }
 
 .bp-card b {
@@ -327,9 +344,6 @@ main {
   font-family: var(--mono);
   padding: 5px 14px;
   border-radius: 6px;
-  border: 1px solid var(--rule);
-  background: var(--band);
-  color: var(--ink);
   cursor: pointer;
   transition: border-color .15s;
 }
@@ -497,7 +511,7 @@ main {
 
 /* ── Flash highlight for changed blueprint cards ── */
 .bp-card.flash { animation: flashbg .9s ease-out; }
-@keyframes flashbg { from { background: rgba(124,92,255,.25); } to { background: transparent; } }
+@keyframes flashbg { from { background: rgba(48,111,168,.18); } to { background: transparent; } }
 
 /* ── Scrollbar ── */
 ::-webkit-scrollbar { width: 6px; }

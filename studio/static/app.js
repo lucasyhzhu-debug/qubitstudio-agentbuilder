@@ -7,7 +7,7 @@ const SEED = MODE === 'architect' ? 'Begin the agent-architect interview.' : 'Be
 
 function setStatus(text, live) {
   const el = $('#status');
-  el.textContent = text;
+  el.innerHTML = '<i class="dot"></i>' + text.replace(/[<>&]/g, '');
   el.classList.toggle('live', !!live);
 }
 
