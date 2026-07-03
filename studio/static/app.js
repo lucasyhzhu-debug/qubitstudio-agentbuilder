@@ -375,9 +375,54 @@ function installLineHtml(ev) {
     <p>Your agent lives in that folder — run this in a terminal and talk to it.</p>`;
 }
 
+// Wire ONE connect row (§7.2's named extraction): paste-fields + Test/Save button →
+// /api/keys/test, persisting into `tree` on success. The google row is persist-only
+// (can never smoke-test with just a client id/secret). Consumed by BOTH the
+// build-panel wizard below and the dossier's key-field blocks (D2).
+// `onResult(ok)` fires after each non-save Test round trip.
+function wireKeyRow(row, integration, tree, onResult) {
+  const btn = row.querySelector('.kr-test, .kr-save');
+  if (!btn) return;  // scheduler info row has no button
+  const isSave = btn.classList.contains('kr-save');
+  const idleLabel = isSave ? 'Save' : 'Test';
+  btn.addEventListener('click', async () => {
+    const values = {};
+    row.querySelectorAll('input[data-key]').forEach((inp) => { values[inp.dataset.key] = inp.value.trim(); });
+    const status = row.querySelector('.kr-status');
+    btn.disabled = true; btn.textContent = isSave ? 'Saving…' : 'Testing…';
+    let out = { ok: false };
+    try {
+      const r = await fetch('/api/keys/test', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(isSave
+          ? { integration, values, tree, persist_only: true }
+          : { integration, values, tree }),
+      });
+      out = await r.json();
+      if (isSave) {
+        // Save row is informational only — never the green "connected" state.
+        row.classList.toggle('kr-saved', !!out.ok); row.classList.toggle('kr-fail', !out.ok);
+        status.textContent = (out.ok ? 'ℹ️ ' : '❌ ') + (out.message || '');
+      } else {
+        row.classList.toggle('kr-pass', !!out.ok); row.classList.toggle('kr-fail', !out.ok);
+        status.textContent = (out.ok ? '✅ ' : '❌ ') + (out.message || '');
+      }
+    } catch (e) {
+      row.classList.remove('kr-pass', 'kr-saved'); row.classList.add('kr-fail');
+      status.textContent = '❌ ' + e.message;
+    } finally {
+      btn.disabled = false; btn.textContent = idleLabel;
+    }
+    if (!isSave && onResult) onResult(!!out.ok);
+  });
+}
+window.wireKeyRow = wireKeyRow;
+window.keyRowHtml = keyRowHtml;
+window.KNOWN_INTEGRATIONS = new Set([...Object.keys(WIZARD_FIELDS), 'scheduler']);
+
 // Wires the Test buttons + the "finish at home" reveal inside a freshly-rendered
-// #buildresult. `keyed` is every integration except scheduler (scheduler has no Test
-// button and never gates the install line).
+// #buildresult. `keyed` is every integration except scheduler and google (neither
+// gates the install line).
 function wireWizard(ev, keyed) {
   const passed = new Set();
   const unlock = () => {
@@ -386,40 +431,9 @@ function wireWizard(ev, keyed) {
   };
   if (!keyed.length) unlock();  // e.g. scheduler-only compose — nothing to test
   $('#buildresult').querySelectorAll('.keyrow[data-int]').forEach((row) => {
-    const btn = row.querySelector('.kr-test, .kr-save');
-    if (!btn) return;  // scheduler info row has no button
-    const isSave = btn.classList.contains('kr-save');
     const integration = row.dataset.int;
-    const idleLabel = isSave ? 'Save' : 'Test';
-    btn.addEventListener('click', async () => {
-      const values = {};
-      row.querySelectorAll('input[data-key]').forEach((inp) => { values[inp.dataset.key] = inp.value.trim(); });
-      const status = row.querySelector('.kr-status');
-      btn.disabled = true; btn.textContent = isSave ? 'Saving…' : 'Testing…';
-      try {
-        const r = await fetch('/api/keys/test', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(isSave
-            ? { integration, values, tree: ev.plugin_path, persist_only: true }
-            : { integration, values, tree: ev.plugin_path }),
-        });
-        const out = await r.json();
-        if (isSave) {
-          // Save row is informational only — never the green "connected" state, and
-          // never gates the install line (google is excluded from `keyed` above).
-          row.classList.toggle('kr-saved', !!out.ok); row.classList.toggle('kr-fail', !out.ok);
-          status.textContent = (out.ok ? 'ℹ️ ' : '❌ ') + (out.message || '');
-        } else {
-          row.classList.toggle('kr-pass', !!out.ok); row.classList.toggle('kr-fail', !out.ok);
-          status.textContent = (out.ok ? '✅ ' : '❌ ') + (out.message || '');
-          if (out.ok) { passed.add(integration); if (keyed.every((i) => passed.has(i))) unlock(); }
-        }
-      } catch (e) {
-        row.classList.remove('kr-pass', 'kr-saved'); row.classList.add('kr-fail');
-        status.textContent = '❌ ' + e.message;
-      } finally {
-        btn.disabled = false; btn.textContent = idleLabel;
-      }
+    wireKeyRow(row, integration, ev.plugin_path, (ok) => {
+      if (ok) { passed.add(integration); if (keyed.every((i) => passed.has(i))) unlock(); }
     });
   });
   const finishBtn = $('#wizard-finish');
