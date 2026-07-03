@@ -4,7 +4,8 @@
 <title>agent-studio</title>
 <link rel="stylesheet" href="/static/styles.css">
 <link rel="stylesheet" href="/static/shelf.css">
-<link rel="stylesheet" href="/static/cards.css"></head>
+<link rel="stylesheet" href="/static/cards.css">
+<link rel="stylesheet" href="/static/dossier.css"></head>
 <body>
   <!-- First-launch onboarding overlay (onboarding-cards spec §5.4) — onboard.js drives it. -->
   <div id="onboard-overlay" hidden>
@@ -19,6 +20,22 @@
       <h1 id="ob-welcome-title"></h1>
       <p class="ob-sub">let's get you onboarded — today you build your own chief of staff</p>
     </div>
+  </div>
+  <!-- The dossier — workshop mode's document skin (dossier spec §4). Hidden and inert
+       unless dossier.js activates it; architect mode and ?ui=chat never touch it. -->
+  <div id="dossier" hidden>
+    <div id="dz-rail" class="dz-rail"></div>
+    <main class="dz-doc">
+      <div class="dz-kicker">qubit agent studio · session dossier</div>
+      <h1 class="dz-h1">The agent you're building.</h1>
+      <p class="dz-lede">This page <b>is</b> the conversation. Your architect writes
+        sections into it; your answers become part of the record.</p>
+      <div id="dz-chapters"></div>
+      <div id="dz-live"></div>
+      <form id="dz-writeline" class="writeline held"><span class="bar"></span>
+        <input id="dz-input" autocomplete="off" placeholder="write your line…" disabled></form>
+    </main>
+    <button type="button" class="dz-skipper" id="dz-skip" hidden>SKIP ▸▸</button>
   </div>
   <header>
     <span class="qmark"><i></i><i></i><i></i><i class="fill"></i></span>
@@ -71,6 +88,7 @@
   <script src="/static/vendor/purify.min.js"></script>
   <script src="/static/cards.js"></script>
   <script src="/static/onboard.js"></script>
+  <script src="/static/dossier.js"></script>
   <script src="/static/app.js"></script>
   <script src="/static/shelf.js"></script>
 </body></html>

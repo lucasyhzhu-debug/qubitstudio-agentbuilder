@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from studio import composer as _composer
 from studio import distiller as _distiller
+from studio import first_breath as _first_breath
 from studio import keys
 from studio import onboarding as _onboarding
 from studio import smokes
@@ -41,6 +42,9 @@ SESSIONS: dict[str, ChatSession] = {}
 EXPORTS: dict[str, dict] = {}
 BUILDING: set[str] = set()
 _DISTILL_TASK: asyncio.Task | None = None    # materials distill runs in the background
+LAST_COMPOSE: dict | None = None   # this studio run's last successful compose done event
+                                   # (+ picks) — piggybacked on the beats payload (gate-2
+                                   # S6) and consumed by the first-breath endpoint (D1c)
 
 
 @app.post("/api/session/new")
@@ -109,6 +113,20 @@ async def chat(req: Request) -> StreamingResponse:
     return StreamingResponse(event_stream(), media_type="text/event-stream")
 
 
+@app.get("/api/session/{session_id}/beats")
+async def session_beats(session_id: str) -> JSONResponse:
+    """Beats replay (dossier spec §4.1): the accumulated turns of a live session so a
+    page reload re-renders the whole document. Survives reloads, NOT studio restarts
+    (sessions are in-memory — spec §8 non-goal). `last_compose` rides along (gate-2 S6)
+    so the page can restore its launch/connect state (`lastDone`) too."""
+    session = SESSIONS.get(session_id)
+    if session is None:
+        return JSONResponse({"error": "unknown session"}, status_code=404)
+    return JSONResponse({"session_id": session_id,
+                         "beats": getattr(session, "beats", []),
+                         "last_compose": LAST_COMPOSE})
+
+
 @app.get("/api/spec")
 async def get_spec(session_id: str) -> JSONResponse:
     session = SESSIONS.get(session_id)
@@ -164,10 +182,13 @@ async def compose_endpoint(req: Request) -> StreamingResponse:
             return
         state = _onboarding.load_state()
         if state.get("completed_at") and state.get("second_brain"):
-            vault = Path(state["second_brain"])       # spec §5.3: the second brain IS the vault
+            vault = Path(state["second_brain"])       # onboarding: the second brain IS the vault
         else:
-            vault = _composer._REPO / "dist" / f"{slug}-vault"
+            vault = _composer._REPO / "dist" / f"{slug}-cos" / "vault"   # lean §5: <home>/vault/ default
         async for ev in _composer.compose(picks, name, _composer._REPO / "dist", vault):
+            if ev.get("type") == "done":
+                global LAST_COMPOSE
+                LAST_COMPOSE = {**ev, "picks": list(picks)}
             yield _sse(ev)
 
     return StreamingResponse(stream(), media_type="text/event-stream")
@@ -228,6 +249,28 @@ async def keys_test(req: Request) -> JSONResponse:
             return JSONResponse({"ok": True, "message": f"connected — but couldn't save keys locally: {e}. Set them manually (see SETUP)", "written": []})
         result = {**result, **summary}
     return JSONResponse(result)
+
+
+@app.post("/api/first-breath")
+async def first_breath_endpoint() -> StreamingResponse:
+    """One real greeting turn from the composed agent (dossier spec §6.4). The agent
+    home comes from OUR OWN compose result — never the request body."""
+    async def stream():
+        done = LAST_COMPOSE
+        if not done or not Path(done.get("plugin_path", "")).is_dir():
+            yield _sse_preflight_error("no composed agent yet — build first")
+            return
+        owner = _onboarding.load_state().get("name") or "there"
+        try:
+            catalog = json.loads(_CATALOG.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError):
+            catalog = {"shelf": {"items": []}}
+        prompt = _first_breath.build_greeting_prompt(
+            owner, done.get("picks", []), done.get("integrations", []), catalog)
+        async for ev in _first_breath.first_breath(Path(done["plugin_path"]), prompt):
+            yield _sse(ev)
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
 
 
 @app.get("/api/catalog")

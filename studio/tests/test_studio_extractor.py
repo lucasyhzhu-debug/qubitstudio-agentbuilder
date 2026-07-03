@@ -7,7 +7,8 @@ def _block(inner):
 
 def test_extracts_valid_block():
     out = extract_studio(_block('{"picks": ["crm", "briefing"], "name": "my-cos", "ready": false}'), IDS)
-    assert out == {"picks": ["crm", "briefing"], "name": "my-cos", "ready": False, "ask": None}
+    assert out == {"picks": ["crm", "briefing"], "name": "my-cos", "ready": False,
+                   "ask": None, "chapter": None}
 
 def test_absent_block_returns_none():
     assert extract_studio("no fences here", IDS) is None
@@ -81,3 +82,75 @@ def test_ask_multi_coerced():
         '{"picks": [], "ask": {"title": "t", "multi": 1,'
         ' "options": [{"label": "x"}, {"label": "y"}]}}'), IDS)
     assert out["ask"]["multi"] is True
+
+
+# --- chapter field (dossier spec §3.1/§3.2) ---
+
+def test_valid_chapter_extracted():
+    out = extract_studio(_block(
+        '{"picks": ["tasks"], "chapter": {"title": "Taming the inbox", "phase": "skills"}}'), IDS)
+    assert out["chapter"] == {"title": "Taming the inbox", "phase": "skills", "blocks": []}
+
+def test_chapter_absent_is_none():
+    assert extract_studio(_block('{"picks": []}'), IDS)["chapter"] is None
+
+def test_chapter_malformed_none_picks_and_ask_survive():
+    # the standing tolerant rule: a broken chapter must never kill the picks/ask sync
+    out = extract_studio(_block(
+        '{"picks": ["crm"], "ask": {"title": "t", "options": [{"label": "x"}, {"label": "y"}]},'
+        ' "chapter": "skills"}'), IDS)
+    assert out["chapter"] is None and out["picks"] == ["crm"] and out["ask"] is not None
+
+def test_chapter_unknown_phase_treated_absent():
+    out = extract_studio(_block(
+        '{"picks": [], "chapter": {"title": "t", "phase": "epilogue"}}'), IDS)
+    assert out["chapter"] is None
+
+def test_chapter_title_over_80_dropped():
+    out = extract_studio(_block(
+        '{"picks": [], "chapter": {"title": "' + "x" * 81 + '", "phase": "skills"}}'), IDS)
+    assert out["chapter"] is None
+
+def test_chapter_blocks_valid_vocabulary():
+    out = extract_studio(_block(
+        '{"picks": ["tasks"], "chapter": {"title": "Connect Linear", "phase": "connect",'
+        ' "blocks": ['
+        '{"type": "step", "n": 1, "text": "Open linear.app"},'
+        '{"type": "key-field", "integration": "linear", "label": "Paste your key"},'
+        '{"type": "checklist", "items": ["Key created", "Smoke green"]},'
+        '{"type": "note", "text": "Keys stay local"},'
+        '{"type": "skill-card", "id": "tasks"}]}}'), IDS)
+    types = [b["type"] for b in out["chapter"]["blocks"]]
+    assert types == ["step", "key-field", "checklist", "note", "skill-card"]
+    assert out["chapter"]["blocks"][0] == {"type": "step", "n": 1, "text": "Open linear.app"}
+    assert out["chapter"]["blocks"][1]["integration"] == "linear"
+
+def test_chapter_unknown_block_type_skipped_rest_render():
+    out = extract_studio(_block(
+        '{"picks": [], "chapter": {"title": "t", "phase": "connect", "blocks": ['
+        '{"type": "hologram", "text": "x"}, {"type": "note", "text": "kept"}]}}'), IDS)
+    assert [b["type"] for b in out["chapter"]["blocks"]] == ["note"]
+
+def test_chapter_malformed_blocks_empty_title_lands():
+    out = extract_studio(_block(
+        '{"picks": [], "chapter": {"title": "t", "phase": "build", "blocks": "steps"}}'), IDS)
+    assert out["chapter"] == {"title": "t", "phase": "build", "blocks": []}
+
+def test_step_without_text_skipped():
+    out = extract_studio(_block(
+        '{"picks": [], "chapter": {"title": "t", "phase": "build", "blocks": ['
+        '{"type": "step", "n": 1}, {"type": "step", "n": 2, "text": "real"}]}}'), IDS)
+    assert [b["text"] for b in out["chapter"]["blocks"]] == ["real"]
+
+def test_key_field_unknown_integration_skipped():
+    out = extract_studio(_block(
+        '{"picks": [], "chapter": {"title": "t", "phase": "connect", "blocks": ['
+        '{"type": "key-field", "integration": "fax-machine"},'
+        '{"type": "key-field", "integration": "linear"}]}}'), IDS)
+    assert [b["integration"] for b in out["chapter"]["blocks"]] == ["linear"]
+
+def test_skill_card_unknown_id_skipped():
+    out = extract_studio(_block(
+        '{"picks": [], "chapter": {"title": "t", "phase": "build", "blocks": ['
+        '{"type": "skill-card", "id": "hallucinated"}]}}'), IDS)
+    assert out["chapter"]["blocks"] == []

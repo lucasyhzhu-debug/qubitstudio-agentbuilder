@@ -43,6 +43,16 @@
         "brief": "Daily debrief — each morning, sweep my Gmail, Google Calendar and any queues, then write me a skimmable brief with proposed priorities. Warm to me; draft anything for sending in my own voice."
       },
       {
+        "id": "daily-interest-brief",
+        "name": "Interest radar",
+        "what": "A daily, newsletter-style pulse on the topics you follow — 3–5 sourced, link-rich bullets on news, a sport, a company, a market, or a policy area.",
+        "deliverable": "a sourced daily interest brief",
+        "cost": { "label": "local · no keys · web", "tier": "free" },
+        "requires": [],
+        "needs_skills": [],
+        "brief": "Interest radar — each morning, pull 3–5 sourced, link-rich bullets on the topics I follow (news, a sport, a company, a market, a policy area) using free RSS + web search, and fold them into my brief. No paid data, no keys."
+      },
+      {
         "id": "scheduling",
         "name": "Scheduling & email",
         "what": "Turn 'set up a call with Sam next week' into a drafted invite and email. You approve; it sends.",

@@ -90,7 +90,8 @@ def test_extract_pass_workshop_mode_sets_studio(tmp_path):
     s = ChatSession(session_id="11111111-1111-1111-1111-111111111111",
                     system_prompt_path=sp_path, catalog_ids={"crm", "tasks"})
     s._extract('hi\n```studio\n{"picks": ["crm"], "name": "my-cos", "ready": false}\n```')
-    assert s.studio == {"picks": ["crm"], "name": "my-cos", "ready": False, "ask": None}
+    assert s.studio == {"picks": ["crm"], "name": "my-cos", "ready": False,
+                         "ask": None, "chapter": None}
 
 def test_extract_pass_keeps_prior_studio_on_garbage(tmp_path):
     sp_path = tmp_path / "sp.md"; sp_path.write_text("p", encoding="utf-8")
@@ -99,7 +100,8 @@ def test_extract_pass_keeps_prior_studio_on_garbage(tmp_path):
                     system_prompt_path=sp_path, catalog_ids={"crm"})
     s._extract('```studio\n{"picks": ["crm"]}\n```')
     s._extract('no block this turn')
-    assert s.studio == {"picks": ["crm"], "name": None, "ready": False, "ask": None}
+    assert s.studio == {"picks": ["crm"], "name": None, "ready": False,
+                         "ask": None, "chapter": None}
 
 @pytest.mark.asyncio
 async def test_concurrent_sends_serialize(tmp_path, monkeypatch):
@@ -135,3 +137,55 @@ async def test_concurrent_sends_serialize(tmp_path, monkeypatch):
 
     await aio.gather(drain("a"), drain("b"))
     assert order == ["spawn", "live", "spawn", "live"]   # serialized, not interleaved
+
+# --- beats accumulation (dossier spec §4.1: reload survival) ---
+import asyncio as _aio
+import json as _json
+
+
+class _StreamProc:
+    """Fake claude proc: replays canned stream-json lines, then a result event."""
+    returncode = 0
+    stderr = None
+    def __init__(self, lines):
+        self._lines = list(lines)
+        self.stdout = self
+    def __aiter__(self):
+        return self
+    async def __anext__(self):
+        if not self._lines:
+            raise StopAsyncIteration
+        return self._lines.pop(0)
+    async def wait(self):
+        return 0
+
+
+def _turn_lines(text):
+    msg = {"type": "assistant", "message": {"content": [{"type": "text", "text": text}]}}
+    return [(_json.dumps(msg) + "\n").encode(), (_json.dumps({"type": "result"}) + "\n").encode()]
+
+
+async def test_beats_accumulate_per_turn(tmp_path, monkeypatch):
+    turns = [
+        _turn_lines('Welcome.\n```studio\n{"picks": ["crm"], '
+                    '"chapter": {"title": "Welcome", "phase": "welcome"}}\n```'),
+        _turn_lines('Onward.\n```studio\n{"picks": ["crm", "tasks"]}\n```'),
+    ]
+    async def fake_exec(*argv, **kw):
+        return _StreamProc(turns.pop(0))
+    monkeypatch.setattr(_aio, "create_subprocess_exec", fake_exec)
+    sp_file = tmp_path / "sp.md"; sp_file.write_text("prompt", encoding="utf-8")
+    s = ChatSession(session_id="22222222-2222-2222-2222-222222222222",
+                    system_prompt_path=sp_file, catalog_ids={"crm", "tasks"})
+    async def drain(msg):
+        return [ev async for ev in s.send(msg)]
+    evs1 = await drain("Begin the workshop interview.")
+    evs2 = await drain("[card] Where do tasks live? → Linear")
+    assert evs1[-1]["type"] == "done" and evs2[-1]["type"] == "done"
+    assert len(s.beats) == 2
+    assert s.beats[0]["user"] == "Begin the workshop interview."
+    assert "Welcome." in s.beats[0]["prose"]
+    assert s.beats[0]["studio"]["chapter"] == {"title": "Welcome", "phase": "welcome", "blocks": []}
+    assert s.beats[1]["user"].startswith("[card]")
+    assert s.beats[1]["studio"]["picks"] == ["crm", "tasks"]
+    assert s.beats[1]["studio"]["chapter"] is None   # whole-state snapshot of THAT turn

@@ -117,7 +117,8 @@ _WORKSHOP_CONTRACT = """
 - Interview the participant about their working life ONE topic at a time: inbox volume and
   where their tasks live (-> tasks), their morning routine (-> briefing), meeting and
   scheduling load (-> scheduling), how they track people and relationships (-> crm),
-  screenshot habits (-> intake), and appetite for an always-on inbox channel (-> drain).
+  screenshot habits (-> intake), the outside topics or beats they follow and want a daily
+  pulse on (-> daily-interest-brief), and appetite for an always-on inbox channel (-> drain).
 - Recommend shelf skills by their exact catalog id. Explain the price tag (which integrations
   each skill needs). Respect needs_skills prerequisites — recommend the prerequisite too and
   say why. Do not oversell `drain` (the heaviest tier) to a first-timer.
@@ -180,16 +181,66 @@ _ASK_CONTRACT = """
   short and do NOT restate the options in text.
 """
 
+_CHAPTER_CONTRACT = """
+# Writing the page (the dossier)
+
+- You are writing a DOCUMENT, not chatting. The participant sees your words as the body
+  text of a numbered chapter on a single scrolling page about the agent they're building.
+- EVERY turn, include a "chapter" object in the studio block (same fence):
+  "chapter": { "title": "Taming the inbox", "phase": "skills" }
+- `title` = the section you are writing. REUSE the current title to continue the open
+  section; give a NEW title to open a new one. Open a new chapter when the topic
+  genuinely turns (a new skill area, naming, building); continue for follow-ups and
+  acknowledgements. Keep titles short and human ("Taming the inbox", never "Skills
+  recommendation phase") — at most 80 characters.
+- `phase` = where the journey is, exactly one of:
+  welcome | baseline | skills | personalize | name | build | connect
+- Do NOT restate the chapter title in your prose — the page draws the heading itself.
+"""
+
+_REVISION_CONTRACT = """
+# Revisions (the page's rewrite ⟲ and regenerate ⟳ verbs)
+
+- Messages starting with `[studio event] rewrite` or `[studio event] regenerate` come
+  from the PAGE, not the participant's voice. Never quote them back.
+- On `[studio event] rewrite — question: "…" — previous answer: "…" — new answer: "…"`:
+  treat the new answer as the participant's real answer to that question. Re-assert the
+  FULL studio state consistent with it — drop picks that no longer fit (the whole-state
+  rule does the rest) — and continue the interview from that chapter, reusing the SAME
+  chapter title you are revisiting.
+- On `[studio event] regenerate chapter "…" — rewrite it fresh, same facts`: rewrite
+  that chapter's body text only, from the same facts. Do not advance the interview, do
+  not change picks or name, reuse the same chapter title and phase, and do not ask a
+  new question unless that chapter ended on one.
+"""
+
+_BLOCKS_CONTRACT = """
+# Build & connect chapters (typed blocks)
+
+- ONLY in build/connect phases, the chapter may carry a "blocks" array the page renders
+  natively, after your prose. Closed vocabulary — exactly these shapes:
+  {"type": "step", "n": 1, "text": "Open linear.app → Settings → API → Personal API keys"}
+  {"type": "key-field", "integration": "linear", "label": "Paste your Linear API key"}
+  {"type": "checklist", "items": ["Key created", "Key pasted", "Smoke test green"]}
+  {"type": "note", "text": "Keys stay on this machine — written into your agent's .env."}
+  {"type": "skill-card", "id": "tasks"}
+- "integration" must be one of: google, discord, linear, scheduler.
+- Walk ONE integration per chapter: 2–4 short steps, then its key-field, then a
+  checklist. The key-field renders a live paste-and-test row — after emitting it, tell
+  the participant to paste and press Test, then wait for their word before moving on.
+- Never emit blocks outside build/connect phases.
+"""
+
 _ONBOARDING_CONTRACT = """
 # The onboarding walk (this session starts BEFORE the interview)
 
 - Messages starting with [studio event] come from the studio itself, not the participant.
   Never quote them back; react to what they report.
-- The walk, in order — narrate each step and point the participant to the panel on their
-  right, ONE step at a time:
+- The walk, in order — narrate each step and point the participant to the drop/choice
+  controls the page is showing them, ONE step at a time:
   1. Greet the participant warmly by name. Ask them to drop their CV, LinkedIn
-     screenshots, and anything they've written into the panel on the right. Reassure them:
-     everything stays on their machine.
+     screenshots, and anything they've written into the drop zone in front of them.
+     Reassure them: everything stays on their machine.
   2. As [studio event] messages report registered files/folders, acknowledge briefly and
      invite more or tell them to continue when ready.
   3. When asked where the mind-palace should live, explain it in one breath: one folder
@@ -230,6 +281,9 @@ def build_workshop_prompt(catalog_path: Path | None = None,
     parts.append("# The substrate & the shelf\n\n" + _render_catalog(catalog))
     parts.append(_WORKSHOP_CONTRACT)
     parts.append(_ASK_CONTRACT)
+    parts.append(_CHAPTER_CONTRACT)
+    parts.append(_REVISION_CONTRACT)
+    parts.append(_BLOCKS_CONTRACT)
     if onboarding:
         parts.append(_ONBOARDING_CONTRACT)
     return "\n\n".join(parts)

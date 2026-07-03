@@ -89,7 +89,7 @@ The `meeting-todo` Linear label is created automatically the first time capture 
 
 chief-of-staff reaches **Gmail, Google Calendar, and Linear** through **two transports**. **Interactive** Claude Code sessions use your **native claude.ai connectors** — connect the Gmail, Google Calendar, and Linear connectors in your Claude session (Settings → Connectors); the skills/agent call them via `mcp__claude_ai_Gmail__*`, `mcp__claude_ai_Google_Calendar__*`, and `mcp__claude_ai_Linear__*`. The **headless cron** (runs under `claude -p`, where the claude.ai connectors are absent) accesses each service directly via keys and tokens — `LINEAR_API_KEY` for Linear, `DISCORD_BOT_TOKEN` for Discord, and Google OAuth refresh tokens for Calendar + Gmail (configured below).
 
-The only server the plugin runs itself is **Discord**, configured with the env vars below.
+The only server the agent runs itself is **Discord**, configured with the env vars below.
 
 **Discord** — served locally by the open-source [`mcp-discord`](https://github.com/barryyip0625/mcp-discord). There is **no endpoint to host**: `.mcp.json` launches `npx -y mcp-discord` over stdio and passes your bot token through. You only need Node 18+ (for `npx`) and a bot token.
 ```
@@ -107,7 +107,7 @@ Set-up steps:
 1. Create an application + bot at [discord.com/developers](https://discord.com/developers/applications) and copy the **bot token** into `DISCORD_BOT_TOKEN`.
 2. Under **Bot → Privileged Gateway Intents**, enable **Message Content Intent** and **Server Members Intent** (`mcp-discord` requires both to read channel messages and resolve members).
 3. Invite the bot to your server with the **View Channels**, **Send Messages**, **Read Message History**, **Create Public Threads**, and **Send Messages in Threads** permissions. (The v0.5.0 drain opens one thread per request and posts acks/results into it, so the thread permissions are required — not just the read/send ones the briefing flow used.)
-4. The plugin exposes the bot's tools as `mcp__discord__*` (e.g. `discord_send`, `discord_read_messages`) — already wildcarded for the `context-gatherer` agent.
+4. The root .mcp.json exposes the bot's tools as `mcp__discord__*` (e.g. `discord_send`, `discord_read_messages`) — already wildcarded for the `context-gatherer` agent.
 
 **Linear** — two transports are in play. **Interactive briefs** use the native claude.ai Linear connector (`mcp__claude_ai_Linear__*`) — keep it enabled in your Claude session. The **headless continuous drain** (runs under `claude -p` cron, where the claude.ai connectors are absent) reads and writes Linear directly via the GraphQL API:
 ```
@@ -148,13 +148,14 @@ Scopes requested: `calendar.readonly`, `calendar.events` (write), `gmail.readonl
 
 The CRM skill reads and writes `{{VAULT_PATH}}\people\`. Update this path in `skills/crm/SKILL.md` if your wiki-brain lives elsewhere.
 
-### 3. Install the plugin
+### 3. Launch your composed agent
 
-```
-/plugin install chief-of-staff@consulting-agents
+```powershell
+cd dist/<name>-cos
+claude
 ```
 
-The `consulting-agents` marketplace points at this repo. If it isn't registered yet, run `/plugin marketplace add D:\Claude\Consulting-Agents` first. Restart Claude Code after installing.
+Your agent lives in that folder — launch Claude Code there and the skills load.
 
 ### 4. Set up routines (optional)
 
@@ -211,7 +212,7 @@ The briefing skill should activate and begin gathering context.
 - `Linear` — task list (mcp)
 
 ## Memory
-This plugin persists facts under `memory/`:
+The agent persists facts under `memory/`:
 - **user** — Lucas's priorities, working style, recurring commitments
 - **reference** — people/CRM facts + network connections surfaced before meetings (from wiki-brain/people/)
 - **feedback** — which proposals Lucas accepts/rejects, to tune future briefs

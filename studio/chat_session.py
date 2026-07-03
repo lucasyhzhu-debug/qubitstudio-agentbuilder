@@ -51,6 +51,10 @@ class ChatSession:
         # extractor never runs (QubitStudio journey spec §4.3).
         self.catalog_ids = catalog_ids
         self.studio: dict | None = None
+        # Every completed turn accumulates here (dossier spec §4.1): the page replays
+        # GET /api/session/{id}/beats on reload to re-render the whole document.
+        # A beat also carries the USER message — the fossilized answers come from it.
+        self.beats: list[dict] = []
         # One `claude -p --resume` per session at a time (onboarding-cards spec §5.4.8):
         # programmatic [studio event] sends must never fork a concurrent subprocess on
         # the same session id.
@@ -116,5 +120,7 @@ class ChatSession:
                 return
 
             self.started = True
-            self._extract("".join(full_text))
+            prose = "".join(full_text)
+            self._extract(prose)
+            self.beats.append({"user": user_msg, "prose": prose, "studio": self.studio})
             yield {"type": "done", "spec": self.spec, "studio": self.studio}

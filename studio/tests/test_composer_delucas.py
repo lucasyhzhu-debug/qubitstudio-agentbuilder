@@ -8,7 +8,7 @@ def _tree_text(tree):
 
 def test_delucas_leaves_zero_owner_literals(tmp_path):
     tree = tmp_path / "plug"
-    composer.copy_plugin(tree, ["crm", "drain"])          # drain drags in the Lucas-heavy refs
+    composer.copy_home(tree, ["crm", "drain"])          # drain drags in the Lucas-heavy refs
     composer.delucas(tree, "Sam Rivera", tmp_path / "sam-vault")
     blob = _tree_text(tree)
     assert "Lucas" not in blob

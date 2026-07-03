@@ -1,6 +1,18 @@
 import json
+from pathlib import Path
+import pytest
 from fastapi.testclient import TestClient
 from studio import server
+
+@pytest.fixture(autouse=True)
+def _reset_last_compose():
+    # Final review: LAST_COMPOSE is a module-level global — every test starts from
+    # None and the prior value is restored after, ending the recurring trap where one
+    # test's leftover compose state changes another's outcome by run order.
+    saved = server.LAST_COMPOSE
+    server.LAST_COMPOSE = None
+    yield
+    server.LAST_COMPOSE = saved
 
 class _FakeSession:
     def __init__(self):
@@ -182,14 +194,14 @@ def test_session_new_injects_participant(monkeypatch, tmp_path):
     r = c.post("/api/session/new")
     assert r.status_code == 200
     text = server._WORKSHOP_PROMPT.read_text(encoding="utf-8")
-    assert "Ada" in text and "engines" in text and "studio event" not in text
+    assert "Ada" in text and "engines" in text and "onboarding walk" not in text
 
 def test_session_new_onboarding_contract_when_incomplete(monkeypatch, tmp_path):
     _ob(monkeypatch, tmp_path, name="Ada")
     c = TestClient(server.app)
     c.post("/api/session/new")
     text = server._WORKSHOP_PROMPT.read_text(encoding="utf-8")
-    assert "studio event" in text
+    assert "onboarding walk" in text
 
 def test_session_new_degrades_when_sb_missing(monkeypatch, tmp_path):
     _ob(monkeypatch, tmp_path, name="Ada", second_brain=str(tmp_path / "gone"),
@@ -233,3 +245,111 @@ def test_compose_uses_second_brain_vault(monkeypatch, tmp_path):
     with c.stream("POST", "/api/compose", json={"picks": ["crm"], "name": "my cos"}) as r:
         "".join(r.iter_text())
     assert seen["vault"] == str(sb)
+
+def test_compose_default_vault_is_in_home(monkeypatch, tmp_path):
+    # No completed onboarding → the default vault is INSIDE the agent home (lean §5),
+    # not the old dist/<slug>-vault sibling.
+    _ob(monkeypatch, tmp_path)
+    seen = {}
+    async def fake_compose(picks, name, outdir, vault_dir):
+        seen["vault"] = Path(vault_dir)
+        yield {"type": "done", "grade": "composed", "plugin_path": "x", "vault_path": str(vault_dir)}
+    monkeypatch.setattr(server._composer, "compose", fake_compose)
+    c = TestClient(server.app)
+    with c.stream("POST", "/api/compose", json={"picks": ["crm"], "name": "my cos"}) as r:
+        "".join(r.iter_text())
+    assert seen["vault"] == server._composer._REPO / "dist" / "my-cos-cos" / "vault"
+
+# --- beats replay endpoint (dossier spec §4.1/§10) ---
+
+def test_beats_endpoint_unknown_session_404():
+    c = TestClient(server.app)
+    assert c.get("/api/session/not-a-session/beats").status_code == 404
+
+def test_beats_endpoint_returns_accumulated_and_last_compose():
+    c = TestClient(server.app)
+    sid = c.post("/api/session/new").json()["session_id"]
+    server.SESSIONS[sid].beats = [
+        {"user": "Begin the workshop interview.",
+         "prose": 'Welcome to the studio.\n```studio\n{"picks": []}\n```',
+         "studio": {"picks": [], "name": None, "ready": False, "ask": None,
+                    "chapter": {"title": "Welcome", "phase": "welcome", "blocks": []}}},
+        {"user": "I drown in email.",
+         "prose": 'Noted.\n```studio\n{"picks": ["tasks"]}\n```',
+         "studio": {"picks": ["tasks"], "name": None, "ready": False, "ask": None,
+                    "chapter": None}},
+    ]
+    out = c.get(f"/api/session/{sid}/beats").json()
+    assert out["session_id"] == sid and len(out["beats"]) == 2
+    # prose + studio state sufficient to re-render the document (spec §10)
+    assert "Welcome to the studio." in out["beats"][0]["prose"]
+    assert out["beats"][0]["studio"]["chapter"]["phase"] == "welcome"
+    assert out["beats"][1]["studio"]["picks"] == ["tasks"]
+    assert out["last_compose"] is None      # no build yet this studio run
+    # gate-2 S6: the payload piggybacks the server's last compose so a reload
+    # restores lastDone — replayed connect chapters keep their live key rows.
+    server.LAST_COMPOSE = {"plugin_path": "x", "install": "cd x ; claude",
+                           "integrations": ["linear"], "picks": ["tasks"]}
+    out = c.get(f"/api/session/{sid}/beats").json()
+    assert out["last_compose"]["install"] == "cd x ; claude"
+
+def test_compose_done_captured_for_replay_and_first_breath(monkeypatch, tmp_path):
+    # gate-2 S6: compose_endpoint records its own done event in LAST_COMPOSE — the
+    # beats payload (above) and Task 14's first breath both read it.
+    _ob(monkeypatch, tmp_path)
+    async def fake_compose(picks, name, outdir, vault_dir):
+        yield {"type": "done", "grade": "composed", "plugin_path": str(tmp_path),
+               "vault_path": "v", "integrations": ["linear"], "install": "cd x ; claude"}
+    monkeypatch.setattr(server._composer, "compose", fake_compose)
+    c = TestClient(server.app)
+    with c.stream("POST", "/api/compose", json={"picks": ["tasks"], "name": "atlas"}) as r:
+        "".join(r.iter_text())
+    assert server.LAST_COMPOSE["plugin_path"] == str(tmp_path)
+    assert server.LAST_COMPOSE["picks"] == ["tasks"]
+
+def test_chat_done_carries_chapter_through_sse(monkeypatch):
+    class _FakeChapterSession:
+        spec = None
+        async def send(self, msg):
+            yield {"type": "done", "spec": None,
+                   "studio": {"picks": [], "name": None, "ready": False, "ask": None,
+                              "chapter": {"title": "Taming the inbox", "phase": "skills",
+                                          "blocks": []}}}
+    c = TestClient(server.app)
+    sid = c.post("/api/session/new").json()["session_id"]
+    server.SESSIONS[sid] = _FakeChapterSession()
+    with c.stream("POST", "/api/chat", json={"session_id": sid, "message": "hi"}) as r:
+        body = "".join(r.iter_text())
+    assert '"chapter"' in body and "Taming the inbox" in body
+
+
+# --- first breath (dossier spec §6.4) ---
+
+def test_first_breath_preflight_no_compose_never_spawns(monkeypatch):
+    called = {}
+    async def never(home, prompt, budget=20):
+        called["spawned"] = True
+        yield {"type": "token", "text": "x"}
+    monkeypatch.setattr(server._first_breath, "first_breath", never)
+    c = TestClient(server.app)
+    with c.stream("POST", "/api/first-breath") as r:
+        body = "".join(r.iter_text())
+    assert '"type": "error"' in body and "build" in body
+    assert not called                       # preflight negative: error event, never a spawn
+
+def test_first_breath_streams_tokens(monkeypatch, tmp_path):
+    _ob(monkeypatch, tmp_path, name="Ada")
+    server.LAST_COMPOSE = {"plugin_path": str(tmp_path), "integrations": ["linear"],
+                           "picks": ["tasks"], "install": f"cd {tmp_path} ; claude"}
+    seen = {}
+    async def fake_breath(home, prompt, budget=20):
+        seen["home"], seen["prompt"] = home, prompt
+        yield {"type": "token", "text": "Morning, Ada."}
+        yield {"type": "done"}
+    monkeypatch.setattr(server._first_breath, "first_breath", fake_breath)
+    c = TestClient(server.app)
+    with c.stream("POST", "/api/first-breath") as r:
+        body = "".join(r.iter_text())
+    assert "Morning, Ada." in body and '"type": "done"' in body
+    assert seen["home"] == Path(str(tmp_path))     # derived server-side from LAST_COMPOSE
+    assert "Ada" in seen["prompt"] and "linear" in seen["prompt"]
