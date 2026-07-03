@@ -195,7 +195,9 @@
     lastStudio = studio;
     if (studio.ready && studio.name && (studio.picks || []).length && !closeRec) renderClose();
     if (closeRec && !signed) refreshManifest();
-    if (!quiet) armWriteline(pendingAsk, true);
+    // T15 review: a chat turn settling MID-BUILD must not reopen the held document —
+    // the build's own completion path (rearmRebuild/unsign) re-arms the writeline.
+    if (!quiet && !building) armWriteline(pendingAsk, true);
     updateRail();
     if (!quiet) nudgeScroll();
   }
@@ -355,12 +357,20 @@
     raw.hidden = false; raw.open = true;
     raw.appendChild(panel);
     let doneEv = null, failedEv = null;
-    await window.streamBuild('/api/compose', { picks, name }, {
-      onEvent: (ev) => {
-        if (ev.type === 'done') doneEv = ev;
-        if (ev.type === 'error') failedEv = ev;
-      },
-    });
+    try {
+      await window.streamBuild('/api/compose', { picks, name }, {
+        onEvent: (ev) => {
+          if (ev.type === 'done') doneEv = ev;
+          if (ev.type === 'error') failedEv = ev;
+        },
+      });
+    } catch (e) {
+      // T15 review: a TRANSPORT-level failure (fetch/reader rejects — the server died
+      // mid-compose) emits no SSE error event, so it must un-sign HERE — otherwise
+      // building/signed stay true and the held document is stuck until reload.
+      unsign({ stage: 'build', message: String(e) });
+      return;
+    }
     if (failedEv) { unsign(failedEv); return; }
     lastDone = doneEv;
     building = false;
