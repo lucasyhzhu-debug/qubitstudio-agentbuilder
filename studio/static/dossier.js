@@ -185,7 +185,7 @@
     const studio = (ev && ev.studio) || lastStudio || {};
     const rec = settle(studio.chapter);
     if (studio.chapter && studio.chapter.blocks && studio.chapter.blocks.length) {
-      renderBlocks(rec, studio.chapter.blocks);   // D1a: parser validates, renderer renders none (§3.2)
+      renderBlocks(rec, studio.chapter.blocks);   // D2: renders the typed vocabulary after the prose (§3.2)
     }
     diffPicks(studio.picks || []);
     pendingAsk = studio.ask || null;
@@ -270,8 +270,42 @@
     return rec;
   }
 
-  // D2 renders the typed vocabulary; D1a accepts-and-ignores (§3.2).
-  function renderBlocks(rec, blocks) {}
+  // ── D2: the typed block vocabulary (§3.2), interleaved after the beat's prose ──
+  function renderBlocks(rec, blocks) {
+    (blocks || []).forEach((b) => {
+      if (b.type === 'step') {
+        rec.bodyEl.insertAdjacentHTML('beforeend',
+          `<div class="dz-step"><b>${esc(String(b.n || '·'))}</b><span>${esc(b.text)}</span></div>`);
+      } else if (b.type === 'note') {
+        rec.bodyEl.insertAdjacentHTML('beforeend', `<div class="dz-note">${esc(b.text)}</div>`);
+      } else if (b.type === 'checklist') {
+        rec.bodyEl.insertAdjacentHTML('beforeend',
+          `<div class="dz-checklist">${b.items.map((i) =>
+            `<div class="dz-check">☐ ${esc(i)}</div>`).join('')}</div>`);
+      } else if (b.type === 'skill-card') {
+        const it = shelfById().get(b.id);
+        if (it) rec.bodyEl.insertAdjacentHTML('beforeend',
+          `<div class="dz-cards">${skillCardHtml(it, 'skill')}</div>`);
+      } else if (b.type === 'key-field') {
+        // hosts the EXISTING connect row (§3.2/§7.2) — never a reimplementation
+        if (!window.KNOWN_INTEGRATIONS || !window.KNOWN_INTEGRATIONS.has(b.integration)) return;
+        if (!lastDone || !lastDone.plugin_path) {
+          rec.bodyEl.insertAdjacentHTML('beforeend',
+            '<div class="dz-note">build first — keys connect after the signing</div>');
+          return;
+        }
+        const host = document.createElement('div');
+        host.className = 'dz-keyhost';
+        host.innerHTML = window.keyRowHtml(b.integration);
+        const row = host.firstElementChild;
+        rec.bodyEl.appendChild(host);
+        window.wireKeyRow(row, b.integration, lastDone.plugin_path,
+          (ok) => { if (ok) fillChip(b.integration); });   // the launch card completes (§6.5)
+      }
+      // unknown types never reach here — the extractor drops them (§3.2); the
+      // if/else chain skips anything unexpected anyway.
+    });
+  }
 
   // ── picks-diff → skill cards (§4.1.1) ───────────────────────────────────
   function skillCardHtml(it, tag) {

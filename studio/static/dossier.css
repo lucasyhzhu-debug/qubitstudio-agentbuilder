@@ -278,3 +278,16 @@ body.dossier #buildpanel { display: block; background: var(--canvas);
   .organ, .dz-beat, .dz-chip { transition: none; }
   .dz-blog div, .dz-chip.alive .dot, .firstwords .caret { animation: none; }
 }
+
+/* ── D2: typed blocks (§3.2) ── */
+.dz-step { display: flex; gap: 12px; align-items: baseline; margin: 10px 0 0 18px;
+  font-size: 15.5px; color: var(--ink-2); }
+.dz-step b { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--brass);
+  border: 1px solid var(--rule); border-radius: 999px; padding: 2px 8px; flex: none; }
+.dz-note { margin: 14px 0 0 18px; padding: 10px 14px; border-left: 3px solid var(--tint-2);
+  background: var(--tint); border-radius: 0 10px 10px 0; font-size: 14px; color: var(--ink-3); }
+.dz-checklist { margin: 12px 0 0 18px; }
+.dz-check { font-family: var(--mono); font-size: 12.5px; color: var(--ink-3); padding: 3px 0; }
+.dz-keyhost { margin: 16px 0 0 18px; }
+.dz-keyhost .keyrow { background: var(--canvas); border: 1px solid var(--rule);
+  border-radius: var(--r-card); box-shadow: var(--sh-sm); padding: 14px 16px; }
