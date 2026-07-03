@@ -3,7 +3,7 @@
 This document defines the canonical format for every person page in Lucas's CRM. All pages live at:
 
 ```
-{{VAULT_PATH}}\people\<kebab-first-last>.md
+{{VAULT_PATH}}/people/<kebab-first-last>.md
 ```
 
 **File naming rule:** all-lowercase kebab-case of the person's full legal/preferred name. Examples:

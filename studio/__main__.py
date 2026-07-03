@@ -14,7 +14,16 @@ _MIN_PY = (3, 10)
 
 def check_python():
     ok = sys.version_info[:2] >= _MIN_PY
-    return ("Python >= 3.10", ok, "" if ok else f"Install Python {_MIN_PY[0]}.{_MIN_PY[1]}+ and re-run.")
+    fix = ""
+    if not ok:
+        fix = f"Install Python {_MIN_PY[0]}.{_MIN_PY[1]}+ and re-run."
+        if sys.platform == "darwin":
+            # Stock macOS resolves python3 to Apple's 3.9.6; Homebrew's python is not on PATH
+            # until brew shellenv is in ~/.zprofile. Spell out the whole fix (workshop finding).
+            fix = ("macOS ships an old system Python. Fix: `brew install python`, add "
+                   "`eval \"$(/opt/homebrew/bin/brew shellenv)\"` to ~/.zprofile, open a NEW "
+                   "terminal, then re-run. (Intel Macs: /usr/local/bin/brew.)")
+    return ("Python >= 3.10", ok, fix)
 
 def check_claude():
     ok = resolve_claude() is not None
@@ -83,7 +92,27 @@ def _print_doctor(rows) -> bool:
         all_ok = all_ok and (ok or fix.startswith("⚠"))
     return all_ok
 
+def _venv_outdated() -> bool:
+    # A .venv created by an old launching Python (e.g. Apple's 3.9.6 before Homebrew was on
+    # PATH) stays poisoned forever because _ensure_venv only creates-if-missing. pyvenv.cfg
+    # records the creating interpreter — detect and rebuild instead of failing the doctor.
+    cfg = _VENV / "pyvenv.cfg"
+    if not cfg.exists():
+        return False
+    for line in cfg.read_text(encoding="utf-8").splitlines():
+        key, _, val = line.partition("=")
+        if key.strip() == "version":
+            try:
+                major, minor = val.strip().split(".")[:2]
+                return (int(major), int(minor)) < _MIN_PY
+            except ValueError:
+                return False
+    return False
+
 def _ensure_venv() -> bool:
+    if _venv_outdated():
+        print("Rebuilding .venv (it was created by an older Python) …")
+        shutil.rmtree(_VENV, ignore_errors=True)
     if not _venv_python().exists():
         print("Creating .venv …"); venv.create(_VENV, with_pip=True)
     if _deps_importable(_venv_python()):

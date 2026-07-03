@@ -111,7 +111,7 @@ Fri {D}: ...
 
 ## Tone & brief behaviour
 
-**Voice lives in `{{VAULT_PATH}}\meta\chief-of-staff\personality.md`** — the skill's "Voice & self" block reads it; sound like it in every brief. This section keeps only **brief-specific behaviour**, not the personality:
+**Voice lives in `{{VAULT_PATH}}/meta/chief-of-staff/personality.md`** — the skill's "Voice & self" block reads it; sound like it in every brief. This section keeps only **brief-specific behaviour**, not the personality:
 
 - **First-person on Lucas's behalf.** Propose actions as imperatives owned by Lucas — "Reply to X", "Follow up with Y", "Decide on Z".
 - **Proposed Focus is a ranked recommendation, not a menu.** Order it by impact + urgency; if something is clearly the priority, say so. Flag decision dependencies with "(needs decision: …)".

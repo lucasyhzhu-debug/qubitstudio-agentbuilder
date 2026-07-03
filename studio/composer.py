@@ -130,13 +130,22 @@ def _subs(owner_name: str, vault_dir: Path) -> list[tuple[str, str]]:
         ("Lucas", owner_name),
     ]
 
+# The substrate was authored on Windows; participant vaults may be POSIX. Forward slashes work on
+# both platforms, so vault-relative path tokens are normalized BEFORE {{VAULT_PATH}} is filled —
+# otherwise a template's `{{VAULT_PATH}}\people\` composes to `/Users/.../vault\people\` on macOS,
+# which resolves to nothing (workshop finding #12).
+_VAULT_TOKEN = re.compile(r"\{\{VAULT_PATH\}\}[^\s`'\"()\[\]]*")
+
+def _normalize_vault_seps(text: str) -> str:
+    return _VAULT_TOKEN.sub(lambda m: m.group(0).replace("\\", "/"), text)
+
 def delucas(tree: Path, owner_name: str, vault_dir: Path) -> None:
     subs = _subs(owner_name, vault_dir)
     for f in Path(tree).rglob("*"):
         if not (f.is_file() and f.suffix.lower() in _TEXT_EXT):
             continue
         text = f.read_text(encoding="utf-8", errors="ignore")
-        new = text
+        new = _normalize_vault_seps(text)
         for old, repl in subs:
             new = new.replace(old, repl)
         if new != text:

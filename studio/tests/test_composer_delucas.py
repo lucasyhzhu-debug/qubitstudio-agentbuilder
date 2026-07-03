@@ -24,3 +24,30 @@ def test_delucas_leaves_zero_owner_literals(tmp_path):
     # deliberately survive de-Lucas'ing: workshop repo URL + a functional label, not owner PII
     assert "lucasyhzhu-debug" in blob
     assert "needs-lucas" in blob
+
+
+def test_vault_path_backslashes_normalized_to_forward_slashes(tmp_path):
+    # Finding #12: templates authored on Windows carried `{{VAULT_PATH}}\people\`-style tokens;
+    # after substitution the backslashes survived, so live skills pointed at dead paths on macOS.
+    tree = tmp_path / "plug"; tree.mkdir()
+    (tree / "sample.md").write_text(
+        "CRM lives at `{{VAULT_PATH}}\\people\\` and voice at "
+        "`{{VAULT_PATH}}\\meta\\chief-of-staff\\personality.md`.", encoding="utf-8")
+    composer.delucas(tree, "Sam Rivera", tmp_path / "sam-vault")
+    out = (tree / "sample.md").read_text(encoding="utf-8")
+    vault_fwd = str(tmp_path / "sam-vault").replace("\\", "/")
+    assert f"{vault_fwd}/people/" in out
+    assert f"{vault_fwd}/meta/chief-of-staff/personality.md" in out
+    assert "\\people\\" not in out and "\\meta\\" not in out
+
+
+def test_substrate_has_no_backslash_vault_tokens():
+    # Regression guard: the substrate itself must stay forward-slash (cross-platform contract).
+    import re
+    bad = []
+    for f in composer._COS.rglob("*"):
+        if f.is_file() and f.suffix.lower() in composer._TEXT_EXT:
+            for m in re.finditer(r"\{\{VAULT_PATH\}\}[^\s`'\"()\[\]]*", f.read_text(encoding="utf-8", errors="ignore")):
+                if "\\" in m.group(0):
+                    bad.append(f"{f}: {m.group(0)}")
+    assert not bad, "backslash vault tokens reintroduced:\n" + "\n".join(bad)

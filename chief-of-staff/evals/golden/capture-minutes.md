@@ -17,7 +17,7 @@ Not a runnable fixture — a calibrated human-readable reference.
 
 ## Initial state
 
-**Meeting page:** `{{VAULT_PATH}}\meetings\2026-06-30-frollie-strategy.md`
+**Meeting page:** `{{VAULT_PATH}}/meetings/2026-06-30-frollie-strategy.md`
 
 ```yaml
 ---
