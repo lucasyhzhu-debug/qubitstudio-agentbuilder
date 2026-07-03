@@ -624,9 +624,14 @@
   function renderAsk(ask) {
     if (!open) newSection({ title: 'Welcome', phase: 'welcome' });
     if (open.bodyEl.querySelector(`.dz-ask[data-ask-id="${CSS.escape(ask.id)}"]:not([data-answered])`)) return;
+    // Final review: a fence-less turn re-delivers the prior whole-state studio,
+    // including an already-ANSWERED ask — never re-render it hot under its fossil.
+    if (document.querySelector(
+      `.dz-ask[data-answered][data-ask-id="${CSS.escape(ask.id)}"][data-q="${CSS.escape(ask.title)}"]`)) return;
     const wrap = document.createElement('div');
     wrap.className = 'dz-ask';
     wrap.dataset.askId = ask.id;
+    wrap.dataset.q = ask.title;
     wrap.innerHTML = `
       <div class="ask"><div class="who">architect asks</div><p>${esc(ask.title)}</p></div>
       <div class="choices">${ask.options.map((o) => `
