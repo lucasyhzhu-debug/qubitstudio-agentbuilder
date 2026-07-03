@@ -59,15 +59,28 @@ def copy_plugin(tree: Path, picks: list[str]) -> None:
             continue
         dst = tree / item
         shutil.copytree(src, dst) if src.is_dir() else shutil.copy2(src, dst)
-    # Copy the shared substrate: EVERY skill's references/ (inert markdown, kills the hard-dep class),
-    # but only the PICKED skills' SKILL.md (what Claude actually triggers on).
+    # Copy the shared substrate: EVERY skill's references/ (inert markdown, kills the hard-dep
+    # class), but only the PICKED skills' SKILL.md (what Claude actually triggers on). Un-picked
+    # skills' references land under references/skills/<sk>/ — a folder under skills/ without a
+    # SKILL.md reads as a malformed skill to the plugin loader ("1 error during load", finding #7).
     for sk in _ALL_SKILLS:
         refs = _COS / "skills" / sk / "references"
         if refs.exists():
-            shutil.copytree(refs, tree / "skills" / sk / "references")
+            dst = (tree / "skills" / sk / "references") if sk in picks else (tree / "references" / "skills" / sk)
+            shutil.copytree(refs, dst)
     for sk in picks:
         (tree / "skills" / sk).mkdir(parents=True, exist_ok=True)
         shutil.copy2(_COS / "skills" / sk / "SKILL.md", tree / "skills" / sk / "SKILL.md")
+    _write_identity(tree, picks)
+
+# The repo contract promises a "raw-skills agent home (.claude/skills/ + CLAUDE.md + root
+# .mcp.json)" — but nothing wrote that CLAUDE.md, so every composed agent shipped without an
+# identity and the participant's named, voiced chief of staff never spoke as one (finding #8).
+# Placeholders are left for delucas()/the tweaker to fill; the voice pass rewrites ## Voice.
+def _write_identity(tree: Path, picks: list[str]) -> None:
+    template = (_HERE / "templates" / "agent-identity.md").read_text(encoding="utf-8")
+    skills_list = "\n".join(f"- `{sk}`" for sk in picks) or "- (no skills picked)"
+    (tree / "CLAUDE.md").write_text(template.replace("{{SKILLS_LIST}}", skills_list), encoding="utf-8")
 
 _LINEAR_TEAM = "d885fd34-71e6-4e8b-8fc6-da4f6bbf1875"
 _LINEAR_PROJ = "504fb62b-28ba-4140-9031-1f03e189c70c"
@@ -91,7 +104,9 @@ def _subs(owner_name: str, vault_dir: Path) -> list[tuple[str, str]]:
         (_LINEAR_PROJ, "{{LINEAR_PROJECT_ID}}"),
         ("LUCAS_USER_ID", "OWNER_USER_ID"),
         ("lucas@ikigaiventures.ai", "you@example.com"),
+        ("lucas.yh.zhu@gmail.com", "you@example.com"),  # was live PII in a sample log line (finding #11)
         ("lucasknowledgebot", "your-assistant-bot"),
+        ("needs-lucas", "needs-owner"),  # functional Linear label carried the original owner's name (finding #10)
         ("Lucas Zhu", owner_name),
         ("Lucas", owner_name),
     ]
@@ -133,6 +148,9 @@ def assemble_manifests(tree: Path, owner_name: str, picks: list[str], integratio
         mk["plugins"] = [{"name": slug, "source": ".", "description": description,
                           "version": "0.1.0", "category": "productivity"}]
     _edit_json(tree / "marketplace.json", _marketplace)
+    # Claude Code resolves a local marketplace at <dir>/.claude-plugin/marketplace.json — at the
+    # tree root, `/plugin marketplace add <dir>` can't find it and the install step fails (finding #6).
+    (tree / "marketplace.json").replace(tree / ".claude-plugin" / "marketplace.json")
 
     # Trim .mcp.json: keep discord only if a Discord-needing integration was picked.
     mcp_path = tree / ".mcp.json"

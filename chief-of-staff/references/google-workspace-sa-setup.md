@@ -90,7 +90,7 @@ Restart any open PowerShell sessions so `[Environment]::GetEnvironmentVariable` 
 Expected output — a per-account `OK` line for each label, then a global summary (the `[work]` line confirms the SA/DWD path is working):
 
 ```
-[personal] OK  email=lucas.yh.zhu@gmail.com  calendars=4
+[personal] OK  email=you@example.com  calendars=4
 [work] OK  email=you@example.com  calendars=6
 SMOKE OK
 ```

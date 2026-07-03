@@ -46,13 +46,13 @@ Classification is hybrid: it auto-classifies, asks **one** disambiguating questi
 
 ## Scheduling confirm grammar (v0.7.0, Lucas-only)
 
-When the drain parks a scheduling proposal at `needs-lucas` and posts candidate slots to the Discord thread, reply with a **bare confirm token** to authorize the calendar write:
+When the drain parks a scheduling proposal at `needs-owner` and posts candidate slots to the Discord thread, reply with a **bare confirm token** to authorize the calendar write:
 
 | Reply | What happens |
 |---|---|
 | `confirm` or `yes` or `go` | Books the default slot (slot 1) |
 | `confirm 2` / `yes 2` / `go 2` | Books slot 2 (1-based index) |
-| `change the time to 3pm` | Triggers a draft edit — re-composes and re-posts, stays `needs-lucas` |
+| `change the time to 3pm` | Triggers a draft edit — re-composes and re-posts, stays `needs-owner` |
 | Anything else, or same words followed by prose | Treated as chatter — no action |
 
 **Lucas-only:** the drain authenticates the confirm by `author.id == OWNER_USER_ID`. A reply from any other participant in the thread is always chatter, regardless of content. This is the sole write-authorization gate — the calendar write never executes without it.

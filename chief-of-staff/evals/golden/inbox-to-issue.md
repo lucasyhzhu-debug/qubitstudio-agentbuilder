@@ -301,10 +301,10 @@ Written to: `{{VAULT_PATH}}\meta\chief-of-staff\drain-state.json`
 
 ---
 
-## Notes on `needs-lucas` path (not illustrated above)
+## Notes on `needs-owner` path (not illustrated above)
 
 If the action had required Lucas's approval (e.g., "draft a reply email to the Frollie CEO"),
-Step 4c would instead swap `needs-agent` → `needs-lucas` and the result comment would read:
-> "Drafted — parked at needs-lucas. Approve + I'll queue the send."
+Step 4c would instead swap `needs-agent` → `needs-owner` and the result comment would read:
+> "Drafted — parked at needs-owner. Approve + I'll queue the send."
 The issue stays open in the queue; on the next drain it is skipped (no `needs-agent` label)
 until Lucas moves it back or closes it.

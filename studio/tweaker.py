@@ -67,12 +67,13 @@ def _dedupe_roots(roots: list[Path]) -> list[Path]:
 def build_voice_argv(claude_bin: str, dirs: list[Path], owner_voice: str, voice_sample: str) -> list[str]:
     """--allowed-tools is VARIADIC: tools are SEPARATE argv tokens ("Read", "Edit"), never one
     space-joined string. Scoped tight: read/edit only, one `--add-dir` per root in `dirs` (the
-    plugin tree and, when composed separately, the sibling vault — the participant's identity
-    file `meta/chief-of-staff/personality.md` is seeded in the VAULT, not the plugin tree)."""
+    plugin tree — which carries the composed agent's root CLAUDE.md identity — and, when composed
+    separately, the sibling vault holding `meta/chief-of-staff/personality.md`)."""
     dirs_str = " and ".join(str(d) for d in dirs)
     prompt = (
         "Rewrite ONLY the personality/voice/tone description block in the composed agent's identity "
-        f"files under {dirs_str} (e.g. the 'Voice' section in meta/chief-of-staff/personality.md) so "
+        f"files under {dirs_str} (the '## Voice' section in the agent's root CLAUDE.md, and the "
+        "'Voice' section in meta/chief-of-staff/personality.md) so "
         "its tone matches the writing sample below. Keep every other section, structure, and heading "
         "untouched — change tone language only. This is non-interactive; do not ask questions.\n\n"
         f"Voice description: {owner_voice or '(none given)'}\n\n"

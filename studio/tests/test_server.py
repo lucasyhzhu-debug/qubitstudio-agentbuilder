@@ -233,3 +233,10 @@ def test_compose_uses_second_brain_vault(monkeypatch, tmp_path):
     with c.stream("POST", "/api/compose", json={"picks": ["crm"], "name": "my cos"}) as r:
         "".join(r.iter_text())
     assert seen["vault"] == str(sb)
+
+
+def test_favicon_no_longer_404s():
+    # finding #3: every page load logged "GET /favicon.ico 404" — serve it or return 204
+    c = TestClient(server.app)
+    r = c.get("/favicon.ico")
+    assert r.status_code in (200, 204)
