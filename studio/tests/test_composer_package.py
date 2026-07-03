@@ -93,6 +93,33 @@ def test_compose_external_vault_unchanged(tmp_path):
     assert (sb / "meta/chief-of-staff/personality.md").exists()
     assert not (Path(evs[-1]["plugin_path"]) / "vault").exists()
 
+def test_compose_rebuild_fails_closed_when_home_cannot_be_cleared(tmp_path, monkeypatch):
+    # Final review: a Windows lock (participant has `claude` running inside the home)
+    # makes rmtree(final) a silent no-op — the move must NOT nest the new home at
+    # final/<slug>-cos and report success. It fails closed with a clear message, and
+    # the kept in-home vault rides back so memories aren't stranded in .cache.
+    home = tmp_path / "dist" / "sam-rivera-cos"
+    home_vault = home / "vault"
+    _run(composer.compose(["crm"], "Sam Rivera", tmp_path / "dist", home_vault))
+    memory = home_vault / "meta" / "chief-of-staff" / "memories.md"
+    memory.write_text("Sam prefers Tuesday briefings.", encoding="utf-8")
+
+    real_rmtree = composer.shutil.rmtree
+    def locked_rmtree(path, *a, **kw):
+        if Path(path) == home:          # the locked old home survives its rmtree
+            return None
+        return real_rmtree(path, *a, **kw)
+    monkeypatch.setattr(composer.shutil, "rmtree", locked_rmtree)
+
+    evs = _run(composer.compose(["crm"], "Sam Rivera", tmp_path / "dist", home_vault))
+    err = evs[-1]
+    assert err["type"] == "error" and err["stage"] == "package"
+    assert "close any terminal" in err["message"]
+    assert not (home / "sam-rivera-cos").exists()          # no silent nesting
+    # restore leg: the participant's memories are back in the home, not in .cache
+    assert memory.read_text(encoding="utf-8") == "Sam prefers Tuesday briefings."
+
+
 def test_compose_claude_md_owner_from_onboarding(tmp_path, monkeypatch):
     # gate-2 I3: the participant's onboarding name is the CLAUDE.md owner; the agent
     # name still drives the slug. (Monkeypatched — composer tests never read the real

@@ -265,6 +265,22 @@ async def compose(picks, owner_name, outdir, vault_dir) -> AsyncIterator[dict]:
                     shutil.rmtree(kept_vault, ignore_errors=True)
                 shutil.move(str(final / "vault"), str(kept_vault))
             shutil.rmtree(final, ignore_errors=True)
+            if final.exists():
+                # Windows lock (e.g. a terminal running inside the composed home):
+                # the old tree survived the rmtree. Moving staging in would silently
+                # NEST the new home at final/<slug>-cos — fail closed instead. First
+                # ride the kept vault back in (best-effort) so the participant's
+                # memories aren't stranded in .cache.
+                if kept_vault is not None:
+                    try:
+                        shutil.rmtree(str(final / "vault"), ignore_errors=True)
+                        shutil.move(str(kept_vault), str(final / "vault"))
+                    except Exception:
+                        pass
+                raise RuntimeError(
+                    "couldn't clear " + str(final)
+                    + " — close any terminal running inside your agent's folder, "
+                    "then Build again")
         shutil.move(str(staging), str(final))
         if kept_vault is not None:
             shutil.rmtree(str(final / "vault"), ignore_errors=True)
