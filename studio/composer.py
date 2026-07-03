@@ -47,7 +47,7 @@ def scaffold_vault(vault_dir: Path, owner_name: str, picks: list[str]) -> None:
     if "drain" in picks:
         (vault_dir / "meta/chief-of-staff/drain-state.json").write_text("{}", encoding="utf-8")
 
-_ALL_SKILLS = ["briefing", "capture", "crm", "drain", "intake", "scheduling", "tasks"]
+_ALL_SKILLS = ["briefing", "capture", "crm", "daily-interest-brief", "drain", "intake", "scheduling", "tasks"]
 
 
 def _rewrite_reference_paths(text: str, skill_id: str | None) -> str:

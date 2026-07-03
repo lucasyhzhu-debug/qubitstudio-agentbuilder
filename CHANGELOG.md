@@ -36,6 +36,26 @@
   chapter; real first breath over a composed home). Release gate before the room: the
   fresh-machine dress rehearsal (spec §11.2).
 
+## 0.4.0 — 2026-07-03 — Interest radar shelf skill
+
+- **New free-tier shelf skill: `daily-interest-brief` ("Interest radar").** A keyless,
+  newsletter-style daily pulse on the topics a participant follows — 3–5 sourced, link-rich
+  bullets on news, a sport, a company, a market, or a policy area — using the composed agent's
+  native `WebSearch`/`WebFetch` (with an optional, zero-dependency Google-News-RSS helper
+  script). Reads/writes the owner's followed topics in the vault self-layer
+  (`meta/chief-of-staff/interests.md`); each topic carries an optional `angle` that dials the
+  brief's depth. Standalone (no keys, no prerequisite skills) but folds an `### In the world`
+  section into the `briefing` sweep when both are composed. Wired through the composer
+  (`_ALL_SKILLS`), the shelf catalog, and the workshop interview; no connect-step, key-wizard,
+  smoke-test, or dossier-UI change. Out of scope: unattended scheduled delivery (arrives with
+  the r1 always-on scheduler).
+- **Provenance:** adapted from the MIT-licensed `daily-interest-brief` skill by Nick Pinidiya
+  (github.com/Nicegarrry/claude-skills); the collector script retains its MIT notice. The
+  OpenAI-runtime `agents/openai.yaml` was not vendored; the skill was rewritten to Claude Code
+  idiom and wiki-brain conventions.
+- **Tests:** reference-path invariant extended to the new skill; a catalog assertion pins it
+  keyless/free-tier.
+
 ## 0.3.0 — 2026-07-03 — Onboarding journey + guided cards
 
 - **First-launch onboarding walk (workshop mode).** Fade-in name screen → "Welcome, {name}." →

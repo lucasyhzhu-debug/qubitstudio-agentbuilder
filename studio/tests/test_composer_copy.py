@@ -64,7 +64,7 @@ _REF_RE = re.compile(r"(?:[\w.\-]+/)*references/(?:[\w.\-]+/)*[\w.\-]+\.md")
 def test_reference_path_invariant_all_shelf_picks(tmp_path):
     """The lean §5 invariant: every reference mentioned in a shipped SKILL.md — or in a
     shipped .claude/agents/*.md (gate-2 I5) — resolves from the agent-home root."""
-    picks = ["crm", "briefing", "scheduling", "tasks", "intake", "drain"]
+    picks = ["crm", "briefing", "scheduling", "tasks", "intake", "drain", "daily-interest-brief"]
     tree = tmp_path / "home"
     composer.copy_home(tree, picks)
     missing = []

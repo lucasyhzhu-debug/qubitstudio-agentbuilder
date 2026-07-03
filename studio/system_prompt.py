@@ -117,7 +117,8 @@ _WORKSHOP_CONTRACT = """
 - Interview the participant about their working life ONE topic at a time: inbox volume and
   where their tasks live (-> tasks), their morning routine (-> briefing), meeting and
   scheduling load (-> scheduling), how they track people and relationships (-> crm),
-  screenshot habits (-> intake), and appetite for an always-on inbox channel (-> drain).
+  screenshot habits (-> intake), the outside topics or beats they follow and want a daily
+  pulse on (-> daily-interest-brief), and appetite for an always-on inbox channel (-> drain).
 - Recommend shelf skills by their exact catalog id. Explain the price tag (which integrations
   each skill needs). Respect needs_skills prerequisites — recommend the prerequisite too and
   say why. Do not oversell `drain` (the heaviest tier) to a first-timer.
