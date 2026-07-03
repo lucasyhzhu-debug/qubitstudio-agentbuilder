@@ -165,6 +165,7 @@
     $('#dz-live').innerHTML = '';
     acc = '';
     pendingTarget = null;          // a verb's target clears on its beat, success or error (§5)
+    verbErrorRecover();
     armWriteline(pendingAsk, true);
     nudgeScroll();
   }
@@ -233,13 +234,23 @@
     sec.dataset.n = n;
     sec.innerHTML = `
       <div class="sec-head"><span class="no">${String(n).padStart(2, '0')}</span>
-        <h2>${esc(ch.title)}</h2><span class="why">${esc(ch.phase)}</span></div>
+        <h2>${esc(ch.title)}</h2>
+        <button type="button" class="dz-regen" title="rewrite this chapter fresh">⟳</button>
+        <span class="why">${esc(ch.phase)}</span></div>
       <div class="dz-body"></div>`;
     $('#dz-chapters').appendChild(sec);
     const rec = { n, title: ch.title, phase: ch.phase, el: sec,
                   bodyEl: sec.querySelector('.dz-body') };
     chapters.push(rec);
     open = rec;
+    sec.querySelector('.dz-regen').addEventListener('click', () => {
+      if (pendingTarget || rw || busy) return;    // one revision in flight; never while
+                                                  // a turn streams (gate-2 I1)
+      pendingTarget = { rec, mode: 'replace' };   // §5: replaces agent prose ONLY, in place
+      sec.classList.add('dz-regenerating');
+      holdWriteline();
+      sendTurn(`[studio event] regenerate chapter "${rec.title}" — rewrite it fresh, same facts`);
+    });
     return rec;
   }
 
@@ -318,13 +329,158 @@
   function renderPendingAsk() { if (pendingAsk) renderAsk(pendingAsk); }
 
   // ── fossilized answers: the human is the serif (§4.1.3) ─────────────────
-  function fossilize(text, q) {
+  function fossilize(text, q, rewritten) {
     const a = document.createElement('div');
     a.className = 'answer';
     if (q) a.dataset.q = q;
     a.textContent = text;              // the brass dash is CSS ::before
+    if (rewritten) {
+      const chip = document.createElement('span');
+      chip.className = 'redone';
+      chip.textContent = 'rewritten ↺';
+      a.appendChild(chip);             // revision is part of the record (§2)
+    }
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'rewrite';
+    btn.textContent = '↺ rewrite';
+    btn.addEventListener('click', () => beginRewrite(a));
+    a.appendChild(btn);
     ((open && open.bodyEl) || $('#dz-live')).appendChild(a);
     return a;
+  }
+
+  // ── D1b: rewrite ⟲ (spec §5) — one in flight at a time ──────────────────
+  let rw = null;
+  let lastVerbFossil = null;   // the re-fossilized answer of the in-flight rewrite —
+                               // marked "unsent" if that turn errors (gate-2 I8)
+
+  function beginRewrite(ans) {
+    if (rw || pendingTarget || busy) return;  // finish the open revision — and never
+                                              // steal an in-flight turn's settle (I1)
+    const sec = ans.closest('.dz-sec');
+    const rec = chapters.find((c) => c.el === sec);
+    if (!rec) return;
+    const later = chapters.filter((c) => c.n > rec.n);
+    later.forEach((c) => c.el.classList.add('stale'));
+    document.querySelectorAll('#dz-rail .node').forEach((n) => {
+      if (later.some((c) => c.phase === n.dataset.phase)) n.classList.add('stale');
+    });
+    const note = document.createElement('div');
+    note.className = 'stale-note';
+    note.textContent = `⟲ rewriting §${String(rec.n).padStart(2, '0')}` +
+      ' — the architect will reconsider everything below';
+    sec.after(note);
+    // choice sections reopen their cards, re-choosable
+    const grp = ans.closest('.dz-ask');
+    if (grp) grp.querySelectorAll('.choice').forEach((c) => {
+      c.disabled = false;
+      c.classList.remove('dim');
+    });
+    // the fossil melts back into a writing line, pre-filled with the old words
+    const old = (ans.firstChild && ans.firstChild.textContent || '').trim();
+    const q = ans.dataset.q || '';
+    const wl = document.createElement('form');
+    wl.className = 'writeline';
+    wl.innerHTML = '<span class="bar"></span><input autocomplete="off">';
+    const inp = wl.querySelector('input');
+    inp.value = old;
+    ans.replaceWith(wl);
+    inp.focus(); inp.select();
+    holdWriteline();                          // the rewrite holds the baton
+    rw = {
+      rec, grp, note, later, wl, q, old,
+      finish(text) {
+        const marker = document.createElement('div');
+        this.wl.replaceWith(marker);
+        lastVerbFossil = fossilAt(marker, text, this.q);   // re-fossilize in place, with
+        marker.remove();                                   // the chip; remembered for I8
+        this.note.remove();
+        if (this.grp) {
+          this.grp.querySelectorAll('.choice').forEach((c) => {
+            const label = c.querySelector('b') ? c.querySelector('b').textContent : '';
+            c.disabled = true;
+            c.classList.toggle('picked', label === text);
+            c.classList.toggle('dim', label !== text);
+          });
+        }
+        // §5 pending-target override: the NEXT done beat routes to this chapter,
+        // regardless of the emitted title, consuming exactly one beat.
+        pendingTarget = { rec: this.rec, mode: 'append' };
+        const later = this.later, n = this.rec.n;
+        rwSettle = () => {
+          lastVerbFossil = null;               // the rewrite landed — nothing to un-send (I8)
+          later.forEach((c) => {
+            c.el.classList.remove('stale');
+            // honest scope (§5): downstream prose is NOT rewritten — it keeps its
+            // text with a quiet mark until the participant regenerates it (⟳)
+            if (c.bodyEl.querySelector('.dz-prose') && !c.bodyEl.querySelector('.dz-stale-mark')) {
+              const m = document.createElement('div');
+              m.className = 'dz-stale-mark';
+              m.textContent = `written before your rewrite of §${String(n).padStart(2, '0')}` +
+                ' — ⟳ regenerate to refresh';
+              c.bodyEl.prepend(m);
+            }
+            // deterministic card re-settle: a still-unanswered downstream ask folds
+            c.bodyEl.querySelectorAll('.dz-ask:not([data-answered])').forEach((w) => {
+              w.dataset.answered = 'folded';
+              w.querySelectorAll('.choice').forEach((x) => { x.disabled = true; x.classList.add('dim'); });
+            });
+          });
+          document.querySelectorAll('#dz-rail .node.stale').forEach((x) => x.classList.remove('stale'));
+        };
+        sendTurn(`[studio event] rewrite — question: "${this.q}"` +
+          ` — previous answer: "${this.old}" — new answer: "${text}"`);
+        rw = null;
+      },
+    };
+    inp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter' && inp.value.trim()) { ev.preventDefault(); rw.finish(inp.value.trim()); }
+    });
+  }
+
+  // build a re-fossilized answer (with the rewritten chip) at a placeholder position
+  function fossilAt(placeholder, text, q) {
+    const host = placeholder.parentNode;
+    const before = placeholder.nextSibling;
+    const saveOpen = open;
+    open = { bodyEl: host };            // fossilize appends to open — retarget briefly
+    const a = fossilize(text, q, true);
+    open = saveOpen;
+    host.insertBefore(a, before);
+    return a;
+  }
+
+  // re-choosing during a rewrite: a delegated handler (the per-card listeners are
+  // guarded by data-answered and stay inert on reopened cards)
+  document.addEventListener('click', (e) => {
+    const ch = e.target.closest('.choice');
+    if (!ch || !rw || !rw.grp || !rw.grp.contains(ch)) return;
+    const label = ch.querySelector('b') ? ch.querySelector('b').textContent : '';
+    if (label) rw.finish(label);
+  });
+
+  // gate-2 I8: an error on a VERB turn must not leave three-way incoherence — the
+  // deferred re-settle is cancelled (it would otherwise fire on a LATER unrelated
+  // beat, for a rewrite the agent never received), the un-received fossil says so
+  // (its existing ↺ button IS the retry affordance — clicking it melts the answer
+  // back into the line and re-sends), ⟳ shimmer and stale dressings come off.
+  // Task 9's onError already clears pendingTarget.
+  function verbErrorRecover() {
+    if (rwSettle) {
+      rwSettle = null;
+      if (lastVerbFossil && !lastVerbFossil.querySelector('.unsent')) {
+        const chip = document.createElement('span');
+        chip.className = 'redone unsent';
+        chip.textContent = 'unsent — ↺ retry';
+        lastVerbFossil.appendChild(chip);
+      }
+    }
+    lastVerbFossil = null;
+    document.querySelectorAll('.dz-sec.dz-regenerating').forEach((s) => s.classList.remove('dz-regenerating'));
+    document.querySelectorAll('.dz-sec.stale').forEach((s) => s.classList.remove('stale'));
+    document.querySelectorAll('#dz-rail .node.stale').forEach((n) => n.classList.remove('stale'));
+    document.querySelectorAll('.stale-note').forEach((n) => n.remove());
   }
 
   // ── the writing line — the document's next line ─────────────────────────

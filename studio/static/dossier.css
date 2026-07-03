@@ -137,3 +137,26 @@ body.dossier.dz-dock-build .rightrail {
   .dz-rail > i { transition: none; }
   .choice, .choice:hover { transition: none; transform: none; }
 }
+
+/* ── D1b: revision verbs (v1b .rewrite/.redone/.stale) ── */
+.answer .rewrite { position: absolute; right: 0; top: 4px; font-family: var(--mono);
+  font-style: normal; font-size: 10.5px; letter-spacing: .08em; color: var(--ink-4);
+  background: none; border: 1px solid var(--rule); border-radius: 999px; padding: 4px 11px;
+  cursor: pointer; opacity: 0; transition: opacity .15s, color .15s, border-color .15s; }
+.answer:hover .rewrite { opacity: 1; }
+.answer .rewrite:hover { color: var(--brass); border-color: var(--brass); }
+.answer .redone { font-family: var(--mono); font-style: normal; font-size: 10px;
+  letter-spacing: .1em; color: var(--brass); background: var(--brass-tint);
+  border-radius: 999px; padding: 3px 9px; margin-left: 10px; vertical-align: middle; }
+.answer .redone.unsent { color: var(--warn); background: var(--warn-t); }  /* gate-2 I8 */
+.dz-sec.stale { opacity: .38; pointer-events: none; filter: saturate(.6); }
+.stale-note { margin: 0 0 60px; padding: 12px 18px; border: 1px dashed var(--brass);
+  border-radius: 10px; background: var(--brass-tint); font-family: var(--mono);
+  font-size: 11.5px; letter-spacing: .06em; color: var(--brass); text-transform: uppercase; }
+.dz-stale-mark { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em;
+  color: var(--brass); margin: 0 0 10px; }
+.sec-head .dz-regen { background: none; border: none; color: var(--ink-4);
+  font-size: 14px; cursor: pointer; opacity: 0; transition: opacity .15s, color .15s; }
+.dz-sec:hover .dz-regen { opacity: 1; }
+.sec-head .dz-regen:hover { color: var(--brass); }
+.dz-sec.dz-regenerating .dz-body { opacity: .5; }
