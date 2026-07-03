@@ -183,14 +183,14 @@ def test_session_new_injects_participant(monkeypatch, tmp_path):
     r = c.post("/api/session/new")
     assert r.status_code == 200
     text = server._WORKSHOP_PROMPT.read_text(encoding="utf-8")
-    assert "Ada" in text and "engines" in text and "studio event" not in text
+    assert "Ada" in text and "engines" in text and "onboarding walk" not in text
 
 def test_session_new_onboarding_contract_when_incomplete(monkeypatch, tmp_path):
     _ob(monkeypatch, tmp_path, name="Ada")
     c = TestClient(server.app)
     c.post("/api/session/new")
     text = server._WORKSHOP_PROMPT.read_text(encoding="utf-8")
-    assert "studio event" in text
+    assert "onboarding walk" in text
 
 def test_session_new_degrades_when_sb_missing(monkeypatch, tmp_path):
     _ob(monkeypatch, tmp_path, name="Ada", second_brain=str(tmp_path / "gone"),
