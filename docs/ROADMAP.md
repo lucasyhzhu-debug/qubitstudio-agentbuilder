@@ -30,17 +30,22 @@ migration + raw skills) and `docs/specs/2026-07-02-workshop-studio-r1-personaliz
      AskUserQuestion) that r1-B personalize and the connect wizard adopt later. All slices
      landed (C1 ask-cards + C2 backend + C3 walk); full suite 162 green incl. a live distill
      smoke; PDF-read probe confirmed.
-3. **The dossier journey (absorbs raw-skills packaging as slice D0)** — **specced + planned**
-   (spec: `docs/specs/2026-07-02-studio-dossier-journey-design.md`, plan:
-   `docs/plans/studio-dossier-journey.md`, both shipshape-gated ×2; mockups committed at
-   `docs/mockups/dossier-journey/`). The workshop surface becomes a living document — numbered
-   chapters the architect writes, serif fossilized answers, journey rail, rewrite ⟲ /
-   regenerate ⟳, and the sign→bind→assemble→first-breath→launch finale. Slices in order,
-   each shippable: **D0** raw-skills packaging (agent-home emission per lean spec §5 +
-   reference-path invariant + `cd <dir> ; claude` install line — the old item-3 scope) →
-   **D1a** dossier shell (chapters, writing line, beats replay, `?ui=chat` escape hatch) →
-   **D1b** revision verbs → **D1c** finale + `POST /api/first-breath` → **D2** connect as
-   chapters (typed blocks + `wireKeyRow`) → **D3** intake as opening chapters. 21 TDD tasks.
+3. ~~The dossier journey (absorbs raw-skills packaging as slice D0)~~ — **shipped** (v0.5.0;
+   spec: `docs/specs/2026-07-02-studio-dossier-journey-design.md`, plan:
+   `docs/plans/studio-dossier-journey.md`, both shipshape-gated ×2; mockups at
+   `docs/mockups/dossier-journey/`). ALL slices landed — **D0** raw-skills packaging (composer
+   emits an agent home per lean §5: `.claude/skills/` + generated `CLAUDE.md` + root
+   `.mcp.json`, in-home default vault that SURVIVES rebuilds, `cd <dir> ; claude` install line;
+   substrate plugin manifests removed) → **D1a** dossier shell (chapters, fossils, writing
+   line, journey rail, beats replay, `?ui=chat` same-session escape hatch) → **D1b** rewrite ⟲
+   / regenerate ⟳ → **D1c** finale (sign→bind→assemble→first breath via `POST
+   /api/first-breath`→launch card, tool-less + budgeted) → **D2** connect as chapters (typed
+   blocks + `wireKeyRow` seam) → **D3** dossier-native intake. 21 TDD tasks + final
+   whole-branch review (3 room-facing fixes folded in); full suite 209 green incl. live-claude
+   integration smokes. **Remaining release gate: the fresh-machine dress rehearsal** (spec
+   §11.2) — run live before the room; it also decides `?ui=chat` retirement. Note for Lucas
+   (gate-2 I4 decision, landed): a REBUILD now preserves the agent's in-home vault (its
+   memory) and loses only `.env`.
 4. **r1-A: always-on** — `studio/scheduler.py` + `POST /api/schedule` + wizard step; per-OS task
    (schtasks S4U hidden / launchd / cron) with the safe headless flags (`--strict-mcp-config` +
    empty MCP config), cwd = the agent home. r1 spec §4.
@@ -82,9 +87,10 @@ migration + raw skills) and `docs/specs/2026-07-02-workshop-studio-r1-personaliz
 
 ## Cleanup / later
 
-- Remove `chief-of-staff/.claude-plugin/`, `marketplace.json`, and plugin-install wording in
-  `chief-of-staff/README.md` + `INSTALL.md` once raw-skills packaging lands (they're vestigial
-  here).
+- ~~Remove `chief-of-staff/.claude-plugin/`, `marketplace.json`, and plugin-install wording in
+  `chief-of-staff/README.md` + `INSTALL.md`~~ — **done** (dossier slice D0, v0.5.0).
+- Remove the `?ui=chat` chat-skin escape hatch once dossier parity is proven at the dress
+  rehearsal (deliberately NOT in the dossier plan).
 - Prune vestigial Lucas-form entries from `composer._subs` once the substrate is verified fully
   placeholder-form (tests currently encode the original contract).
 - E2E dress rehearsal after the cut line: fresh clone on a second machine/profile → `--doctor` →

@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.5.0 — 2026-07-03 — The dossier journey + raw-skills agent homes
+
+- **The workshop surface is now a dossier** — a single living document the architect writes
+  chapter by chapter. Participant answers fossilize as serif quotations; a blended writing
+  line replaces the chat box; a journey rail tracks the seven phases; reloads replay the
+  whole document from server-side beats (same session, verbs included). The old chat skin
+  stays reachable at `?ui=chat` (same-session escape hatch) until the dress rehearsal proves
+  parity; `?mode=architect` is byte-identical.
+- **Composed agents are now raw-skills agent homes** (lean spec §5): `dist/<name>-cos/` gets
+  `.claude/skills/` + `.claude/agents/`, a generated `CLAUDE.md` identity (agent slug, owner
+  from onboarding, vault path, skill roster), root `.mcp.json`, and reference paths rewritten
+  home-root-relative (invariant-tested). Launch is `cd dist/<name>-cos` then `claude` — no
+  marketplace, no `/plugin install`, no restart. The default vault lives IN the home and
+  **survives rebuilds** (only `.env` is lost); a rebuild that can't clear the old home fails
+  closed with a "close the terminal in your agent's folder" error instead of nesting.
+  The substrate's vestigial plugin manifests are removed.
+- **Revision is part of the record:** rewrite ⟲ on any fossilized answer re-asserts the full
+  agent state from the new answer; regenerate ⟳ rewrites a chapter in place. Both replay
+  faithfully after a reload.
+- **The finale is a ceremony over a real agent:** sign the manifest → organs bind as real
+  compose events stream → assemble → **first breath** (one tool-less, budgeted `claude -p`
+  turn from inside the composed home via `POST /api/first-breath` — real streamed tokens,
+  static fallback if offline) → launch card with the two-line install command and pending
+  integration chips that fill as keys connect. The launch card survives reloads.
+- **Connect and intake live in the document:** typed chapter blocks (step / key-field /
+  checklist / note / skill-card) render inline; key-field blocks host the real smoke-test
+  rows (`wireKeyRow` seam, one wiring for wizard and dossier); the first-launch intake
+  (name, materials drop, second-brain path) opens the dossier itself — the C3 overlay is
+  retired in dossier mode.
+- **Docs:** `studio/FACILITATOR.md` gains a "Running the room" section (recovery moves:
+  ⟳ / ↺ / reload replay / `?ui=chat` / first-breath fallback); substrate README/INSTALL
+  teach the agent-home launch.
+- **Tests:** 209 green including live-claude integration smokes (real workshop turn emits a
+  chapter; real first breath over a composed home). Release gate before the room: the
+  fresh-machine dress rehearsal (spec §11.2).
+
 ## 0.3.0 — 2026-07-03 — Onboarding journey + guided cards
 
 - **First-launch onboarding walk (workshop mode).** Fade-in name screen → "Welcome, {name}." →
