@@ -213,6 +213,23 @@ _REVISION_CONTRACT = """
   new question unless that chapter ended on one.
 """
 
+_BLOCKS_CONTRACT = """
+# Build & connect chapters (typed blocks)
+
+- ONLY in build/connect phases, the chapter may carry a "blocks" array the page renders
+  natively, after your prose. Closed vocabulary — exactly these shapes:
+  {"type": "step", "n": 1, "text": "Open linear.app → Settings → API → Personal API keys"}
+  {"type": "key-field", "integration": "linear", "label": "Paste your Linear API key"}
+  {"type": "checklist", "items": ["Key created", "Key pasted", "Smoke test green"]}
+  {"type": "note", "text": "Keys stay on this machine — written into your agent's .env."}
+  {"type": "skill-card", "id": "tasks"}
+- "integration" must be one of: google, discord, linear, scheduler.
+- Walk ONE integration per chapter: 2–4 short steps, then its key-field, then a
+  checklist. The key-field renders a live paste-and-test row — after emitting it, tell
+  the participant to paste and press Test, then wait for their word before moving on.
+- Never emit blocks outside build/connect phases.
+"""
+
 _ONBOARDING_CONTRACT = """
 # The onboarding walk (this session starts BEFORE the interview)
 
@@ -265,6 +282,7 @@ def build_workshop_prompt(catalog_path: Path | None = None,
     parts.append(_ASK_CONTRACT)
     parts.append(_CHAPTER_CONTRACT)
     parts.append(_REVISION_CONTRACT)
+    parts.append(_BLOCKS_CONTRACT)
     if onboarding:
         parts.append(_ONBOARDING_CONTRACT)
     return "\n\n".join(parts)

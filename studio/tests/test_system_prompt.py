@@ -137,3 +137,20 @@ def test_architect_has_no_revision_contract(tmp_path):
     assert "[studio event] rewrite" not in build_system_prompt()
     out = write_system_prompt(tmp_path / "sp.md")
     assert out.read_text(encoding="utf-8") == build_system_prompt()
+
+
+# --- dossier spec §3.2/§7.2: block authoring ---
+
+def test_workshop_blocks_contract_present():
+    p = build_workshop_prompt()
+    assert '"blocks"' in p
+    for t in ('"step"', '"key-field"', '"checklist"', '"note"', '"skill-card"'):
+        assert t in p
+    assert "ONLY in build/connect phases" in p
+    assert "google, discord, linear, scheduler" in p
+
+def test_architect_has_no_blocks_contract(tmp_path):
+    from studio.system_prompt import build_system_prompt, write_system_prompt
+    assert '"key-field"' not in build_system_prompt()
+    out = write_system_prompt(tmp_path / "sp.md")
+    assert out.read_text(encoding="utf-8") == build_system_prompt()
