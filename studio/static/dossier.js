@@ -646,8 +646,10 @@
     if (open.bodyEl.querySelector(`.dz-ask[data-ask-id="${CSS.escape(ask.id)}"]:not([data-answered])`)) return;
     // Final review: a fence-less turn re-delivers the prior whole-state studio,
     // including an already-ANSWERED ask — never re-render it hot under its fossil.
+    // data-answered="1" only (answerAsk's mark): a rewrite-FOLDED wrap ("folded")
+    // must not suppress the architect legitimately re-asking the same question.
     if (document.querySelector(
-      `.dz-ask[data-answered][data-ask-id="${CSS.escape(ask.id)}"][data-q="${CSS.escape(ask.title)}"]`)) return;
+      `.dz-ask[data-answered="1"][data-ask-id="${CSS.escape(ask.id)}"][data-q="${CSS.escape(ask.title)}"]`)) return;
     const wrap = document.createElement('div');
     wrap.className = 'dz-ask';
     wrap.dataset.askId = ask.id;
