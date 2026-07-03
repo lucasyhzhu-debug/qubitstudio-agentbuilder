@@ -17,13 +17,18 @@ def test_delucas_leaves_zero_owner_literals(tmp_path):
     assert "504fb62b-28ba-4140-9031-1f03e189c70c" not in blob
     assert "Documents/wiki-brain" not in blob and r"Documents\wiki-brain" not in blob
     assert "lucas@ikigaiventures.ai" not in blob
+    assert "lucas.yh.zhu@gmail.com" not in blob   # personal Gmail leaked via a sample log line (finding #11)
     assert "wiki-brain/people/" not in blob
     assert "lucasknowledgebot" not in blob
     # participant's vault path is now present
     assert "sam-vault" in blob
-    # deliberately survive de-Lucas'ing: workshop repo URL + a functional label, not owner PII
+    # deliberately survives de-Lucas'ing: the workshop repo URL is attribution, not owner PII
     assert "lucasyhzhu-debug" in blob
-    assert "needs-lucas" in blob
+    # REVERSED deliberate-keep (finding #10): needs-lucas was kept as "a functional label, not
+    # owner PII", but it IS participant-facing — every composed agent's Linear workflow carried
+    # the original owner's name. Renamed to needs-owner in the substrate + _subs safety.
+    assert "needs-lucas" not in blob
+    assert "needs-owner" in blob
 
 
 def test_vault_path_backslashes_normalized_to_forward_slashes(tmp_path):

@@ -6,7 +6,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from studio import composer as _composer
@@ -391,6 +391,15 @@ async def onboarding_complete() -> StreamingResponse:
 @app.get("/")
 async def index() -> FileResponse:
     return FileResponse(_STATIC / "index.html")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon() -> Response:
+    # Browsers request this on every load; without a route each launch logs a 404 (finding #3).
+    ico = _STATIC / "favicon.ico"
+    if ico.exists():
+        return FileResponse(ico)
+    return Response(status_code=204)
 
 
 app.mount("/static", StaticFiles(directory=_STATIC), name="static")
