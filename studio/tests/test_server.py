@@ -1,7 +1,18 @@
 import json
 from pathlib import Path
+import pytest
 from fastapi.testclient import TestClient
 from studio import server
+
+@pytest.fixture(autouse=True)
+def _reset_last_compose():
+    # Final review: LAST_COMPOSE is a module-level global — every test starts from
+    # None and the prior value is restored after, ending the recurring trap where one
+    # test's leftover compose state changes another's outcome by run order.
+    saved = server.LAST_COMPOSE
+    server.LAST_COMPOSE = None
+    yield
+    server.LAST_COMPOSE = saved
 
 class _FakeSession:
     def __init__(self):
@@ -268,7 +279,6 @@ def test_beats_endpoint_returns_accumulated_and_last_compose():
          "studio": {"picks": ["tasks"], "name": None, "ready": False, "ask": None,
                     "chapter": None}},
     ]
-    server.LAST_COMPOSE = None
     out = c.get(f"/api/session/{sid}/beats").json()
     assert out["session_id"] == sid and len(out["beats"]) == 2
     # prose + studio state sufficient to re-render the document (spec §10)
@@ -282,13 +292,11 @@ def test_beats_endpoint_returns_accumulated_and_last_compose():
                            "integrations": ["linear"], "picks": ["tasks"]}
     out = c.get(f"/api/session/{sid}/beats").json()
     assert out["last_compose"]["install"] == "cd x ; claude"
-    server.LAST_COMPOSE = None              # leave the module global clean
 
 def test_compose_done_captured_for_replay_and_first_breath(monkeypatch, tmp_path):
     # gate-2 S6: compose_endpoint records its own done event in LAST_COMPOSE — the
     # beats payload (above) and Task 14's first breath both read it.
     _ob(monkeypatch, tmp_path)
-    server.LAST_COMPOSE = None
     async def fake_compose(picks, name, outdir, vault_dir):
         yield {"type": "done", "grade": "composed", "plugin_path": str(tmp_path),
                "vault_path": "v", "integrations": ["linear"], "install": "cd x ; claude"}
@@ -318,7 +326,6 @@ def test_chat_done_carries_chapter_through_sse(monkeypatch):
 # --- first breath (dossier spec §6.4) ---
 
 def test_first_breath_preflight_no_compose_never_spawns(monkeypatch):
-    server.LAST_COMPOSE = None
     called = {}
     async def never(home, prompt, budget=20):
         called["spawned"] = True
