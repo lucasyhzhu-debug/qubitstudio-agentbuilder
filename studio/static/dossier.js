@@ -499,7 +499,11 @@
           <div class="ints" id="dz-launch-ints">${ints.length
             ? ints.map((i) => `<span class="dz-int pending" data-int="${esc(i)}">${esc(i)} · pending</span>`).join(' ')
             : 'no integrations needed — fully local'}</div>
-          <div class="cmd"><code>${esc((lastDone && lastDone.install) || '')}</code>
+          <div class="cmd"><code>${((lastDone && lastDone.install) || '')
+            // flagged deviation 11 (the installLineHtml precedent, app.js): the
+            // `cd <dir> ; claude` one-liner DISPLAYS as two lines — each segment
+            // esc'd before the <br> join, so the path never lands as raw HTML.
+            .split(' ; ').map(esc).join('<br>')}</code>
             <button type="button" id="dz-copy">COPY</button></div>
           <div class="try"><div class="t">three things to ask it first</div>${tryLines}</div>
         </div></div>`;
