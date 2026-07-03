@@ -96,6 +96,17 @@
     out.beats.forEach((b, i) => replayBeat(b, i === out.beats.length - 1));
     replaying = false;
     if (lastStudio && typeof window.shelfSync === 'function') window.shelfSync(lastStudio);
+    // Final review: a completed build's LAUNCH SURFACE survives the reload — without
+    // this the install command is gone and the only in-page recovery (Rebuild) wipes
+    // the participant's .env keys. The card re-renders from last_compose with chips
+    // pending (connect rows still fillChip them), and the close reads as signed/built
+    // exactly as rearmRebuild leaves it. A session with no build renders no card.
+    if (lastDone && lastDone.plugin_path && closeRec) {
+      closeRec.el.classList.add('signing');
+      renderLaunchCard((lastStudio && lastStudio.name) || '',
+                       (lastStudio && lastStudio.picks) || []);
+      rearmRebuild();
+    }
     return true;
   }
 
@@ -521,8 +532,34 @@
     await beatWait(1800);
 
     // ── BEAT 5: the launch card — real command, chips PENDING (§6.5) ──
-    // The old wizard rule gating the install line on connected keys is retired in
-    // dossier mode: the command is real from first render; chips carry connect state.
+    renderLaunchCard(name, picks);
+    // chips fill live as the embedded connect rows pass their smoke tests. D1c watches
+    // the wizard rows' class flips; D2's wireKeyRow onResult supersedes this trigger
+    // for chapter rows (the observer stays for the embedded wizard fallback rows).
+    // gate-2 S10: ONE observer per build — disconnect any previous one first (unsign
+    // also disconnects on the failure path).
+    if (chipObserver) chipObserver.disconnect();
+    chipObserver = new MutationObserver(() => {
+      panel.querySelectorAll('.keyrow.kr-pass').forEach((row) => fillChip(row.dataset.int));
+    });
+    chipObserver.observe(panel, { attributes: true, subtree: true, attributeFilter: ['class'] });
+    skipBtn.hidden = true;
+    skipping = false;
+    building = false;
+    rearmRebuild();                     // gate-2 S2: the ceremony ends with Rebuild live
+    armWriteline(pendingAsk, true);     // …and the writing line hot — the journey hands
+                                        // into the connect chapters (D2) by conversation
+    nudgeScroll();
+  }
+
+  // §6.5 the launch card itself — ONE renderer shared by the live beat-5 finale and
+  // the reload replay (final review): the old wizard rule gating the install line on
+  // connected keys is retired in dossier mode — the command is real from first
+  // render; chips render pending and carry connect state (fillChip via connect rows).
+  function renderLaunchCard(name, picks) {
+    const byId = shelfById();
+    const host = $('#dz-beat-host');
+    if (!host) return;
     const ints = (lastDone && lastDone.integrations) || [];
     const base = (((catalog || {}).baseline || {}).items || []);
     const tryLines = picks.slice(0, 3).map((id) => {
@@ -553,23 +590,6 @@
       if (navigator.clipboard && lastDone) navigator.clipboard.writeText(lastDone.install);
       this.textContent = 'COPIED ✓';
     });
-    // chips fill live as the embedded connect rows pass their smoke tests. D1c watches
-    // the wizard rows' class flips; D2's wireKeyRow onResult supersedes this trigger
-    // for chapter rows (the observer stays for the embedded wizard fallback rows).
-    // gate-2 S10: ONE observer per build — disconnect any previous one first (unsign
-    // also disconnects on the failure path).
-    if (chipObserver) chipObserver.disconnect();
-    chipObserver = new MutationObserver(() => {
-      panel.querySelectorAll('.keyrow.kr-pass').forEach((row) => fillChip(row.dataset.int));
-    });
-    chipObserver.observe(panel, { attributes: true, subtree: true, attributeFilter: ['class'] });
-    skipBtn.hidden = true;
-    skipping = false;
-    building = false;
-    rearmRebuild();                     // gate-2 S2: the ceremony ends with Rebuild live
-    armWriteline(pendingAsk, true);     // …and the writing line hot — the journey hands
-                                        // into the connect chapters (D2) by conversation
-    nudgeScroll();
   }
 
   // a launch-card integration chip completes (§6.5) — shared with D2's key-field blocks
