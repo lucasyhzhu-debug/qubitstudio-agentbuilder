@@ -228,7 +228,11 @@
         // regenerate (§5): agent prose only, in place — fossils/asks/cards untouched.
         // .dz-stale-mark rides out with the prose it annotates (gate-2 R1): a
         // regenerated chapter is fresh, its "written before your rewrite" mark stale.
-        target.rec.bodyEl.querySelectorAll('.dz-prose, .dz-error, .dz-stale-mark')
+        // [data-block] rides out too (T18 review): the regenerate beat re-runs
+        // renderBlocks, so the OLD typed blocks (including any live key row) must go
+        // or every block — and its wireKeyRow listener — would double. diffPicks'
+        // picks-diff grids never carry the attribute and stay untouched.
+        target.rec.bodyEl.querySelectorAll('.dz-prose, .dz-error, .dz-stale-mark, [data-block]')
           .forEach((n) => n.remove());
       }
       const prose = document.createElement('div');
@@ -272,30 +276,34 @@
 
   // ── D2: the typed block vocabulary (§3.2), interleaved after the beat's prose ──
   function renderBlocks(rec, blocks) {
+    // Every node emitted here carries data-block, so a regenerate (§5 replace) can
+    // strip a chapter's OLD blocks without touching diffPicks' picks-diff grids
+    // (which share .dz-cards but never carry the attribute) — T18 review fix.
     (blocks || []).forEach((b) => {
       if (b.type === 'step') {
         rec.bodyEl.insertAdjacentHTML('beforeend',
-          `<div class="dz-step"><b>${esc(String(b.n || '·'))}</b><span>${esc(b.text)}</span></div>`);
+          `<div class="dz-step" data-block><b>${esc(String(b.n || '·'))}</b><span>${esc(b.text)}</span></div>`);
       } else if (b.type === 'note') {
-        rec.bodyEl.insertAdjacentHTML('beforeend', `<div class="dz-note">${esc(b.text)}</div>`);
+        rec.bodyEl.insertAdjacentHTML('beforeend', `<div class="dz-note" data-block>${esc(b.text)}</div>`);
       } else if (b.type === 'checklist') {
         rec.bodyEl.insertAdjacentHTML('beforeend',
-          `<div class="dz-checklist">${b.items.map((i) =>
+          `<div class="dz-checklist" data-block>${b.items.map((i) =>
             `<div class="dz-check">☐ ${esc(i)}</div>`).join('')}</div>`);
       } else if (b.type === 'skill-card') {
         const it = shelfById().get(b.id);
         if (it) rec.bodyEl.insertAdjacentHTML('beforeend',
-          `<div class="dz-cards">${skillCardHtml(it, 'skill')}</div>`);
+          `<div class="dz-cards" data-block>${skillCardHtml(it, 'skill')}</div>`);
       } else if (b.type === 'key-field') {
         // hosts the EXISTING connect row (§3.2/§7.2) — never a reimplementation
         if (!window.KNOWN_INTEGRATIONS || !window.KNOWN_INTEGRATIONS.has(b.integration)) return;
         if (!lastDone || !lastDone.plugin_path) {
           rec.bodyEl.insertAdjacentHTML('beforeend',
-            '<div class="dz-note">build first — keys connect after the signing</div>');
+            '<div class="dz-note" data-block>build first — keys connect after the signing</div>');
           return;
         }
         const host = document.createElement('div');
         host.className = 'dz-keyhost';
+        host.setAttribute('data-block', '');
         host.innerHTML = window.keyRowHtml(b.integration);
         const row = host.firstElementChild;
         rec.bodyEl.appendChild(host);
