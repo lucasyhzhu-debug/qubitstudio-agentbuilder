@@ -9,6 +9,10 @@
   const esc = (s) => String(s == null ? '' : s)
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const norm = (t) => String(t || '').trim().toLowerCase();
+  const REDUCED = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  let skipping = false;
+  const beatWait = async (ms) => { if (!skipping && !REDUCED) await sleep(ms); };
   const PHASES = ['welcome', 'baseline', 'skills', 'personalize', 'name', 'build', 'connect'];
 
   let chapters = [];        // [{ n, title, phase, el, bodyEl }] in document order
@@ -339,27 +343,85 @@
     if (btn) btn.disabled = !(lastStudio.name && (lastStudio.picks || []).length);
   }
 
-  // ── D1c: build — the existing panel embeds as the final chapter (§4.3) ──
+  // ── D1c: build — the five-beat ceremony (spec §6) ───────────────────────
   async function beginBuild() {
     if (building || !lastStudio) return;
     const picks = (lastStudio.picks || []).slice();
     const name = lastStudio.name;
     if (!picks.length || !name) return;
-    building = true; signed = true;
+    building = true; signed = true; skipping = false;
+    const byId = shelfById();
+    const skipBtn = $('#dz-skip');
+    skipBtn.hidden = false;
+    skipBtn.onclick = () => { skipping = true; };
+    holdWriteline();                    // the document is closed for edits (§6.1)
+
+    // ── BEAT 1: the signing — the name inks itself across the line ──
+    const nm = $('#dz-signame');
+    nm.innerHTML = `<b>${esc(name)}</b>`;
+    closeRec.el.classList.add('signing');
     const btn = $('#dz-build');
     btn.disabled = true; btn.textContent = '✓ signed';
-    holdWriteline();                    // the document is closed for edits (§6.1)
-    // the EXISTING build panel physically relocates into the chapter — a morph, not a
-    // re-implementation: streamBuild's fixed ids now paint inside the document.
+    await beatWait(1600);
+
+    // ── BEAT 2: the binding — the dossier compresses to a ToC card ──
+    // Honest theater: these fragments are the participant's real answers, and they
+    // genuinely feed the personalize pass (their profile seeded the session).
+    const host = $('#dz-beat-host');
+    const rows = chapters.filter((c) => c !== closeRec).map((c) => {
+      const a = c.bodyEl.querySelector('.answer');
+      const frag = a && a.firstChild ? a.firstChild.textContent.trim() : '';
+      return `<div class="row"><b>§${String(c.n).padStart(2, '0')} ${esc(c.title.toUpperCase())}</b>` +
+        `<i>${frag ? esc('"' + (frag.length > 44 ? frag.slice(0, 41) + '…' : frag) + '"') : ''}</i></div>`;
+    }).join('');
+    const nAnswers = document.querySelectorAll('#dossier .answer').length;
+    host.innerHTML = `
+      <div class="dz-beat on">
+        <div class="beatcap">■ binding your dossier — everything you told me becomes its memory</div>
+        <div class="toc"><h3>The ${esc(name)} dossier</h3>${rows}
+          <div class="stamp">${chapters.length - 1} chapters · ${nAnswers} answers · signed ${new Date().toISOString().slice(0, 10)}</div>
+        </div></div>`;
+    host.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await beatWait(2200);
+
+    // ── BEAT 3: the assembly — organs tick on REAL compose events, never timers (§6.3) ──
+    const organs = [
+      { key: 'vault', ic: '🧠', name: 'wiki-brain spine', sub: 'its memory — seeded, yours' },
+      { key: 'shell', ic: '⚙️', name: 'chief-of-staff shell', sub: 'identity, your voice, read→decide→act' },
+      ...picks.map((id) => ({ key: `skill:${id}`, ic: '🧩',
+        name: (byId.get(id) || { name: id }).name, sub: (byId.get(id) || {}).what || '' })),
+      // what Assembly does NOT claim: per-answer skill personalization is r1-B — the
+      // identity organ's caption says only what actually runs (§6.3)
+      { key: 'stage:assemble', ic: '✍️', name: 'identity',
+        sub: 'owner name + vault path written into every file' },
+    ];
+    host.innerHTML = `
+      <div class="dz-beat on">
+        <div class="beatcap">■ assembling ${esc(name)}</div>
+        <div class="anatomy">${organs.map((o) => `
+          <div class="organ" data-key="${esc(o.key)}"><span class="ic">${o.ic}</span>
+            <div><b>${esc(o.name)}</b><span>${esc(o.sub)}</span></div>
+            <span class="tick">✓</span></div>`).join('')}</div>
+        <div class="dz-blog" id="dz-blog"></div></div>`;
     const panel = $('#buildpanel');
     panel.hidden = false;
     const raw = $('#dz-rawlog');
-    raw.hidden = false; raw.open = true;
-    raw.appendChild(panel);
+    raw.hidden = false;
+    raw.appendChild(panel);             // truth under the theater — the raw stream stays reachable
+    const tick = (key, cap) => {
+      const o = host.querySelector(`.organ[data-key="${CSS.escape(key)}"]`);
+      if (o) o.classList.add('in');
+      if (cap) $('#dz-blog').insertAdjacentHTML('afterbegin', `<div>$ ${esc(cap)}</div>`);
+    };
     let doneEv = null, failedEv = null;
     try {
       await window.streamBuild('/api/compose', { picks, name }, {
         onEvent: (ev) => {
+          if (ev.type === 'component') tick(ev.key, `${ev.key} → ok`);
+          if (ev.type === 'stage' && ev.name === 'assemble' && ev.status === 'ok') {
+            tick('stage:assemble', 'owner + vault substitutions applied');
+          }
+          if (ev.type === 'log') $('#dz-blog').insertAdjacentHTML('afterbegin', `<div>$ ${esc(ev.text)}</div>`);
           if (ev.type === 'done') doneEv = ev;
           if (ev.type === 'error') failedEv = ev;
         },
@@ -368,15 +430,110 @@
       // T15 review: a TRANSPORT-level failure (fetch/reader rejects — the server died
       // mid-compose) emits no SSE error event, so it must un-sign HERE — otherwise
       // building/signed stay true and the held document is stuck until reload.
+      skipBtn.hidden = true;
       unsign({ stage: 'build', message: String(e) });
       return;
     }
-    if (failedEv) { unsign(failedEv); return; }
+    if (failedEv) { skipBtn.hidden = true; unsign(failedEv); return; }
     lastDone = doneEv;
+    await beatWait(900);
+
+    // ── BEAT 4: first breath — the status chip hands over, the agent speaks (§6.4) ──
+    host.innerHTML = `
+      <div class="dz-beat on dz-breath">
+        <span class="dz-chip" id="dz-chip"><i class="dot"></i><span id="dz-chiptext">architect</span></span>
+        <div class="firstwords" id="dz-fw"><span id="dz-tw"></span><span class="caret"></span></div>
+      </div>`;
+    await beatWait(900);
+    $('#dz-chiptext').textContent = `${name} · live`;
+    $('#dz-chip').classList.add('alive');
+    window.setStatus(`${name} · live`, true);           // the header chip hands over too
+    const tw = $('#dz-tw');
+    let words = '', fbFailed = false;
+    try {
+      const r = await fetch('/api/first-breath', { method: 'POST' });
+      const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = '';
+      while (true) {
+        const { value, done } = await reader.read(); if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i; while ((i = buf.indexOf('\n\n')) >= 0) {
+          const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
+          if (!line) continue;
+          const ev = JSON.parse(line);
+          // tokens paint the moment they arrive — there is no artificial typing
+          // cadence here for SKIP to cut (gate-2 S8): the greeting is a real turn,
+          // and skipping only removes the staged beatWaits around it.
+          if (ev.type === 'token') { words += ev.text; tw.textContent = words; }
+          if (ev.type === 'error') fbFailed = true;
+        }
+      }
+    } catch { fbFailed = true; }
+    if (fbFailed || !words.trim()) {
+      // flagged fallback (§6.4): the ceremony never hangs the room
+      $('#dz-fw').innerHTML = `<div class="dz-fw-fallback">“I'm ${esc(name)} — your chief of staff.` +
+        ` Run the launch command below and say hello.”` +
+        `<span class="dz-fw-flag">offline greeting — the live one meets you in the terminal</span></div>`;
+    } else {
+      const caret = $('#dz-fw .caret'); if (caret) caret.remove();
+    }
+    await beatWait(1800);
+
+    // ── BEAT 5: the launch card — real command, chips PENDING (§6.5) ──
+    // The old wizard rule gating the install line on connected keys is retired in
+    // dossier mode: the command is real from first render; chips carry connect state.
+    const ints = (lastDone && lastDone.integrations) || [];
+    const base = (((catalog || {}).baseline || {}).items || []);
+    const tryLines = picks.slice(0, 3).map((id) => {
+      const it = byId.get(id) || {};
+      const ask = ((it.brief || '').split('—')[1] || it.what || id).trim().split('.')[0];
+      return `<div>“${esc(ask)}” — makes ${esc(it.deliverable || 'its first move')}</div>`;
+    }).join('');
+    host.innerHTML = `
+      <div class="dz-beat on">
+        <div class="beatcap">■ your agent</div>
+        <div class="launch">
+          <div class="lk">agent · built ${new Date().toISOString().slice(0, 10)}</div>
+          <h3>${esc(name)}</h3>
+          <div class="parts">${base.map((b) => `<span class="m lock">🔒 ${esc(b.name)}</span>`).join('')}
+            ${picks.map((id) => `<span class="m">${esc((byId.get(id) || { name: id }).name)}</span>`).join('')}</div>
+          <div class="ints" id="dz-launch-ints">${ints.length
+            ? ints.map((i) => `<span class="dz-int pending" data-int="${esc(i)}">${esc(i)} · pending</span>`).join(' ')
+            : 'no integrations needed — fully local'}</div>
+          <div class="cmd"><code>${esc((lastDone && lastDone.install) || '')}</code>
+            <button type="button" id="dz-copy">COPY</button></div>
+          <div class="try"><div class="t">three things to ask it first</div>${tryLines}</div>
+        </div></div>`;
+    $('#dz-copy').addEventListener('click', function () {
+      if (navigator.clipboard && lastDone) navigator.clipboard.writeText(lastDone.install);
+      this.textContent = 'COPIED ✓';
+    });
+    // chips fill live as the embedded connect rows pass their smoke tests. D1c watches
+    // the wizard rows' class flips; D2's wireKeyRow onResult supersedes this trigger
+    // for chapter rows (the observer stays for the embedded wizard fallback rows).
+    // gate-2 S10: ONE observer per build — disconnect any previous one first (unsign
+    // also disconnects on the failure path).
+    if (chipObserver) chipObserver.disconnect();
+    chipObserver = new MutationObserver(() => {
+      panel.querySelectorAll('.keyrow.kr-pass').forEach((row) => fillChip(row.dataset.int));
+    });
+    chipObserver.observe(panel, { attributes: true, subtree: true, attributeFilter: ['class'] });
+    skipBtn.hidden = true;
+    skipping = false;
     building = false;
-    rearmRebuild();                     // gate-2 S2: the build must stay executable
-    armWriteline(pendingAsk, true);     // the document reopens — the journey continues
-                                        // into connect (D2's chapters are written INTO it)
+    rearmRebuild();                     // gate-2 S2: the ceremony ends with Rebuild live
+    armWriteline(pendingAsk, true);     // …and the writing line hot — the journey hands
+                                        // into the connect chapters (D2) by conversation
+    nudgeScroll();
+  }
+
+  // a launch-card integration chip completes (§6.5) — shared with D2's key-field blocks
+  function fillChip(integration) {
+    const chip = document.querySelector(`.dz-int[data-int="${CSS.escape(integration)}"]`);
+    if (chip && chip.classList.contains('pending')) {
+      chip.classList.remove('pending');
+      chip.classList.add('ok');
+      chip.textContent = `${integration} ✓`;
+    }
   }
 
   // gate-2 S2: after a SUCCESSFUL build the ceremony leaves REBUILD executable —

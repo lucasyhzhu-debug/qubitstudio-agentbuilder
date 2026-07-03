@@ -202,3 +202,79 @@ body.dossier #buildpanel { display: block; background: var(--canvas);
 .dz-skipper { position: fixed; bottom: 18px; right: 20px; font-family: var(--mono);
   font-size: 10.5px; letter-spacing: .1em; color: var(--ink-4); background: var(--canvas);
   border: 1px solid var(--rule); border-radius: 999px; padding: 6px 13px; cursor: pointer; z-index: 45; }
+
+/* ── D1c: the finale (v1c beats 1–4) ── */
+.dz-beat { transition: opacity .7s ease; }
+.dz-beat .beatcap { text-align: center; font-family: var(--mono); font-size: 11px;
+  letter-spacing: .15em; text-transform: uppercase; color: var(--ink-3); margin: 26px 0 18px; }
+.toc { max-width: 420px; margin: 0 auto; background: var(--canvas); border: 1px solid var(--rule);
+  border-radius: var(--r-card); box-shadow: var(--sh-md); padding: 22px 26px; }
+.toc h3 { font-family: var(--display); font-size: 16px; color: var(--ink); margin: 0 0 12px; }
+.toc .row { display: flex; justify-content: space-between; font-size: 13.5px; padding: 6px 0;
+  border-top: 1px dashed var(--rule); }
+.toc .row b { font-family: var(--mono); font-weight: 400; font-size: 11px; color: var(--brass); }
+.toc .row i { font-family: var(--wordmark); color: var(--ink-3); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; max-width: 230px; }
+.toc .stamp { margin-top: 14px; font-family: var(--mono); font-size: 10px; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--ink-4); text-align: center; }
+.anatomy { max-width: 440px; margin: 0 auto; }
+.organ { display: flex; align-items: center; gap: 14px; background: var(--canvas);
+  border: 1px solid var(--rule); border-radius: 12px; padding: 13px 18px; margin-bottom: 10px;
+  opacity: .25; transform: translateX(-10px); transition: all .45s cubic-bezier(.2,.7,.2,1); }
+.organ.in { opacity: 1; transform: none; border-color: var(--tint-2); box-shadow: var(--sh-sm); }
+.organ .ic { width: 30px; height: 30px; border-radius: 8px; background: var(--tint);
+  display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
+.organ b { font-family: var(--display); font-weight: 620; font-size: 15.5px; color: var(--ink); }
+.organ span { font-size: 12.5px; color: var(--ink-3); display: block; }
+.organ .tick { margin-left: auto; font-family: var(--mono); color: var(--ink-4); font-size: 13px; }
+.organ.in .tick { color: var(--ok); }
+.dz-blog { max-width: 440px; margin: 16px auto 0; font-family: var(--mono); font-size: 11px;
+  color: var(--ink-4); max-height: 54px; overflow: hidden; line-height: 18px; }
+.dz-blog div { animation: dz-logup .3s ease both; }
+@keyframes dz-logup { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.dz-breath { text-align: center; padding-top: 30px; }
+.dz-chip { display: inline-flex; align-items: center; gap: 8px; font-family: var(--mono);
+  font-size: 12px; padding: 6px 14px; border-radius: 999px; background: var(--tint);
+  border: 1px solid var(--tint-2); color: var(--ink-3); transition: all .5s ease; }
+.dz-chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ink-4); }
+.dz-chip.alive { color: var(--sapphire); border-color: var(--sapphire); }
+.dz-chip.alive .dot { background: var(--sapphire); animation: dz-pulse 1.8s ease-in-out infinite; }
+@keyframes dz-pulse { 50% { opacity: .4; transform: scale(.75); } }
+.firstwords { margin: 36px auto 0; max-width: 560px; font-family: var(--display);
+  font-weight: 520; font-size: clamp(21px, 3.4vw, 28px); line-height: 1.35;
+  letter-spacing: -.015em; color: var(--ink); text-align: left; min-height: 150px;
+  white-space: pre-wrap; }
+.firstwords .caret { display: inline-block; width: 3px; height: 1em; background: var(--sapphire);
+  vertical-align: -2px; animation: dz-blink 1s steps(1) infinite; margin-left: 2px; }
+@keyframes dz-blink { 50% { opacity: 0; } }
+.dz-fw-fallback { font-size: 19px; color: var(--ink-2); }
+.dz-fw-flag { display: block; margin-top: 12px; font-family: var(--mono); font-size: 10px;
+  letter-spacing: .12em; text-transform: uppercase; color: var(--brass); }
+.launch { max-width: 480px; margin: 0 auto; background: var(--canvas);
+  border: 1.5px solid var(--sapphire); border-radius: 16px; box-shadow: var(--sh-md);
+  padding: 28px 30px; }
+.launch .lk { font-family: var(--mono); font-size: 10px; letter-spacing: .15em;
+  text-transform: uppercase; color: var(--sapphire); margin-bottom: 4px; }
+.launch h3 { font-family: var(--wordmark); font-style: italic; font-weight: 400;
+  font-size: 34px; color: var(--ink); margin: 0 0 16px; }
+.launch .parts { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+.launch .parts .m { font-size: 10.5px; padding: 4px 10px; }
+.launch .ints { font-family: var(--mono); font-size: 11px; margin-bottom: 20px; }
+.dz-int.pending { color: var(--warn); }
+.dz-int.ok { color: var(--ok); }
+.cmd { display: flex; align-items: center; gap: 10px; background: var(--ink);
+  border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; }
+.cmd code { flex: 1; font-family: var(--mono); font-size: 13px; color: #E8EEF4;
+  overflow-x: auto; white-space: nowrap; }
+.cmd button { border: 0; border-radius: 7px; background: rgba(255,255,255,.14); color: #fff;
+  font-family: var(--mono); font-size: 10.5px; padding: 6px 11px; cursor: pointer; }
+.cmd button:hover { background: rgba(255,255,255,.26); }
+.try { border-top: 1px dashed var(--rule); padding-top: 14px; }
+.try .t { font-family: var(--mono); font-size: 10px; letter-spacing: .13em;
+  text-transform: uppercase; color: var(--ink-4); margin-bottom: 8px; }
+.try div { font-size: 14.5px; color: var(--ink-2); padding: 3px 0; }
+.try div::before { content: '▸ '; color: var(--brass); }
+@media (prefers-reduced-motion: reduce) {
+  .organ, .dz-beat, .dz-chip { transition: none; }
+  .dz-blog div, .dz-chip.alive .dot, .firstwords .caret { animation: none; }
+}
