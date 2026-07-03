@@ -507,6 +507,7 @@ async function streamBuild(url, body, opts = {}) {
     let i; while ((i = buf.indexOf('\n\n')) >= 0) {
       const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
       if (!line) continue; const ev = JSON.parse(line);
+      if (opts.onEvent) opts.onEvent(ev);   // additive observer — default rendering unchanged
       if (ev.type === 'stage') {
         statusMap[ev.name] = ev.status; renderStepper(ev.name, statusMap);
       } else if (ev.type === 'component') {

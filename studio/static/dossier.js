@@ -28,6 +28,11 @@
   // override): { rec, mode: 'append' | 'replace' }.
   let pendingTarget = null;
   let rwSettle = null;      // D1b: deferred re-settle to run on the rewrite beat's done
+  let closeRec = null;      // the signature-close chapter record (D1c)
+  let building = false;
+  let signed = false;
+  let chipObserver = null;  // the launch-card chip observer — one per build, always
+                            // disconnected before re-observe and in unsign (gate-2 S10)
 
   // The two seeds the studio ever sends (gate-2 S9: exact match, never a prefix guess —
   // a participant's own line starting with "Begin " must fossilize).
@@ -188,6 +193,8 @@
     // pendingAsk; renderPendingAsk renders it on handback (Task 10's baton hook).
     if (studio.ask && !quiet && !window.onboardingActive) renderAsk(studio.ask);
     lastStudio = studio;
+    if (studio.ready && studio.name && (studio.picks || []).length && !closeRec) renderClose();
+    if (closeRec && !signed) refreshManifest();
     if (!quiet) armWriteline(pendingAsk, true);
     updateRail();
     if (!quiet) nudgeScroll();
@@ -288,6 +295,116 @@
       }
     });
     prevPicks = picks.slice();
+  }
+
+  // ── D1c: the signature close (§4.1 step 4) ──────────────────────────────
+  function renderClose() {
+    closeRec = newSection({ title: 'Sign & build', phase: 'build' });
+    closeRec.el.classList.add('closing');
+    closeRec.bodyEl.innerHTML = `
+      <div class="manifest" id="dz-manifest"></div>
+      <div class="sig-row">
+        <div class="sigline"><div class="name" id="dz-signame"></div>
+          <div class="cap">signed — this is the agent I want</div></div>
+        <button type="button" class="buildbtn" id="dz-build">Build my agent<i>▶</i></button>
+      </div>
+      <div id="dz-stagebox"><div id="dz-beat-host"></div>
+        <details class="dz-buildlog-wrap" id="dz-rawlog" hidden>
+          <summary>raw build log</summary></details></div>`;
+    refreshManifest();
+    $('#dz-build').addEventListener('click', beginBuild);
+    nudgeScroll();
+  }
+
+  // §4.4: the manifest renders from STUDIO PICKS ONLY — the shelf event sync keeps the
+  // agent's whole-state picks truthful, so the signed manifest cannot diverge.
+  function refreshManifest() {
+    const el = $('#dz-manifest');
+    if (!el || !lastStudio) return;
+    const byId = shelfById();
+    const base = (((catalog || {}).baseline || {}).items || []);
+    el.innerHTML =
+      base.map((b) => `<span class="m lock">🔒 ${esc(b.name)}</span>`).join('') +
+      (lastStudio.picks || []).map((id) => {
+        const it = byId.get(id);
+        return it ? `<span class="m">${esc(it.name)}${it.cost && it.cost.label ? ' · ' + esc(it.cost.label) : ''}</span>` : '';
+      }).join('');
+    const nm = $('#dz-signame');
+    if (nm) nm.textContent = lastStudio.name || '';
+    const btn = $('#dz-build');
+    // §6.1 gating: non-empty picks AND a name — mirrors the existing gates; the
+    // server preflight still sits behind it.
+    if (btn) btn.disabled = !(lastStudio.name && (lastStudio.picks || []).length);
+  }
+
+  // ── D1c: build — the existing panel embeds as the final chapter (§4.3) ──
+  async function beginBuild() {
+    if (building || !lastStudio) return;
+    const picks = (lastStudio.picks || []).slice();
+    const name = lastStudio.name;
+    if (!picks.length || !name) return;
+    building = true; signed = true;
+    const btn = $('#dz-build');
+    btn.disabled = true; btn.textContent = '✓ signed';
+    holdWriteline();                    // the document is closed for edits (§6.1)
+    // the EXISTING build panel physically relocates into the chapter — a morph, not a
+    // re-implementation: streamBuild's fixed ids now paint inside the document.
+    const panel = $('#buildpanel');
+    panel.hidden = false;
+    const raw = $('#dz-rawlog');
+    raw.hidden = false; raw.open = true;
+    raw.appendChild(panel);
+    let doneEv = null, failedEv = null;
+    await window.streamBuild('/api/compose', { picks, name }, {
+      onEvent: (ev) => {
+        if (ev.type === 'done') doneEv = ev;
+        if (ev.type === 'error') failedEv = ev;
+      },
+    });
+    if (failedEv) { unsign(failedEv); return; }
+    lastDone = doneEv;
+    building = false;
+    rearmRebuild();                     // gate-2 S2: the build must stay executable
+    armWriteline(pendingAsk, true);     // the document reopens — the journey continues
+                                        // into connect (D2's chapters are written INTO it)
+  }
+
+  // gate-2 S2: after a SUCCESSFUL build the ceremony leaves REBUILD executable —
+  // `signed` resets (so refreshManifest re-applies the §6.1 gates and keeps updating
+  // the manifest), the button re-arms as "Rebuild", and the consequence warning sits
+  // beside it: connected keys (.env) are re-entered; the vault survives (gate-2 I4).
+  function rearmRebuild() {
+    signed = false;
+    const btn = $('#dz-build');
+    btn.disabled = false;
+    btn.textContent = 'Rebuild ▶';
+    if (!closeRec.el.querySelector('.dz-rebuild-warn')) {
+      const warn = document.createElement('div');
+      warn.className = 'dz-rebuild-warn';
+      warn.textContent = 'rebuilding recreates the home — re-enter connected keys (.env); ' +
+        'your agent’s vault (its memory) is preserved';
+      btn.after(warn);
+    }
+    refreshManifest();
+  }
+
+  // §6.1: a composer error renders INSIDE the ceremony with an un-sign/retry — the
+  // signature un-inks and the document reopens for edits.
+  function unsign(ev) {
+    building = false; signed = false;
+    if (chipObserver) { chipObserver.disconnect(); chipObserver = null; }   // gate-2 S10
+    const panel = $('#buildpanel');
+    document.querySelector('.rightrail').appendChild(panel);   // give the node back
+    panel.hidden = true;
+    closeRec.el.classList.remove('signing');
+    $('#dz-rawlog').hidden = true;
+    $('#dz-beat-host').innerHTML =
+      `<div class="dz-error">⚠ ${esc(ev.stage || 'build')}: ${esc(ev.message || 'failed')}` +
+      ` — un-signed. Fix it (rewrite an answer, reopen the shelf) and build again.</div>`;
+    const btn = $('#dz-build');
+    btn.textContent = 'Build my agent ▶';
+    refreshManifest();                  // re-enables per the gates
+    armWriteline(pendingAsk, true);     // the document reopens
   }
 
   // ── inline asks: the ask channel as dossier material (§4.1.2) ───────────
