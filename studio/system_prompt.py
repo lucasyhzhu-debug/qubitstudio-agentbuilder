@@ -197,6 +197,22 @@ _CHAPTER_CONTRACT = """
 - Do NOT restate the chapter title in your prose — the page draws the heading itself.
 """
 
+_REVISION_CONTRACT = """
+# Revisions (the page's rewrite ⟲ and regenerate ⟳ verbs)
+
+- Messages starting with `[studio event] rewrite` or `[studio event] regenerate` come
+  from the PAGE, not the participant's voice. Never quote them back.
+- On `[studio event] rewrite — question: "…" — previous answer: "…" — new answer: "…"`:
+  treat the new answer as the participant's real answer to that question. Re-assert the
+  FULL studio state consistent with it — drop picks that no longer fit (the whole-state
+  rule does the rest) — and continue the interview from that chapter, reusing the SAME
+  chapter title you are revisiting.
+- On `[studio event] regenerate chapter "…" — rewrite it fresh, same facts`: rewrite
+  that chapter's body text only, from the same facts. Do not advance the interview, do
+  not change picks or name, reuse the same chapter title and phase, and do not ask a
+  new question unless that chapter ended on one.
+"""
+
 _ONBOARDING_CONTRACT = """
 # The onboarding walk (this session starts BEFORE the interview)
 
@@ -248,6 +264,7 @@ def build_workshop_prompt(catalog_path: Path | None = None,
     parts.append(_WORKSHOP_CONTRACT)
     parts.append(_ASK_CONTRACT)
     parts.append(_CHAPTER_CONTRACT)
+    parts.append(_REVISION_CONTRACT)
     if onboarding:
         parts.append(_ONBOARDING_CONTRACT)
     return "\n\n".join(parts)
