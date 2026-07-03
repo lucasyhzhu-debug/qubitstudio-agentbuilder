@@ -313,3 +313,36 @@ def test_chat_done_carries_chapter_through_sse(monkeypatch):
     with c.stream("POST", "/api/chat", json={"session_id": sid, "message": "hi"}) as r:
         body = "".join(r.iter_text())
     assert '"chapter"' in body and "Taming the inbox" in body
+
+
+# --- first breath (dossier spec §6.4) ---
+
+def test_first_breath_preflight_no_compose_never_spawns(monkeypatch):
+    server.LAST_COMPOSE = None
+    called = {}
+    async def never(home, prompt, budget=20):
+        called["spawned"] = True
+        yield {"type": "token", "text": "x"}
+    monkeypatch.setattr(server._first_breath, "first_breath", never)
+    c = TestClient(server.app)
+    with c.stream("POST", "/api/first-breath") as r:
+        body = "".join(r.iter_text())
+    assert '"type": "error"' in body and "build" in body
+    assert not called                       # preflight negative: error event, never a spawn
+
+def test_first_breath_streams_tokens(monkeypatch, tmp_path):
+    _ob(monkeypatch, tmp_path, name="Ada")
+    server.LAST_COMPOSE = {"plugin_path": str(tmp_path), "integrations": ["linear"],
+                           "picks": ["tasks"], "install": f"cd {tmp_path} ; claude"}
+    seen = {}
+    async def fake_breath(home, prompt, budget=20):
+        seen["home"], seen["prompt"] = home, prompt
+        yield {"type": "token", "text": "Morning, Ada."}
+        yield {"type": "done"}
+    monkeypatch.setattr(server._first_breath, "first_breath", fake_breath)
+    c = TestClient(server.app)
+    with c.stream("POST", "/api/first-breath") as r:
+        body = "".join(r.iter_text())
+    assert "Morning, Ada." in body and '"type": "done"' in body
+    assert seen["home"] == Path(str(tmp_path))     # derived server-side from LAST_COMPOSE
+    assert "Ada" in seen["prompt"] and "linear" in seen["prompt"]

@@ -71,3 +71,21 @@ async def test_real_workshop_turn_emits_chapter(tmp_path):
     assert ch["phase"] in {"welcome", "baseline", "skills", "personalize",
                            "name", "build", "connect"}
     assert s.beats and s.beats[-1]["studio"] == done["studio"]
+
+@pytest.mark.integration
+@pytest.mark.asyncio
+async def test_real_first_breath_over_composed_home(tmp_path):
+    # Compose is deterministic (no LLM) — build a real home, then run one REAL
+    # tool-less greeting turn with cwd = the home (dossier spec §10).
+    import json as _json
+    from studio import composer
+    from studio.first_breath import build_greeting_prompt, first_breath
+    evs = [e async for e in composer.compose(
+        ["crm"], "Ada Smoke", tmp_path / "dist", tmp_path / "dist" / "ada-smoke-cos" / "vault")]
+    done = evs[-1]
+    assert done["type"] == "done"
+    cat = _json.loads((Path(__file__).parent.parent / "catalog.json").read_text(encoding="utf-8"))
+    prompt = build_greeting_prompt("Ada", ["crm"], [], cat)
+    out = [e async for e in first_breath(Path(done["plugin_path"]), prompt, budget=60)]
+    assert any(e["type"] == "token" for e in out), "first breath streamed nothing"
+    assert out[-1]["type"] in ("done", "error")

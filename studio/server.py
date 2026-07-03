@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from studio import composer as _composer
 from studio import distiller as _distiller
+from studio import first_breath as _first_breath
 from studio import keys
 from studio import onboarding as _onboarding
 from studio import smokes
@@ -248,6 +249,28 @@ async def keys_test(req: Request) -> JSONResponse:
             return JSONResponse({"ok": True, "message": f"connected — but couldn't save keys locally: {e}. Set them manually (see SETUP)", "written": []})
         result = {**result, **summary}
     return JSONResponse(result)
+
+
+@app.post("/api/first-breath")
+async def first_breath_endpoint() -> StreamingResponse:
+    """One real greeting turn from the composed agent (dossier spec §6.4). The agent
+    home comes from OUR OWN compose result — never the request body."""
+    async def stream():
+        done = LAST_COMPOSE
+        if not done or not Path(done.get("plugin_path", "")).is_dir():
+            yield _sse_preflight_error("no composed agent yet — build first")
+            return
+        owner = _onboarding.load_state().get("name") or "there"
+        try:
+            catalog = json.loads(_CATALOG.read_text(encoding="utf-8"))
+        except (FileNotFoundError, json.JSONDecodeError):
+            catalog = {"shelf": {"items": []}}
+        prompt = _first_breath.build_greeting_prompt(
+            owner, done.get("picks", []), done.get("integrations", []), catalog)
+        async for ev in _first_breath.first_breath(Path(done["plugin_path"]), prompt):
+            yield _sse(ev)
+
+    return StreamingResponse(stream(), media_type="text/event-stream")
 
 
 @app.get("/api/catalog")
