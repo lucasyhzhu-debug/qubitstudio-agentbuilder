@@ -124,6 +124,7 @@ def _subs(owner_name: str, vault_dir: Path) -> list[tuple[str, str]]:
         (_LINEAR_PROJ, "{{LINEAR_PROJECT_ID}}"),
         ("LUCAS_USER_ID", "OWNER_USER_ID"),
         ("lucas@ikigaiventures.ai", "you@example.com"),
+        ("lucas.yh.zhu@gmail.com", "you@example.com"),  # was live PII in a sample log line (finding #11)
         ("lucasknowledgebot", "your-assistant-bot"),
         ("Lucas Zhu", owner_name),
         ("Lucas", owner_name),
