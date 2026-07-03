@@ -133,19 +133,20 @@ async function start() {
     const ob = await (await fetch('/api/onboarding')).json();
     const force = new URLSearchParams(location.search).get('onboard') === '1';
     if (!ob.completed || force) {
-      // gate-2 S3: a reload mid-intake must resume the walk on the SAME replayed
-      // session. Task 20 (D3) provides dossier.resumeIntake; until it lands, a
-      // replayed-but-incomplete boot continues on the document (the C3 overlay can't
-      // re-enter mid-flight — it would mint a NEW session) — the accepted D1a–D2
-      // window, closed by D3.
+      // gate-2 S3: a reload mid-intake resumes the walk on the SAME replayed session,
+      // at the step the state file indicates (resumeIntake landed with this task —
+      // Task 10's "accepted D1a–D2 window" comment is now obsolete: delete it).
       if (replayed && !force && UI === 'dossier' && window.dossier.resumeIntake) {
         window.dossier.resumeIntake(ob);
         return;
       }
+      if (!replayed && UI === 'dossier' && window.dossier.intake) {
+        await window.dossier.intake(ob);   // D3: intake IS the opening chapter (§7.3)
+        return;
+      }
       if (!replayed && window.onboardWalk) {
-        if (UI === 'dossier') document.body.classList.add('onboarding');
-        window.onboardWalk.begin(ob);
-        return;                          // the walk calls startWorkshopSession itself
+        window.onboardWalk.begin(ob);      // ?ui=chat keeps the C3 chat-card walk
+        return;
       }
     }
     if (replayed) return;                // the resumed session continues; never re-seed (C1)

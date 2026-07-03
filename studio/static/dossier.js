@@ -848,6 +848,197 @@
     nudgeScroll();
   });
 
+  // ── D3: intake as the opening chapter (§7.3 — zero backend change) ──────
+  async function post(url, body) {
+    const r = await fetch(url, { method: 'POST',
+      headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+    return r.json();
+  }
+
+  function readFileB64(file) {
+    return new Promise((res, rej) => {
+      const fr = new FileReader();
+      fr.onload = () => res(String(fr.result).split(',')[1] || '');
+      fr.onerror = rej;
+      fr.readAsDataURL(file);
+    });
+  }
+
+  // gate-2 S3: a reload mid-intake resumes the WALK where the server's state file says
+  // it stopped — the beats replay already restored the document and the session, so
+  // no new session and no re-seed (intake() only creates a session at the name step).
+  async function resumeIntake(state) {
+    await getCatalog();
+    if (!state || !state.name) return intake(state || {});   // name never landed — from the top
+    window.onboardingActive = true;
+    if (!open) newSection({ title: 'Welcome', phase: 'welcome' });
+    if (!state.second_brain) { materialsStep(); return; }    // materials/home still open
+    return completeIntake();            // everything chosen — finish the distill hand-off
+  }
+
+  async function intake(state) {
+    await getCatalog();
+    window.onboardingActive = true;     // suppress chat-skin paints; dossier owns the page
+    const rec = newSection({ title: 'Welcome', phase: 'welcome' });
+    rec.bodyEl.innerHTML = `
+      <p class="dz-prose">Before anything else — who are you? Your chief of staff should
+      know its owner by name.</p>
+      <form class="dz-intake-name"><input id="dz-ob-name" type="text" maxlength="60"
+        placeholder="your name" autocomplete="off" value="${esc((state && state.name) || '')}">
+        <button type="submit">→</button></form>`;
+    updateRail();
+    const form = rec.bodyEl.querySelector('.dz-intake-name');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const inp = $('#dz-ob-name');
+      const name = inp.value.trim();
+      if (!name || inp.disabled) return;
+      inp.disabled = true;
+      const out = await post('/api/onboarding/name', { name });
+      if (!out.ok) { alert(out.message); inp.disabled = false; return; }
+      form.remove();
+      fossilize(name, 'What should your chief of staff call you?');
+      await window.startWorkshopSession('Begin onboarding.');   // agent greets by name
+      materialsStep();
+    });
+  }
+
+  function materialsStep() {
+    const host = (open || newSection({ title: 'Welcome', phase: 'welcome' })).bodyEl;
+    const registered = [];
+    const wrap = document.createElement('div');
+    wrap.className = 'dz-intake';
+    wrap.innerHTML = `
+      <div class="dz-drop" tabindex="0">⤓ drop your CV, LinkedIn screenshots, anything you've written
+        <small>registered locally — nothing leaves your machine</small></div>
+      <input type="file" class="dz-file-input" multiple hidden>
+      <div class="dz-chips"></div>
+      <label class="dz-field">or link a folder by path
+        <input type="text" class="dz-folder" placeholder="e.g. ~/notes"></label>
+      <div class="dz-intake-foot">
+        <button type="button" class="dz-ob-skip">skip for now</button>
+        <button type="button" class="dz-ob-go">That's everything →</button>
+      </div>`;
+    host.appendChild(wrap);
+    const drop = wrap.querySelector('.dz-drop');
+    const fileInput = wrap.querySelector('.dz-file-input');
+    const chips = wrap.querySelector('.dz-chips');
+    const addChip = (label, ok) => {
+      const c = document.createElement('span');
+      c.className = 'dz-mchip' + (ok ? ' ok' : '');
+      c.textContent = (ok ? '✓ ' : '') + label;
+      chips.appendChild(c);
+    };
+    async function takeFiles(files) {
+      const names = [];
+      for (const f of files) {
+        addChip(f.name, false);
+        const out = await post('/api/onboarding/materials',
+          { file: { name: f.name, b64: await readFileB64(f) } });
+        chips.lastChild.remove();
+        addChip(f.name, !!out.ok);
+        if (out.ok) { names.push(f.name); registered.push(f.name); }
+        else alert(out.message);
+      }
+      if (names.length) window.queueSend(`[studio event] materials registered: ${names.join(', ')}`);
+    }
+    drop.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', (e) => { takeFiles([...e.target.files]); e.target.value = ''; });
+    drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('over'); });
+    drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+    drop.addEventListener('drop', (e) => {
+      e.preventDefault(); drop.classList.remove('over');
+      takeFiles([...e.dataTransfer.files]);
+    });
+    const folder = wrap.querySelector('.dz-folder');
+    folder.addEventListener('keydown', async (e) => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const out = await post('/api/onboarding/materials', { folder: folder.value.trim() });
+      if (!out.ok) { alert(out.message); return; }
+      addChip(folder.value.trim(), true); registered.push(folder.value.trim());
+      window.queueSend(`[studio event] linked folder: ${folder.value.trim()}`);
+      folder.value = '';
+    });
+    let answered = false;
+    const finishMaterials = async (skipped) => {
+      if (answered) return; answered = true;
+      wrap.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      if (skipped) await window.queueSend('[studio event] participant skipped sharing materials');
+      else await post('/api/onboarding/materials/done', {});    // distiller starts now
+      wrap.replaceWith(Object.assign(document.createElement('div'),
+        { className: 'dz-receipt', textContent: registered.length ? `${registered.length} shared ✓` : 'materials skipped' }));
+      pathStep();
+    };
+    wrap.querySelector('.dz-ob-skip').addEventListener('click', () => finishMaterials(true));
+    wrap.querySelector('.dz-ob-go').addEventListener('click', () => finishMaterials(false));
+  }
+
+  function pathStep() {
+    const host = (open || newSection({ title: 'Welcome', phase: 'welcome' })).bodyEl;
+    const wrap = document.createElement('div');
+    wrap.className = 'dz-intake';
+    wrap.innerHTML = `
+      <label class="dz-field">Where should its memory live? One folder you own, plain
+        files — everything it learns about you lives here.
+        <input type="text" class="dz-path" value="~/second-brain"></label>
+      <div class="dz-intake-foot">
+        <button type="button" class="dz-ob-skip">skip for now</button>
+        <button type="button" class="dz-ob-go">This is home →</button>
+      </div>`;
+    host.appendChild(wrap);
+    let answered = false;
+    const finish = async (skipped) => {
+      if (answered) return; answered = true;
+      wrap.querySelectorAll('button').forEach((b) => { b.disabled = true; });
+      const path = skipped ? '~/second-brain'
+        : (wrap.querySelector('.dz-path').value.trim() || '~/second-brain');
+      const out = await post('/api/onboarding/second-brain', { path });
+      if (!out.ok && !skipped) {
+        alert(out.message);
+        wrap.remove();
+        return pathStep();               // fresh fields — same retry shape as C3
+      }
+      if (skipped) await window.queueSend('[studio event] participant skipped choosing — defaulted to ~/second-brain');
+      const shown = out.ok ? (out.second_brain || path) : path;
+      wrap.replaceWith(Object.assign(document.createElement('div'),
+        { className: 'dz-receipt', textContent: `home chosen ✓ ${shown}` }));
+      completeIntake();
+    };
+    wrap.querySelector('.dz-ob-skip').addEventListener('click', () => finish(true));
+    wrap.querySelector('.dz-ob-go').addEventListener('click', () => finish(false));
+  }
+
+  async function completeIntake() {
+    // Stream the distill, hand the profile to the live agent — same shape as C3's
+    // completeStep, ending in the interview, never a stuck page (try/finally).
+    try {
+      const r = await fetch('/api/onboarding/complete', { method: 'POST' });
+      const reader = r.body.getReader(); const dec = new TextDecoder();
+      let buf = '', profile = '', distilled = false;
+      while (true) {
+        const { value, done } = await reader.read(); if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i; while ((i = buf.indexOf('\n\n')) >= 0) {
+          const line = buf.slice(0, i).replace(/^data: /, ''); buf = buf.slice(i + 2);
+          if (!line) continue;
+          const ev = JSON.parse(line);
+          if (ev.type === 'profile') { profile = ev.text; distilled = !!ev.distilled; }
+          if (ev.type === 'error') { onError(ev.message); return; }
+        }
+      }
+      const state = await (await fetch('/api/onboarding')).json();
+      const note = distilled ? 'Distilled profile:' : 'Materials registered but not yet distilled. Stub profile:';
+      await window.queueSend(`[studio event] second brain created at ${state.second_brain}. ${note}\n${profile}`);
+    } catch (e) {
+      console.error('dossier intake complete failed', e);   // never strand the page
+    } finally {
+      window.onboardingActive = false;
+      renderPendingAsk();                   // an ask parked mid-walk renders now (gate-2 R6)
+      armWriteline(pendingAsk, true);       // the interview is live in the same document
+    }
+  }
+
   // ── the journey rail — derived, never stored (§4.2) ─────────────────────
   function buildRail() {
     $('#dz-rail').innerHTML = '<i id="dz-railfill"></i>' + PHASES.map((p, i) =>
@@ -879,5 +1070,6 @@
     if (nearBottom) window.scrollTo({ top: document.body.scrollHeight, behavior: 'auto' });
   }
 
-  window.dossier = { activate, tryReplay, onToken, onError, onDone, renderPendingAsk };
+  window.dossier = { activate, tryReplay, onToken, onError, onDone, renderPendingAsk,
+                     intake, resumeIntake };
 })();

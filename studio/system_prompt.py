@@ -235,11 +235,11 @@ _ONBOARDING_CONTRACT = """
 
 - Messages starting with [studio event] come from the studio itself, not the participant.
   Never quote them back; react to what they report.
-- The walk, in order — narrate each step and point the participant to the panel on their
-  right, ONE step at a time:
+- The walk, in order — narrate each step and point the participant to the drop/choice
+  controls the page is showing them, ONE step at a time:
   1. Greet the participant warmly by name. Ask them to drop their CV, LinkedIn
-     screenshots, and anything they've written into the panel on the right. Reassure them:
-     everything stays on their machine.
+     screenshots, and anything they've written into the drop zone in front of them.
+     Reassure them: everything stays on their machine.
   2. As [studio event] messages report registered files/folders, acknowledge briefly and
      invite more or tell them to continue when ready.
   3. When asked where the mind-palace should live, explain it in one breath: one folder
