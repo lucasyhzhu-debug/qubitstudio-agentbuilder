@@ -180,11 +180,14 @@
     }
     diffPicks(studio.picks || []);
     pendingAsk = studio.ask || null;
+    // D1b: honest re-settle after a rewrite beat — MUST run BEFORE the ask render,
+    // so its '.dz-ask:not([data-answered])' sweep folds only STALE downstream asks;
+    // the rewrite beat's own fresh ask renders after, alive (T13 review fix).
+    if (rwSettle) { rwSettle(); rwSettle = null; }
     // gate-2 R6: ONE hot surface — while the C3 walk holds the page the ask parks in
     // pendingAsk; renderPendingAsk renders it on handback (Task 10's baton hook).
     if (studio.ask && !quiet && !window.onboardingActive) renderAsk(studio.ask);
     lastStudio = studio;
-    if (rwSettle) { rwSettle(); rwSettle = null; }   // D1b: honest re-settle after a rewrite beat
     if (!quiet) armWriteline(pendingAsk, true);
     updateRail();
     if (!quiet) nudgeScroll();
@@ -391,6 +394,9 @@
     rw = {
       rec, grp, note, later, wl, q, old,
       finish(text) {
+        if (busy) return;    // gate-2 I1: a foreign turn queued between melt and submit
+                             // must not have its settle stolen by this override —
+                             // press Enter again once that turn lands (verbs-inert rule)
         const marker = document.createElement('div');
         this.wl.replaceWith(marker);
         lastVerbFossil = fossilAt(marker, text, this.q);   // re-fossilize in place, with
