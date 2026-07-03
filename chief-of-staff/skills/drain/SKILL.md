@@ -5,15 +5,15 @@ description: Runs the chief-of-staff inbox drain cycle — triage new Discord #i
 
 # Drain
 
-This is the chief-of-staff **inbox drain** — the sole owner of `#inbox` message triage and the cron entry-point that works the agent queue from end to end. It runs as a self-contained, headless-safe workflow: every surface is reached via `curl` (Linear GraphQL per `references/linear-api.md`; Discord REST per `references/discord-threads.md`), not via interactive MCP connectors. Run state lives in `references/drain-state.md` → `{{VAULT_PATH}}\meta\chief-of-staff\drain-state.json`.
+This is the chief-of-staff **inbox drain** — the sole owner of `#inbox` message triage and the cron entry-point that works the agent queue from end to end. It runs as a self-contained, headless-safe workflow: every surface is reached via `curl` (Linear GraphQL per `references/linear-api.md`; Discord REST per `references/discord-threads.md`), not via interactive MCP connectors. Run state lives in `references/drain-state.md` → `{{VAULT_PATH}}/meta/chief-of-staff/drain-state.json`.
 
 ## Voice & self
 
 Before acting, **once per conversation** — if you have not already loaded your self-layer this session — read these three files and let them shape everything you do. Hold them in context; do **not** re-read them on every turn.
 
-- `{{VAULT_PATH}}\meta\chief-of-staff\personality.md` — your **voice**. Sound like this in everything you say to Lucas.
-- `{{VAULT_PATH}}\meta\memories.md` — what you know about **Lucas** (the shared memory hub). Read the hub; follow a `[[link]]` one hop into a deep-dive only when it's relevant to the task at hand — don't pre-load every linked page.
-- `{{VAULT_PATH}}\meta\chief-of-staff\lessons.md` — how you've **learned to work** well for Lucas.
+- `{{VAULT_PATH}}/meta/chief-of-staff/personality.md` — your **voice**. Sound like this in everything you say to Lucas.
+- `{{VAULT_PATH}}/meta/memories.md` — what you know about **Lucas** (the shared memory hub). Read the hub; follow a `[[link]]` one hop into a deep-dive only when it's relevant to the task at hand — don't pre-load every linked page.
+- `{{VAULT_PATH}}/meta/chief-of-staff/lessons.md` — how you've **learned to work** well for Lucas.
 
 If a file can't be read (vault not present), proceed on your baseline voice — the self-layer enriches, it isn't a hard dependency. Anything you draft **for Lucas to send** (emails, messages) goes in **his** voice, not yours.
 
@@ -21,7 +21,7 @@ If a file can't be read (vault not present), proceed on your baseline voice — 
 
 This is a self-contained runnable workflow. Execute every step in sequence; do not wait for a follow-up prompt between steps.
 
-Read `references/drain-state.md` at the start of the cycle to load the JSON state from `{{VAULT_PATH}}\meta\chief-of-staff\drain-state.json`. If the file is missing, treat all watermarks as "last 24 hours". If the JSON is unparseable, copy it to `drain-state.bak`, reinitialise from the 24-hour fallback, and proceed — a corrupt state file must never stall the drain.
+Read `references/drain-state.md` at the start of the cycle to load the JSON state from `{{VAULT_PATH}}/meta/chief-of-staff/drain-state.json`. If the file is missing, treat all watermarks as "last 24 hours". If the JSON is unparseable, copy it to `drain-state.bak`, reinitialise from the 24-hour fallback, and proceed — a corrupt state file must never stall the drain.
 
 ### Step 1 — Gather context (drain mode)
 
@@ -101,7 +101,7 @@ This is a minimal recovery pass — it un-strands scheduling issues a mid-cycle 
 
 Scan vault `meetings/` pages for open capture threads that need a finalize nudge.
 
-For each page at `{{VAULT_PATH}}\meetings\` whose frontmatter has `capture_status: open`:
+For each page at `{{VAULT_PATH}}/meetings/` whose frontmatter has `capture_status: open`:
 
 1. Read the `discord_thread` URL from the page frontmatter. If empty or absent, skip — thread not yet wired.
 2. Fetch all messages in the Discord thread (`GET /channels/{threadId}/messages?limit=100`; paginate with `?before={oldest_id}` until no messages remain). Every call requires `Authorization: Bot <DISCORD_BOT_TOKEN>` and `User-Agent: DiscordBot (https://github.com/lucasyhzhu-debug/Consulting-Agents, 0.7.0)` — missing the User-Agent returns an empty-body Cloudflare 403, not a permissions error.
@@ -158,7 +158,7 @@ For each Linear issue with label `needs-agent` (both freshly created in Step 2 a
 
 After all steps complete (or as far as they reached before any error):
 
-Write the updated in-memory state back to `{{VAULT_PATH}}\meta\chief-of-staff\drain-state.json` (overwrite). This is a final consistency write — Steps 2, 3, and 4 each persist their own watermarks immediately after their writes succeed, so Step 5 may be a no-op if all cycles completed cleanly. Schema is defined in `references/drain-state.md`.
+Write the updated in-memory state back to `{{VAULT_PATH}}/meta/chief-of-staff/drain-state.json` (overwrite). This is a final consistency write — Steps 2, 3, and 4 each persist their own watermarks immediately after their writes succeed, so Step 5 may be a no-op if all cycles completed cleanly. Schema is defined in `references/drain-state.md`.
 
 **Marker rules (from `references/drain-state.md`):**
 - Channel watermarks advance and are persisted immediately after each message's issue + thread + ack + description-patch writes succeed (Step 2 is atomic per message — crash-safe, no double-post).

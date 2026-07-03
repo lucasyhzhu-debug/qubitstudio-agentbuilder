@@ -30,7 +30,16 @@ winget install Git.Git
 **macOS:**
 ```bash
 brew install python git
+echo 'eval "$(/opt/homebrew/bin/brew shellenv)"' >> ~/.zprofile   # Intel Macs: /usr/local/bin/brew
+source ~/.zprofile
 ```
+
+> **macOS gotcha:** the system `python3` is Apple's old **3.9.6**, and Homebrew is **not on PATH
+> by default** — so even after `brew install python`, a plain terminal can still resolve
+> `python3` to 3.9.6 and the doctor will fail `Python >= 3.10`. The `brew shellenv` line above is
+> what actually fixes it. Then confirm in a **new** terminal that `python3 --version` prints
+> 3.10+. If you already ran the studio with the old Python, also delete the stale env:
+> `rm -rf .venv` in the repo (the launcher rebuilds it).
 
 **Linux (Debian/Ubuntu):**
 ```bash
@@ -47,14 +56,14 @@ git --version
 
 **Windows (PowerShell):**
 ```powershell
-git clone https://github.com/lucasyhzhu-debug/Consulting-Agents.git
-cd Consulting-Agents
+git clone https://github.com/lucasyhzhu-debug/qubitstudio-agentbuilder.git
+cd qubitstudio-agentbuilder
 ```
 
 **macOS / Linux:**
 ```bash
-git clone https://github.com/lucasyhzhu-debug/Consulting-Agents.git
-cd Consulting-Agents
+git clone https://github.com/lucasyhzhu-debug/qubitstudio-agentbuilder.git
+cd qubitstudio-agentbuilder
 ```
 
 ## 4. Run the preflight doctor

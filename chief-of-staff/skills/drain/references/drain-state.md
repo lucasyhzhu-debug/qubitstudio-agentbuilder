@@ -1,6 +1,6 @@
 # drain-state.json — CoS drain run state
 
-Path: `{{VAULT_PATH}}\meta\chief-of-staff\drain-state.json` (gitignored — local runtime state).
+Path: `{{VAULT_PATH}}/meta/chief-of-staff/drain-state.json` (gitignored — local runtime state).
 
 ```json
 {

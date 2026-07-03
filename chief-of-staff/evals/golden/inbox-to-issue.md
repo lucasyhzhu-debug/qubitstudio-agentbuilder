@@ -287,7 +287,7 @@ CoS writes the updated state:
 }
 ```
 
-Written to: `{{VAULT_PATH}}\meta\chief-of-staff\drain-state.json`
+Written to: `{{VAULT_PATH}}/meta/chief-of-staff/drain-state.json`
 
 ---
 

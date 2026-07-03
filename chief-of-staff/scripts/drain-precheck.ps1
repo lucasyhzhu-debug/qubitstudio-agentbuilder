@@ -8,7 +8,7 @@
 #   workflow body via stdin instead.  Strip YAML frontmatter first, then prepend an
 #   execute-now instruction so the piped content is a clean runnable prompt.
 #
-param([string]$StatePath = "{{VAULT_PATH}}\meta\chief-of-staff\drain-state.json")
+param([string]$StatePath = "{{VAULT_PATH}}/meta/chief-of-staff/drain-state.json")
 $ErrorActionPreference = "Stop"
 
 # ── 1. Lockfile guard ────────────────────────────────────────────────────────

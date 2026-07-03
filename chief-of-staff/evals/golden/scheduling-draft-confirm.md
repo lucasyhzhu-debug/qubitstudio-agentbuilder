@@ -53,7 +53,7 @@ The drain (Step 2) has already:
 
 ### Step 2 — CRM lookup
 
-**Read:** `{{VAULT_PATH}}\people\sarah-chen.md`
+**Read:** `{{VAULT_PATH}}/people/sarah-chen.md`
 
 ```
 name:  Sarah Chen

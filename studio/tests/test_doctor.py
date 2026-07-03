@@ -33,3 +33,37 @@ def test_doctor_flag_ensures_venv_first(monkeypatch):
     monkeypatch.setattr(m, "_print_doctor", lambda rows: all(ok for _, ok, _ in rows))
     rc = m.main(["--doctor"])
     assert called and rc == 0
+
+
+def test_venv_outdated_detects_old_creating_python(monkeypatch, tmp_path):
+    # A .venv stamped by Apple's 3.9.6 (pre brew-shellenv PATH fix) must be detected so the
+    # launcher rebuilds it instead of failing the doctor forever (workshop finding, macOS).
+    venv_dir = tmp_path / ".venv"; venv_dir.mkdir()
+    monkeypatch.setattr(m, "_VENV", venv_dir)
+    (venv_dir / "pyvenv.cfg").write_text(
+        "home = /Library/Developer/CommandLineTools/usr/bin\nversion = 3.9.6\n", encoding="utf-8")
+    assert m._venv_outdated() is True
+    (venv_dir / "pyvenv.cfg").write_text("home = /opt/homebrew/bin\nversion = 3.14.6\n", encoding="utf-8")
+    assert m._venv_outdated() is False
+
+
+def test_venv_outdated_tolerates_missing_or_odd_cfg(monkeypatch, tmp_path):
+    venv_dir = tmp_path / ".venv"
+    monkeypatch.setattr(m, "_VENV", venv_dir)
+    assert m._venv_outdated() is False            # no .venv at all
+    venv_dir.mkdir()
+    assert m._venv_outdated() is False            # .venv without pyvenv.cfg
+    (venv_dir / "pyvenv.cfg").write_text("version = weird\n", encoding="utf-8")
+    assert m._venv_outdated() is False            # unparseable → don't nuke
+
+
+def test_ensure_venv_rebuilds_outdated_venv(monkeypatch, tmp_path):
+    venv_dir = tmp_path / ".venv"; venv_dir.mkdir()
+    (venv_dir / "pyvenv.cfg").write_text("version = 3.9.6\n", encoding="utf-8")
+    monkeypatch.setattr(m, "_VENV", venv_dir)
+    created = []
+    monkeypatch.setattr(m.venv, "create", lambda path, with_pip: created.append(path))
+    monkeypatch.setattr(m, "_deps_importable", lambda py: True)
+    assert m._ensure_venv() is True
+    assert created == [venv_dir]                  # old venv removed → recreated
+    assert not (venv_dir / "pyvenv.cfg").exists() # the poisoned cfg is gone

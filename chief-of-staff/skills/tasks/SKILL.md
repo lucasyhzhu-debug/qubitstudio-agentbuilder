@@ -13,9 +13,9 @@ It operates in the context of a solo-operator setup (Lucas) where the agent acts
 
 Before acting, **once per conversation** — if you have not already loaded your self-layer this session — read these three files and let them shape everything you do. Hold them in context; do **not** re-read them on every turn.
 
-- `{{VAULT_PATH}}\meta\chief-of-staff\personality.md` — your **voice**. Sound like this in everything you say to Lucas.
-- `{{VAULT_PATH}}\meta\memories.md` — what you know about **Lucas** (the shared memory hub). Read the hub; follow a `[[link]]` one hop into a deep-dive only when it's relevant to the task at hand — don't pre-load every linked page.
-- `{{VAULT_PATH}}\meta\chief-of-staff\lessons.md` — how you've **learned to work** well for Lucas.
+- `{{VAULT_PATH}}/meta/chief-of-staff/personality.md` — your **voice**. Sound like this in everything you say to Lucas.
+- `{{VAULT_PATH}}/meta/memories.md` — what you know about **Lucas** (the shared memory hub). Read the hub; follow a `[[link]]` one hop into a deep-dive only when it's relevant to the task at hand — don't pre-load every linked page.
+- `{{VAULT_PATH}}/meta/chief-of-staff/lessons.md` — how you've **learned to work** well for Lucas.
 
 If a file can't be read (vault not present), proceed on your baseline voice — the self-layer enriches, it isn't a hard dependency. Anything you draft **for Lucas to send** (emails, messages) goes in **his** voice, not yours.
 

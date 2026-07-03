@@ -15,9 +15,9 @@ This is Lucas's daily chief-of-staff briefing skill. It assembles situational aw
 
 Before acting, **once per conversation** — if you have not already loaded your self-layer this session — read these three files and let them shape everything you do. Hold them in context; do **not** re-read them on every turn.
 
-- `{{VAULT_PATH}}\meta\chief-of-staff\personality.md` — your **voice**. Sound like this in everything you say to Lucas.
-- `{{VAULT_PATH}}\meta\memories.md` — what you know about **Lucas** (the shared memory hub). Read the hub; follow a `[[link]]` one hop into a deep-dive only when it is relevant to the task at hand — do not pre-load every linked page.
-- `{{VAULT_PATH}}\meta\chief-of-staff\lessons.md` — how you have **learned to work** well for Lucas.
+- `{{VAULT_PATH}}/meta/chief-of-staff/personality.md` — your **voice**. Sound like this in everything you say to Lucas.
+- `{{VAULT_PATH}}/meta/memories.md` — what you know about **Lucas** (the shared memory hub). Read the hub; follow a `[[link]]` one hop into a deep-dive only when it is relevant to the task at hand — do not pre-load every linked page.
+- `{{VAULT_PATH}}/meta/chief-of-staff/lessons.md` — how you have **learned to work** well for Lucas.
 
 If a file cannot be read (vault not present, path unavailable), proceed on your baseline voice — the self-layer enriches, it is not a hard dependency. Anything you draft **for Lucas to send** (emails, messages) goes in **his** voice, not yours.
 
@@ -56,7 +56,7 @@ Pull data from the digest for use in Steps 3–5:
 
 For each event in `digest.calendar.events`, create or update its vault meeting page. The **identity key is `calendar_event_id`** — never use the filename slug as a surrogate key.
 
-**Look-up (single grep for ALL events):** issue **one** grep across `{{VAULT_PATH}}\meetings\` for every `calendar_event_id` value in `digest.calendar.events` at once (e.g. an alternation of all the event ids), returning the matching file paths in a single pass — do NOT read candidate files per event. From that one result set, a meeting page exists for a given event if and only if a returned file's frontmatter carries `calendar_event_id: <that event_id>`; events whose id appears in no returned path are absent. The identity key stays `calendar_event_id` (never the filename slug).
+**Look-up (single grep for ALL events):** issue **one** grep across `{{VAULT_PATH}}/meetings/` for every `calendar_event_id` value in `digest.calendar.events` at once (e.g. an alternation of all the event ids), returning the matching file paths in a single pass — do NOT read candidate files per event. From that one result set, a meeting page exists for a given event if and only if a returned file's frontmatter carries `calendar_event_id: <that event_id>`; events whose id appears in no returned path are absent. The identity key stays `calendar_event_id` (never the filename slug).
 
 **Page exists — refresh in place:**
 - Update the `## Context` section only: replace its content with the current agenda (from `description_snippet`) and updated per-attendee summaries drawn from `digest.people.crm_hits[]` (each hit carries `gmail_context` as a nested field — path: `digest.people.crm_hits[].gmail_context`).
@@ -118,7 +118,7 @@ External-ness: skip Lucas's own accounts (an attendee whose `email` matches a `$
 
 **2. Unmatched AND the attendee has a `name`** — create a meeting-auto stub.
 - Derive `kebab-name` from the display name using the **CRM name-kebab convention**: lowercase, spaces → hyphens, **drop apostrophes**, **preserve existing intra-name hyphens** (e.g. `Sarah Chen` → `sarah-chen`; `Sarah O'Brien` → `sarah-obrien` (drop apostrophes); `Jean-Pierre Moreau` → `jean-pierre-moreau` (intra-name hyphen kept)). This is identical to `crm-page-format.md` — never diverge.
-- **Guard before create:** check whether `{{VAULT_PATH}}\people\<kebab-name>.md` already exists. If it does (the gatherer's email-match should already have surfaced it as case 1, but guard anyway), treat it as case 1 — append the interaction line (dedup by wikilink), do NOT overwrite.
+- **Guard before create:** check whether `{{VAULT_PATH}}/people/<kebab-name>.md` already exists. If it does (the gatherer's email-match should already have surfaced it as case 1, but guard anyway), treat it as case 1 — append the interaction line (dedup by wikilink), do NOT overwrite.
 - **No file:** create it with this frontmatter:
   - `identity.name`: the attendee display name.
   - `identity.email`: the attendee email (so future runs reconcile by email per the gatherer's Step 5a rule — this is what graduates a stub into the matched path next time).

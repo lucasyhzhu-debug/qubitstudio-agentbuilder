@@ -146,7 +146,7 @@ Scopes requested: `calendar.readonly`, `calendar.events` (write), `gmail.readonl
 
 ### 2. Configure wiki-brain path
 
-The CRM skill reads and writes `{{VAULT_PATH}}\people\`. Update this path in `skills/crm/SKILL.md` if your wiki-brain lives elsewhere.
+The CRM skill reads and writes `{{VAULT_PATH}}/people/`. Update this path in `skills/crm/SKILL.md` if your wiki-brain lives elsewhere.
 
 ### 3. Install the plugin
 
@@ -206,7 +206,7 @@ The briefing skill should activate and begin gathering context.
 
 
 ## Storage
-- `{{VAULT_PATH}}\people\ (markdown git repo)` — personal CRM (one rich page per person: identity, personal, professional, network links, give/get, interaction log, tags) (filesystem)
+- `{{VAULT_PATH}}/people/ (markdown git repo)` — personal CRM (one rich page per person: identity, personal, professional, network links, give/get, interaction log, tags) (filesystem)
 - `{{VAULT_PATH}} (markdown git repo)` — general knowledge (filesystem)
 - `Linear` — task list (mcp)
 

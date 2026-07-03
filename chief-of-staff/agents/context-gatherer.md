@@ -214,9 +214,9 @@ Sort by priority descending, then due_date ascending.
 
 ### 5. Wiki-brain people/ CRM + per-attendee Gmail context
 
-The local wiki-brain lives at `{{VAULT_PATH}}`. People CRM pages are at `{{VAULT_PATH}}\people\<kebab-name>.md`.
+The local wiki-brain lives at `{{VAULT_PATH}}`. People CRM pages are at `{{VAULT_PATH}}/people/<kebab-name>.md`.
 
-**Build the people/ index ONCE (before any attendee lookup).** Make a single pass over **every** page under `{{VAULT_PATH}}\people\` — both rich CRM pages AND prior meeting-auto stubs — and build an in-memory index keyed for resolution: `{ email → page, name → page }`. Resolve each page's identity from BOTH shapes as it is read (see 5a for the exact field rules: rich-page `## Identity`/`- **Email:**`/`- **Name:**`/H1 title, OR stub frontmatter `identity.email`/`identity.name`). Treat a blank value or the `_unknown_` placeholder as NO email (omit the email key for that page; it may still be reachable by name). Building this index once replaces the old per-attendee directory rescan — every attendee resolves against the in-memory index, not a fresh disk scan.
+**Build the people/ index ONCE (before any attendee lookup).** Make a single pass over **every** page under `{{VAULT_PATH}}/people/` — both rich CRM pages AND prior meeting-auto stubs — and build an in-memory index keyed for resolution: `{ email → page, name → page }`. Resolve each page's identity from BOTH shapes as it is read (see 5a for the exact field rules: rich-page `## Identity`/`- **Email:**`/`- **Name:**`/H1 title, OR stub frontmatter `identity.email`/`identity.name`). Treat a blank value or the `_unknown_` placeholder as NO email (omit the email key for that page; it may still be reachable by name). Building this index once replaces the old per-attendee directory rescan — every attendee resolves against the in-memory index, not a fresh disk scan.
 
 **Collect UNIQUE attendees by email across ALL events (cross-event dedup).** Across every event from step 2, gather the union of attendees keyed by `email` (case-insensitive). Run the CRM-match (5a) and Gmail enrichment (5b) **exactly once per unique email**, then **fan the single result back to every event** the person appears in. This dedups the WORK only — it does NOT relax the per-event cap:
 
@@ -227,7 +227,7 @@ Apply both sub-steps below to the unique attendees collected above (capped per-e
 
 #### 5a. Wiki-brain CRM lookup
 
-People pages live in ONE namespace under `{{VAULT_PATH}}\people\`, each keyed by **name-kebab** (`<kebab-first-last>` — the person's display name lowercased, spaces → hyphens, apostrophes dropped, existing intra-name hyphens preserved; the convention in `chief-of-staff/skills/crm/references/crm-page-format.md`). Email is the *reconciliation* key, never the filename.
+People pages live in ONE namespace under `{{VAULT_PATH}}/people/`, each keyed by **name-kebab** (`<kebab-first-last>` — the person's display name lowercased, spaces → hyphens, apostrophes dropped, existing intra-name hyphens preserved; the convention in `chief-of-staff/skills/crm/references/crm-page-format.md`). Email is the *reconciliation* key, never the filename.
 
 **Two page shapes — you MUST read identity from BOTH, they are NOT uniform.** A person already in the CRM is almost always the RICH shape, which has NO frontmatter:
 
@@ -236,7 +236,7 @@ People pages live in ONE namespace under `{{VAULT_PATH}}\people\`, each keyed by
 
 Because the rich pages have **no frontmatter**, a match that only reads frontmatter `identity.email` would NEVER fire for anyone already in the CRM — reopening the duplicate/orphan bug. The match MUST look in both places.
 
-1. Resolve each attendee against the **in-memory people/ index built once above** (no per-attendee disk rescan). The index was built by reading **every** page under `{{VAULT_PATH}}\people\` — both rich CRM pages AND prior meeting-auto stubs (so a stub created on a previous run is found on this run) — resolving each page's identity from whichever shape it is:
+1. Resolve each attendee against the **in-memory people/ index built once above** (no per-attendee disk rescan). The index was built by reading **every** page under `{{VAULT_PATH}}/people/` — both rich CRM pages AND prior meeting-auto stubs (so a stub created on a previous run is found on this run) — resolving each page's identity from whichever shape it is:
    - **page email** = the rich-page `## Identity` → `- **Email:**` value, OR the stub frontmatter `identity.email` — whichever the page carries. Treat a blank value or the `_unknown_` placeholder as NO email (skip the email key for that page and fall through to name).
    - **page name** = the rich-page H1 title `# <Full Name>`, OR the rich-page `## Identity` → `- **Name:**` value, OR the stub frontmatter `identity.name` — whichever the page carries.
 

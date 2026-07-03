@@ -13,9 +13,9 @@ Capture is **stateless between drain cycles**: it reconstructs the full notes bu
 
 Before acting, **once per conversation** — if you have not already loaded your self-layer this session — read these three files and let them shape everything you do. Hold them in context; do **not** re-read them on every turn.
 
-- `{{VAULT_PATH}}\meta\chief-of-staff\personality.md` — your **voice**. Sound like this in everything you say to Lucas.
-- `{{VAULT_PATH}}\meta\memories.md` — what you know about **Lucas** (the shared memory hub). Read the hub; follow a `[[link]]` one hop into a deep-dive only when it's relevant to the task at hand — don't pre-load every linked page.
-- `{{VAULT_PATH}}\meta\chief-of-staff\lessons.md` — how you've **learned to work** well for Lucas.
+- `{{VAULT_PATH}}/meta/chief-of-staff/personality.md` — your **voice**. Sound like this in everything you say to Lucas.
+- `{{VAULT_PATH}}/meta/memories.md` — what you know about **Lucas** (the shared memory hub). Read the hub; follow a `[[link]]` one hop into a deep-dive only when it's relevant to the task at hand — don't pre-load every linked page.
+- `{{VAULT_PATH}}/meta/chief-of-staff/lessons.md` — how you've **learned to work** well for Lucas.
 
 If a file can't be read (vault not present), proceed on your baseline voice — the self-layer enriches, it isn't a hard dependency. Anything you draft **for Lucas to send** goes in **his** voice, not yours.
 
@@ -57,7 +57,7 @@ Use the notes buffer (and the drain's context) to determine which meeting this t
 If Step 1 found a meetings/ page with `discord_thread` matching the current thread URL → that is the meeting. No further resolution needed.
 
 **Priority 2 — Heuristic match from names + date.**
-Scan the Discord thread for person names (explicit mentions, "had a call with X", "met with Y and Z"). Also extract any date signals (explicit date, "today", "this morning", "just wrapped"). Search `{{VAULT_PATH}}\meetings\` for pages whose `date` and `attendees` wikilinks match. If exactly one page matches → wire the thread: patch its `discord_thread` field to this thread URL and set `capture_status: open`. Record this match and proceed.
+Scan the Discord thread for person names (explicit mentions, "had a call with X", "met with Y and Z"). Also extract any date signals (explicit date, "today", "this morning", "just wrapped"). Search `{{VAULT_PATH}}/meetings/` for pages whose `date` and `attendees` wikilinks match. If exactly one page matches → wire the thread: patch its `discord_thread` field to this thread URL and set `capture_status: open`. Record this match and proceed.
 
 Wiring is a single vault file write:
 ```yaml
@@ -109,7 +109,7 @@ capture_status: open
 ---
 ```
 
-File path: `{{VAULT_PATH}}\meetings\YYYY-MM-DD-<slug>.md` where `slug` is the kebab-cased event title (same-day collision: append `-<HHmm>`).
+File path: `{{VAULT_PATH}}/meetings/YYYY-MM-DD-<slug>.md` where `slug` is the kebab-cased event title (same-day collision: append `-<HHmm>`).
 
 #### 4b. Write Phase-D sections to the meeting page
 
@@ -146,7 +146,7 @@ Append (or overwrite if already present — see idempotency note below) the foll
 
 For each attendee in the meeting page's `attendees` list (external attendees only — not Lucas):
 
-1. **Resolve the person page.** Load `{{VAULT_PATH}}\people\<kebab-name>.md`. Reconcile by `identity.email` (primary key) then by filename. If the page does not exist, create a `meeting-auto` stub per `chief-of-staff/skills/briefing/references/meeting-page.md` stub shape.
+1. **Resolve the person page.** Load `{{VAULT_PATH}}/people/<kebab-name>.md`. Reconcile by `identity.email` (primary key) then by filename. If the page does not exist, create a `meeting-auto` stub per `chief-of-staff/skills/briefing/references/meeting-page.md` stub shape.
 
 2. **Apply the three-way CRM dedup rule** (key: `[[meetings/<page-slug>]]` wikilink in the file body):
 
