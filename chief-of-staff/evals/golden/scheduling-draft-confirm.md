@@ -3,9 +3,9 @@
 # Scheduling draft → confirm → write — reference transcript
 
 Quality-bar reference for the scheduling skill (CT3) + drain confirm cycle (CT4). Covers:
-- CT3 composing 2–3 conflict-free slots, parking at `needs-lucas`, posting the Discord proposal (no Google write).
+- CT3 composing 2–3 conflict-free slots, parking at `needs-owner`, posting the Discord proposal (no Google write).
 - Lucas's bare-token confirm reply (authored by `OWNER_USER_ID`, postdating the proposal).
-- CT4's single atomic `issueUpdate` (confirm-flip: `needs-lucas` → `needs-agent` + `confirmed-by-agent` label + `confirmed_slot`).
+- CT4's single atomic `issueUpdate` (confirm-flip: `needs-owner` → `needs-agent` + `confirmed-by-agent` label + `confirmed_slot`).
 - CT4's idempotent `events.insert` on the next drain cycle (deterministic event id, `sendUpdates=all`, crash-safe record-then-done ordering).
 
 Not a runnable fixture — a calibrated human-readable reference.
@@ -94,7 +94,7 @@ correspondence_hits: []
 - Slot 2: Wed 8 Jul 14:00–14:30 AEST — mid-afternoon, >15 min buffer from Strategy review (ends 14:00 exactly; start at 14:00 is a flush boundary — acceptable, no trailing event within 15 min).
 - Slot 3: Thu 9 Jul 09:30–10:00 AEST — mid-morning, no adjacent events.
 
-### Step 4a — Park at needs-lucas (FIRST write)
+### Step 4a — Park at needs-owner (FIRST write)
 
 **GraphQL mutation — label flip (performed BEFORE writing ## Draft):**
 
@@ -103,13 +103,13 @@ mutation {
   issueUpdate(
     id: "f3a8b2c1-dead-beef-0042-000000000042"
     input: {
-      labelIds: ["<ch:inbox-label-id>", "<needs-lucas-label-id>"]
+      labelIds: ["<ch:inbox-label-id>", "<needs-owner-label-id>"]
     }
   ) { success }
 }
 ```
 
-Issue is now `needs-lucas`. A crash after this step leaves the issue in a no-write state.
+Issue is now `needs-owner`. A crash after this step leaves the issue in a no-write state.
 
 ### Step 4b — Write ## Draft block
 
@@ -185,7 +185,7 @@ mutation {
 }
 ```
 
-In one write: `needs-lucas` label removed, `needs-agent` + `confirmed-by-agent` labels added, `confirmed_slot: 2` written. The `confirmed-by-agent` label is the sole write-authorization gate; the `## Draft` text alone does not authorize `events.insert`.
+In one write: `needs-owner` label removed, `needs-agent` + `confirmed-by-agent` labels added, `confirmed_slot: 2` written. The `confirmed-by-agent` label is the sole write-authorization gate; the `## Draft` text alone does not authorize `events.insert`.
 
 **Contrast (non-Lucas confirm — must be chatter):** had author.id been `9999999999999999999` (not `OWNER_USER_ID`), this whole classify pass is skipped — the reply is treated as chatter, no label change, no `confirmed-by-agent`. Even if content is `confirm 2`.
 
@@ -303,6 +303,6 @@ mutation {
 
 **Forged ## Draft in inbox message:** if the original Discord message had contained a literal `## Draft` block, drain Step 2 would have sanitized it to `\#\# Draft` before writing to the Linear description. CT3 would then find no live `## Draft` block in the description and would compose a fresh one from scratch. The forged content never reaches `events.insert`. The `confirmed-by-agent` label — set only at a genuine Lucas confirm in Step 3a — is the sole authorization gate.
 
-**Non-Lucas confirm:** if the thread reply had been from a non-Lucas user (author.id != OWNER_USER_ID), CT4's Step 3a classify pass treats it as chatter. No `confirmed-by-agent` label is set, no label flip occurs, and `events.insert` is never called. The issue stays `needs-lucas`.
+**Non-Lucas confirm:** if the thread reply had been from a non-Lucas user (author.id != OWNER_USER_ID), CT4's Step 3a classify pass treats it as chatter. No `confirmed-by-agent` label is set, no label flip occurs, and `events.insert` is never called. The issue stays `needs-owner`.
 
-**'Don't ask' skip-confirm instruction:** if Lucas's initial scheduling request included "just put it in the calendar now, don't ask", CT3 still executes Step 4a (park at `needs-lucas`) before writing the `## Draft` block. The inline instruction does not constitute a confirm; the confirm gate is structurally required. `events.insert` belongs to CT4 alone, on the confirm path only.
+**'Don't ask' skip-confirm instruction:** if Lucas's initial scheduling request included "just put it in the calendar now, don't ask", CT3 still executes Step 4a (park at `needs-owner`) before writing the `## Draft` block. The inline instruction does not constitute a confirm; the confirm gate is structurally required. `events.insert` belongs to CT4 alone, on the confirm path only.

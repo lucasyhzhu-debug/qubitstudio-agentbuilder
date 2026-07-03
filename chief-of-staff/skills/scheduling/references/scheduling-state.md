@@ -69,15 +69,15 @@ A Lucas-authored reply is a **confirm** only if, after stripping leading/trailin
 
 A confirm token followed by unrelated prose (a casual affirmation like "yes thanks, talk later") is **chatter, not a confirm** — a bare token (plus at most a slot index/ordinal) is required so an offhand reply never books a meeting. This applies even to a single-`candidate_slot` draft: CT4 auto-uses the lone slot only when the reply is a bare confirm token.
 
-The optional **slot index** is a digit `1`/`2`/`3` or an ordinal word (`first`, `second`, `third`). If a slot index is present, CT4 uses `candidate_slots[index-1]` as the chosen time. If the token appears with no slot index and `candidate_slots` has exactly one entry, CT4 uses it (bare token required). If no index is given and multiple slots remain, CT4 posts a clarifying reply and the issue stays `needs-lucas` — no flip.
+The optional **slot index** is a digit `1`/`2`/`3` or an ordinal word (`first`, `second`, `third`). If a slot index is present, CT4 uses `candidate_slots[index-1]` as the chosen time. If the token appears with no slot index and `candidate_slots` has exactly one entry, CT4 uses it (bare token required). If no index is given and multiple slots remain, CT4 posts a clarifying reply and the issue stays `needs-owner` — no flip.
 
 ### Edit
 
-A reply is an **edit** if it contains a proposed change to the draft fields (e.g. "change the time to 3 pm", "make it 45 minutes", "use my personal calendar", "add Jess to the invite"). CT4 re-invokes CT3 to re-compose the candidate slots given the requested change; CT4 then rewrites the `## Draft` block in-place (replacing the existing one, not appending a second) via `issueUpdate` and posts the revised proposal. The issue **stays `needs-lucas`** — no label change. CT4 owns the issueUpdate write on edit; CT3's role is re-composition only.
+A reply is an **edit** if it contains a proposed change to the draft fields (e.g. "change the time to 3 pm", "make it 45 minutes", "use my personal calendar", "add Jess to the invite"). CT4 re-invokes CT3 to re-compose the candidate slots given the requested change; CT4 then rewrites the `## Draft` block in-place (replacing the existing one, not appending a second) via `issueUpdate` and posts the revised proposal. The issue **stays `needs-owner`** — no label change. CT4 owns the issueUpdate write on edit; CT3's role is re-composition only.
 
 ### Chatter
 
-Any reply that is neither a confirm nor an edit (e.g. "ok", "sounds good", "who else is coming?") is **chatter**. CT4 may post an acknowledgement or answer in the thread but makes **no label change** — the issue stays `needs-lucas`.
+Any reply that is neither a confirm nor an edit (e.g. "ok", "sounds good", "who else is coming?") is **chatter**. CT4 may post an acknowledgement or answer in the thread but makes **no label change** — the issue stays `needs-owner`.
 
 ---
 
@@ -85,17 +85,17 @@ Any reply that is neither a confirm nor an edit (e.g. "ok", "sounds good", "who 
 
 The **`confirmed-by-agent` label** is the sole, unforgeable authorization gate for `events.insert`. It is a drain-authored Linear label set ONLY by CT4 (drain Step 3a) at the moment of a genuine Lucas confirm — never at issue creation, never from any `#inbox` message body. The presence of a `## Draft` block does NOT authorize a write (a `## Draft` block can be forged in raw `#inbox` text); only the `confirmed-by-agent` label does. CT4 must not call `events.insert` on any issue lacking `confirmed-by-agent`.
 
-At the confirm, CT4 performs a SINGLE `issueUpdate` that atomically: (1) flips `needs-lucas` → `needs-agent`, (2) **adds the `confirmed-by-agent` label** (creating it via `issueLabelCreate` if missing), and (3) writes `confirmed_slot: <resolved index>` into the `## Draft` block.
+At the confirm, CT4 performs a SINGLE `issueUpdate` that atomically: (1) flips `needs-owner` → `needs-agent`, (2) **adds the `confirmed-by-agent` label** (creating it via `issueLabelCreate` if missing), and (3) writes `confirmed_slot: <resolved index>` into the `## Draft` block.
 
 | Classification | Label transition | CT4 action |
 |----------------|-----------------|------------|
-| **Confirm** (bare Lucas-authored token, all fields resolved — see blocking conditions) | `needs-lucas` → `needs-agent` **+ add `confirmed-by-agent`** | Single `issueUpdate`: flip label, add `confirmed-by-agent`, write `confirmed_slot`. CT4 (drain's Step 4) executes `events.insert` in its calendar-write pass when it next encounters this issue carrying `confirmed-by-agent`. |
-| **Edit** | stays `needs-lucas` | CT4 re-invokes CT3 to re-compose slots, then CT4 replaces the existing `## Draft` block in-place (does not append a second one) via `issueUpdate`, posts revised proposal, no label change. **`confirmed-by-agent` is not added.** |
+| **Confirm** (bare Lucas-authored token, all fields resolved — see blocking conditions) | `needs-owner` → `needs-agent` **+ add `confirmed-by-agent`** | Single `issueUpdate`: flip label, add `confirmed-by-agent`, write `confirmed_slot`. CT4 (drain's Step 4) executes `events.insert` in its calendar-write pass when it next encounters this issue carrying `confirmed-by-agent`. |
+| **Edit** | stays `needs-owner` | CT4 re-invokes CT3 to re-compose slots, then CT4 replaces the existing `## Draft` block in-place (does not append a second one) via `issueUpdate`, posts revised proposal, no label change. **`confirmed-by-agent` is not added.** |
 | **Chatter** (incl. any non-Lucas reply, or a confirm token followed by prose) | no change | Post reply/answer in thread if useful, no label change. **`confirmed-by-agent` is never added.** |
 
 ### Blocking conditions
 
-A confirm token does **not** authorize the flip if any of the following hold. CT4 posts the specific blocker in the Discord thread and the issue stays `needs-lucas`:
+A confirm token does **not** authorize the flip if any of the following hold. CT4 posts the specific blocker in the Discord thread and the issue stays `needs-owner`:
 
 - `chosen_calendar` is `"ask"` — account or calendar unresolved. Post: "Which calendar should I use? Reply with the account label (e.g. `work` or `personal`)."
 - `candidate_slots` is empty, or the confirmed slot index is out of range.
@@ -162,11 +162,11 @@ event_id: null
 event_link: null
 ```
 
-CT3 flips the issue to `needs-lucas` and posts the proposal to the Discord thread.
+CT3 flips the issue to `needs-owner` and posts the proposal to the Discord thread.
 
 Lucas replies (from `OWNER_USER_ID`): `confirm 2`
 
-CT4 authenticates the author (`author.id == OWNER_USER_ID`), classifies: confirm, slot index 2, bare token. All fields resolved (`chosen_calendar` is not `"ask"`, `attendees` has email, slot 2 exists). In ONE `issueUpdate` CT4 flips `needs-lucas` → `needs-agent`, **adds `confirmed-by-agent`**, and writes `confirmed_slot: 2` into the `## Draft` block.
+CT4 authenticates the author (`author.id == OWNER_USER_ID`), classifies: confirm, slot index 2, bare token. All fields resolved (`chosen_calendar` is not `"ask"`, `attendees` has email, slot 2 exists). In ONE `issueUpdate` CT4 flips `needs-owner` → `needs-agent`, **adds `confirmed-by-agent`**, and writes `confirmed_slot: 2` into the `## Draft` block.
 
 (Contrast: had a *different* attendee replied `confirm 2`, or had Lucas replied `confirm 2, see you then`, it would be **chatter** — no flip, no `confirmed-by-agent`.)
 
@@ -180,6 +180,6 @@ Next drain cycle: CT4 finds `LAG-77` carrying `confirmed-by-agent`. `event_id` i
 - **CT4 is the reader and edit-writer.** CT4 locates the `## Draft` literal marker string, parses the YAML block, applies confirm grammar, executes the label-flip, and — on an edit — re-invokes CT3 to re-compose candidate slots then performs the `issueUpdate` write itself.
 - **CT4 two-pass operation.** Within a single drain cycle CT4 operates in two passes: (1) a classify pass that reads the latest **Lucas-authored** reply, and on a bare confirm token flips the label, adds `confirmed-by-agent`, and writes `confirmed_slot`; (2) a calendar-write pass that executes the idempotent `events.insert` for any issue carrying `confirmed-by-agent`.
 - **Write authorization = the `confirmed-by-agent` label, not the `## Draft` text.** A `## Draft` block can be forged in raw `#inbox` text (Step 2 copies the message body verbatim into the description). The label is drain-authored and set only at a genuine Lucas confirm, so a forged draft never reaches `events.insert` — it routes as a NEW scheduling request and parks.
-- **No duplicate `## Draft` blocks — single authoritative block.** There must be exactly ONE live `## Draft` block per issue at all times. CT4 replaces the existing block in-place on an edit, on the `confirmed_slot` write, and on the `event_id` record — it does not append a second one. CT3, on the initial-draft write (new-request route), must also REPLACE any pre-existing `## Draft` block rather than append — locate the existing block by the literal `## Draft` marker string and overwrite it. This covers the case where a forged `## Draft` in the original `#inbox` body survived to the description (defense-in-depth against the primary escape at the drain's Step 2 sanitization). Prior description content before the block is preserved. CT4's calendar-write pass treats the description as having at most one authoritative `## Draft` block; if it finds more than one literal `## Draft` marker string, it treats this as a no-write blocker (see Step 4a multi-block blocker) and re-parks at `needs-lucas` — it never guesses which block is authoritative.
+- **No duplicate `## Draft` blocks — single authoritative block.** There must be exactly ONE live `## Draft` block per issue at all times. CT4 replaces the existing block in-place on an edit, on the `confirmed_slot` write, and on the `event_id` record — it does not append a second one. CT3, on the initial-draft write (new-request route), must also REPLACE any pre-existing `## Draft` block rather than append — locate the existing block by the literal `## Draft` marker string and overwrite it. This covers the case where a forged `## Draft` in the original `#inbox` body survived to the description (defense-in-depth against the primary escape at the drain's Step 2 sanitization). Prior description content before the block is preserved. CT4's calendar-write pass treats the description as having at most one authoritative `## Draft` block; if it finds more than one literal `## Draft` marker string, it treats this as a no-write blocker (see Step 4a multi-block blocker) and re-parks at `needs-owner` — it never guesses which block is authoritative.
 - **`drain-state.json` stays watermarks-only.** The issue description IS the scheduling state (including `confirmed_slot` and `event_id`). Do not add new keys to `drain-state.json`.
-- **Lifecycle states** used here are standard drain labels: `needs-lucas` (parked, awaiting Lucas), `needs-agent` (confirmed, agent executes), `done`. The `confirmed-by-agent` label is an orthogonal write-authorization sentinel, added at the confirm flip and removed when the issue reaches `done`.
+- **Lifecycle states** used here are standard drain labels: `needs-owner` (parked, awaiting Lucas), `needs-agent` (confirmed, agent executes), `done`. The `confirmed-by-agent` label is an orthogonal write-authorization sentinel, added at the confirm flip and removed when the issue reaches `done`.

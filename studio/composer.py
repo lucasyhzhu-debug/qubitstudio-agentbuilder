@@ -126,6 +126,7 @@ def _subs(owner_name: str, vault_dir: Path) -> list[tuple[str, str]]:
         ("lucas@ikigaiventures.ai", "you@example.com"),
         ("lucas.yh.zhu@gmail.com", "you@example.com"),  # was live PII in a sample log line (finding #11)
         ("lucasknowledgebot", "your-assistant-bot"),
+        ("needs-lucas", "needs-owner"),  # functional Linear label carried the original owner's name (finding #10)
         ("Lucas Zhu", owner_name),
         ("Lucas", owner_name),
     ]

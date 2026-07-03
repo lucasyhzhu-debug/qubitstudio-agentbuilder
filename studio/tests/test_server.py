@@ -353,3 +353,10 @@ def test_first_breath_streams_tokens(monkeypatch, tmp_path):
     assert "Morning, Ada." in body and '"type": "done"' in body
     assert seen["home"] == Path(str(tmp_path))     # derived server-side from LAST_COMPOSE
     assert "Ada" in seen["prompt"] and "linear" in seen["prompt"]
+
+
+def test_favicon_no_longer_404s():
+    # finding #3: every page load logged "GET /favicon.ico 404" — serve it or return 204
+    c = TestClient(server.app)
+    r = c.get("/favicon.ico")
+    assert r.status_code in (200, 204)
