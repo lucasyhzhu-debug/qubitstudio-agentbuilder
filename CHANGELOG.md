@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.6.0 — 2026-07-07 — Drain conversational-ticket intelligence (substrate → upstream v0.9.0)
+
+- **The drain now treats an `#inbox` dictation burst as one accreting conversation.** Ported the
+  upstream chief-of-staff v0.8.1→v0.9.0 upgrade package (`docs/upgrades/2026-07-02-cos-v0.9.0-upgrade.md`)
+  into the placeholder-form substrate:
+  - **Adaptive settle window** — a source (channel or thread) is processed only once quiet
+    (0 → nothing; 1 → newest ≥ 30s; 2+ → newest ≥ 90s; oldest un-processed ≥ 600s ceiling). One
+    shared implementation: `chief-of-staff/scripts/settle-lib.ps1` (`Test-SourceSettled`, Int64
+    snowflake math) with a Pester suite (`scripts/tests/settle.Tests.ps1`, 14 tests green on
+    PowerShell 5.1 / Pester 3.4) and the prose contract `skills/drain/references/settle-window.md`.
+    Consumed by the precheck and the SKILL (settle gates both ingestion and action).
+  - **Kanban state mirroring** — every lifecycle label change also sets the matching Linear
+    workflow `stateId` in the same mutation (Todo → In Progress → In Review → Done); state ids are
+    resolved at runtime by name/type per `skills/drain/references/linear-api.md` (never hardcoded
+    UUIDs — substrate-safe).
+  - **`#inbox` burst grouping** (contiguous owner-authored runs handed to `intake` as one batch;
+    watermark advances once per run), **new-vs-old comment boundary** (`> lastActed` = NEW),
+    **auto wiki-entity linkage** (a drain-authored `## Meta` block + `wiki_ref` write-back, loaded
+    on later cycles only after vault-validation; bodies sanitised for the `## Meta` literal), and a
+    **one-shot ~50-comment length nudge** (`lengthNudged`).
+  - **Anti-stale-context hardening** — verify-before-assert (newest verified statement wins; never
+    assert an unverified status) and Google auth-contract precedence + the UPPERCASE env-var-suffix
+    case rule (`references/google-auth.md`).
+  - **Golden trace** `evals/golden/drain-dictation-context.md` (settle hold → grouped issue → CRM
+    page → `wiki_ref` write-back → later reply as NEW-since-`lastActed` with the page reloaded).
+
 ## 0.5.0 — 2026-07-03 — The dossier journey + raw-skills agent homes
 
 - **The workshop surface is now a dossier** — a single living document the architect writes

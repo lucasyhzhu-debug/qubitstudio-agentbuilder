@@ -4,10 +4,25 @@ The **only** `Bearer`-header contract in this plugin (Linear = raw key, Discord 
 
 **Credentials** (flat User env vars — never on disk / the vault):
 - `GOOGLE_ACCOUNTS=personal,work` enumerates labels · `GOOGLE_EMAIL_<LABEL>` — the account's own email (**every label** — consumers like the brief use it to identify Lucas's own accounts / external-ness). For a `service_account` label it is ALSO the domain user the SA impersonates (the DWD subject).
-- `GOOGLE_AUTH_KIND_<LABEL>` ∈ `refresh` | `service_account` — **defaults to `refresh` when unset** (personal label needs no new config).
+- `GOOGLE_AUTH_KIND_<LABEL>` ∈ `refresh` | `service_account` — **defaults to `refresh` when unset** (personal label needs no new config). **Check this FIRST** when judging whether an account is connected: for a `service_account` label, `GOOGLE_REFRESH_TOKEN_<LABEL>` is *expected to be absent* and its absence is **NOT a blocker** (the SA key path provides auth); only a `refresh` label requires the refresh token.
 - **`refresh` labels**: `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` — one Desktop OAuth client, shared across `refresh` labels only · `GOOGLE_REFRESH_TOKEN_<LABEL>` per account.
 - **`service_account` labels**: `GOOGLE_SA_KEY_PATH_<LABEL>` — local path to the SA JSON key (**never on the vault**).
 - Example roster: `personal` = gmail (`refresh`), `work` = `you@example.com` (`service_account`).
+
+**Env-var name case (critical — headless bash is case-sensitive).** Every `<LABEL>` suffix is
+**UPPERCASE** in the env-var *name*, even though `GOOGLE_ACCOUNTS` lists labels in lowercase — label
+`work` → `GOOGLE_EMAIL_WORK`, `GOOGLE_AUTH_KIND_WORK`, `GOOGLE_SA_KEY_PATH_WORK`. A var set with a
+lowercase suffix (`GOOGLE_EMAIL_work`) passes the PowerShell smoke test (case-insensitive) but is
+**invisible to skills that read env from bash** (case-sensitive — `$GOOGLE_EMAIL_WORK` reads empty),
+so the account looks "not set" headless while smoking fine. Diagnose with `reg query HKCU\Environment`
+(it shows the exact stored name case); fix by deleting the wrong-case value and re-adding it
+uppercase — `reg delete HKCU\Environment /v GOOGLE_EMAIL_work /f` then
+`setx GOOGLE_EMAIL_WORK "<value>"` (`setx` alone preserves an existing name's case, so the delete
+must come first).
+
+**Connection status is only ever diagnosed by a live check in THIS run** — mint a token (Step 0) and
+make one read call. Never infer "connected" / "not connected" from a prior issue comment or thread
+history; those go stale after an env fix and resurrect false blockers.
 
 **Scopes** (frozen at consent): `calendar.readonly` · `calendar.events` · `gmail.readonly`.
 

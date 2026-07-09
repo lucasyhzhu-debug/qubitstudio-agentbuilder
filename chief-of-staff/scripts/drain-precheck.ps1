@@ -32,24 +32,37 @@ try {
         $null
     }
 
+    # ── Shared settle-window logic (v0.9.0 feature #6) ────────────────────────
+    # One implementation of "is this source settled?", shared with the drain SKILL's
+    # prose contract (skills/drain/references/settle-window.md). Dot-source it so the
+    # channel pre-check below gates on the same rule.
+    . (Join-Path $PSScriptRoot 'settle-lib.ps1')
+    $nowMs = [long]([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())
+
+    # Discord REST headers, hoisted so the channel check (step 3) AND the thread-reply
+    # check (step 4b) share them. Discord's Cloudflare edge 403s requests without a
+    # compliant User-Agent (PowerShell's default UA is blocked); the DiscordBot
+    # (<url>, <version>) form is required on every REST call.
+    $dh = @{
+        Authorization = "Bot $($env:DISCORD_BOT_TOKEN)"
+        "User-Agent"  = "DiscordBot (https://github.com/lucasyhzhu-debug/Consulting-Agents, 0.7.0)"
+    }
+
     $work = $false
 
-    # ── 3. Discord pre-check ──────────────────────────────────────────────────
-    # For each allowlisted channel in drain-state.json, fetch 1 message after the
-    # stored watermark.  Any result → work exists.
+    # ── 3. Discord channel pre-check (settle-gated) ───────────────────────────
+    # For each allowlisted channel, fetch new messages after the watermark, keep only
+    # non-bot messages, and count it as work ONLY if the source is SETTLED — so a
+    # mid-dictation burst doesn't spin up `claude -p` before the thought is complete.
     if ($state -and $state.channels) {
-        # Discord's Cloudflare edge 403s requests without a compliant User-Agent
-        # (PowerShell's default UA is blocked on guild/channel endpoints). Discord
-        # requires the DiscordBot (<url>, <version>) form on every REST call.
-        $dh = @{
-            Authorization = "Bot $($env:DISCORD_BOT_TOKEN)"
-            "User-Agent"  = "DiscordBot (https://github.com/lucasyhzhu-debug/Consulting-Agents, 0.7.0)"
-        }
         foreach ($cid in $state.channels.PSObject.Properties.Name) {
             $wm  = $state.channels.$cid.watermark
-            $url = "https://discord.com/api/v10/channels/$cid/messages?limit=1" + $(if ($wm) { "&after=$wm" } else { "" })
+            $url = "https://discord.com/api/v10/channels/$cid/messages?limit=100" + $(if ($wm) { "&after=$wm" } else { "" })
             $msgs = Invoke-RestMethod -Headers $dh -Uri $url
-            if ($msgs.Count -gt 0) { $work = $true; break }
+            $nonBotIds = @($msgs | Where-Object { -not $_.author.bot } | ForEach-Object { [string]$_.id })
+            if ($nonBotIds.Count -gt 0 -and (Test-SourceSettled -NonBotMessageIds $nonBotIds -NowMs $nowMs)) {
+                $work = $true; break
+            }
         }
     }
 
@@ -69,6 +82,32 @@ try {
         # to 0 — silently hiding actionable issues. Surface it explicitly.
         if ($lr.errors) { throw "Linear GraphQL error: $($lr.errors | ConvertTo-Json -Compress)" }
         if ($lr.data.issues.nodes.Count -gt 0) { $work = $true }
+    }
+
+    # ── 4b. Discord thread-reply pre-check (parked-issue confirms/edits) ──────
+    # Confirms ("confirm 1") and edits arrive as thread replies on parked (needs-owner)
+    # issues — they advance no channel watermark and the issue isn't needs-agent, so
+    # steps 3-4 never see them, and a lone confirm sits unprocessed. Run ONLY when
+    # nothing else found work. For each tracked issue with a threadId, fetch up to 5
+    # replies after its lastSeen; a NON-BOT reply is work (the drain's own posts land
+    # after lastSeen and must not wake the next cycle). A 404 (archived/deleted thread)
+    # is skipped, never fatal. Short-circuit on the first thread that yields work.
+    if (-not $work -and $state -and $state.issues) {
+        foreach ($iid in $state.issues.PSObject.Properties.Name) {
+            $issue = $state.issues.$iid
+            if (-not $issue.threadId) { continue }
+            $ls   = $issue.lastSeen
+            $turl = "https://discord.com/api/v10/channels/$($issue.threadId)/messages?limit=5" + $(if ($ls) { "&after=$ls" } else { "" })
+            try {
+                $treplies = Invoke-RestMethod -Headers $dh -Uri $turl
+            } catch {
+                $resp = $_.Exception.Response
+                if ($resp -and [int]$resp.StatusCode -eq 404) { continue }   # thread gone — skip
+                throw
+            }
+            $nonBot = @($treplies | Where-Object { -not $_.author.bot })
+            if ($nonBot.Count -gt 0) { $work = $true; break }
+        }
     }
 
     # ── 5. Idle path ──────────────────────────────────────────────────────────
