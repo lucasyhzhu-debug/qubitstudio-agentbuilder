@@ -151,6 +151,16 @@ def force_client_ready(spec: dict) -> dict:
     return out
 
 
+def force_output_root(spec: dict, root) -> dict:
+    """Set plugin.output_root so the generators resolve each component's rel_path under the build
+    workspace. architecture-spec.md §2 requires output_root, but the studio chat contract never
+    emits it — without this injection the plugin-generators have no tree root to write into and the
+    build is non-deterministic. Deep-copies (does not mutate the caller's spec)."""
+    out = copy.deepcopy(spec)
+    out.setdefault("plugin", {})["output_root"] = str(root)
+    return out
+
+
 class Exporter:
     def __init__(self, claude_bin: str | None = None, repo_root: Path = _REPO):
         self.claude_bin = claude_bin or resolve_claude() or "claude"
@@ -238,6 +248,9 @@ class Exporter:
         if workspace.exists():
             shutil.rmtree(workspace, ignore_errors=True)
         workspace.mkdir(parents=True, exist_ok=True)
+        # Generators resolve each component's rel_path under plugin.output_root; the studio chat
+        # never emits it, so pin it to this build's workspace before writing the spec they read.
+        spec = force_output_root(spec, workspace)
         spec_path = workspace / "spec.json"
         spec_path.write_text(json.dumps(spec, indent=2), encoding="utf-8")
         _DIST.mkdir(parents=True, exist_ok=True)

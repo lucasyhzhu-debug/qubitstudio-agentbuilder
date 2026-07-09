@@ -21,8 +21,9 @@ def test_parse_unknown_stage_with_valid_status_returns_none():
 # Task 2: Exporter build orchestration tests
 # ---------------------------------------------------------------------------
 import asyncio
+import json
 from pathlib import Path
-from studio.exporter import Exporter, force_client_ready
+from studio.exporter import Exporter, force_client_ready, force_output_root
 
 def test_force_client_ready_overrides_personal():
     spec = {"plugin": {"name": "demo", "deliverable_grade": "personal"}, "components": []}
@@ -30,6 +31,26 @@ def test_force_client_ready_overrides_personal():
     assert out["plugin"]["deliverable_grade"] == "client-ready"
     # original not mutated (defensive copy)
     assert spec["plugin"]["deliverable_grade"] == "personal"
+
+def test_force_output_root_sets_and_copies():
+    spec = {"plugin": {"name": "demo"}, "components": []}
+    out = force_output_root(spec, "C:/x/ws")
+    assert out["plugin"]["output_root"] == "C:/x/ws"
+    # original not mutated (defensive copy) — architecture-spec §2 requires output_root
+    assert "output_root" not in spec["plugin"]
+
+async def test_build_injects_output_root_into_written_spec(monkeypatch, tmp_path):
+    # The generators read plugin.output_root from workspace/spec.json; build() must inject it as
+    # the workspace so their rel_path writes land in the tree package_plugin later zips.
+    import studio.exporter as mod
+    mod._BUILDS = tmp_path / "builds"; mod._DIST = tmp_path / "dist"
+    ex = Exporter(claude_bin="claude", repo_root=tmp_path)
+    fake = _astream("[[studio:stage:package:ok]]")
+    monkeypatch.setattr(ex, "_spawn_lines", lambda *a, **k: _aiter(fake))
+    monkeypatch.setattr(ex, "_locate_plugin", lambda *a, **k: tmp_path / "dist" / "demo.plugin")
+    _ = [e async for e in ex.build({"plugin": {"name": "demo"}, "components": []}, run_evals=False)]
+    written = json.loads((tmp_path / "builds" / "demo" / "spec.json").read_text(encoding="utf-8"))
+    assert written["plugin"]["output_root"] == str(tmp_path / "builds" / "demo")
 
 def test_build_argv_is_tools_enabled_and_repo_cwd(tmp_path):
     ex = Exporter(claude_bin="claude", repo_root=tmp_path)
