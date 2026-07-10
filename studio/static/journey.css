@@ -1,0 +1,53 @@
+/* ── The architect journey — Door B/C's living document (architect_journey.js). ──
+   Reuses the dossier's visual language: .dz-sec, .dz-card, .dz-cards, .writeline,
+   .answer, .dz-prose, .organ, .anatomy, .dz-beat, .launch, .cmd, .manifest, .sig-row,
+   .buildbtn, .dz-note, .dz-keyhost, .dz-error and .dz-rail are GLOBAL class rules in
+   dossier.css. This file only adds the #journey container layout, the body.journey
+   takeover, and journey-specific bits (blueprint panel, add-skill form). Everything is
+   scoped under body.journey / #journey; Door A (dossier) and legacy chat never see it. */
+
+html.journey, body.journey { overflow: auto; height: auto; }
+body.journey > main { display: block; height: 0; overflow: visible; }
+body.journey #chat { display: none; }
+body.journey .rightrail { display: none; }
+body.journey #advanced { display: none; }
+body.journey #journey { display: block; }
+
+#journey { display: none; }
+#journey .dz-doc { display: block; overflow: visible; max-width: 760px; margin: 0 auto;
+  padding: 64px 32px 30vh; position: relative; font-size: 17px; line-height: 1.55; }
+@media (max-width: 900px) { #journey .dz-doc { padding-top: 40px; } }
+
+/* the live blueprint panel — component cards that update in place each turn */
+#jz-blueprint { margin: 6px 0 26px; }
+.jz-bp-head { display: flex; align-items: baseline; gap: 12px; margin: 0 0 14px;
+  border-bottom: 1px solid var(--rule); padding-bottom: 10px; }
+.jz-bp-head h2 { font-family: var(--display); font-weight: 600; font-size: 21px; color: var(--ink);
+  margin: 0; letter-spacing: -.015em; }
+.jz-addskill { margin-left: auto; font-family: var(--mono); font-size: 11px; letter-spacing: .05em;
+  background: none; border: 1px solid var(--rule); border-radius: 999px; padding: 5px 13px;
+  cursor: pointer; color: var(--sapphire); transition: border-color .15s, background .15s; }
+.jz-addskill:hover { border-color: var(--sapphire); background: var(--tint); }
+.jz-identity { font-family: var(--body); color: var(--ink-3); font-size: 15px; margin: 0 0 14px; }
+.jz-identity b { color: var(--ink); font-family: var(--display); font-weight: 620; font-size: 18px; }
+.jz-empty { color: var(--ink-4); font-style: italic; margin: 0 0 14px; }
+
+.dz-card.flash { animation: jz-flash .9s ease; }
+@keyframes jz-flash { 0% { box-shadow: 0 0 0 3px rgba(48,111,168,.28); }
+  100% { box-shadow: var(--sh-sm); } }
+
+/* the inline add-a-skill form */
+.jz-skillform { border: 1px solid var(--rule); border-radius: var(--r-card); background: var(--canvas);
+  box-shadow: var(--sh-sm); padding: 16px 18px; margin: 0 0 18px; }
+.jz-skillform label { display: block; font-size: 13px; color: var(--ink-3); margin-top: 10px; }
+.jz-skillform input { display: block; width: 100%; margin-top: 5px; font-family: var(--body);
+  font-size: 14px; border: 1px solid var(--rule-strong); border-radius: 8px; padding: 8px 10px;
+  background: var(--canvas); color: var(--ink); box-sizing: border-box; }
+.jz-sf-foot { display: flex; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+.jz-skillform button { border: none; border-radius: 10px; padding: 7px 15px; font-size: 13px; cursor: pointer; }
+.jz-sf-add { background: var(--sapphire); color: #fff; font-weight: 600; }
+.jz-sf-cancel { background: none; color: var(--ink-4); }
+
+/* the build stage line under the assembly organs */
+.jz-stages { font-family: var(--mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase;
+  color: var(--ink-4); text-align: center; margin-top: 12px; }

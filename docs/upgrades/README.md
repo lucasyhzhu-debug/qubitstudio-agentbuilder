@@ -31,6 +31,25 @@ package file and ask it to apply the upgrade. Claude reads each spec requirement
 corresponding place in the local (possibly personalized) skill text, and updates it — preserving
 local personalization. Verify with the acceptance checks, then commit.
 
+## How participants pull updates (automated)
+
+Every agent the studio composes is stamped and self-updating, so participants get these packages
+without touching this repo:
+
+- The composer makes each `dist/<name>-cos/` home its **own git repo** and writes
+  `.cos-update.json` recording the substrate `version` it was built from (the `SUBSTRATE_VERSION`
+  anchor) plus the upstream coordinates (`upstream_repo`, `upstream_branch`, `packages_path`).
+- Every home ships the **`cos-update`** skill (`chief-of-staff/skills/cos-update/`). When the owner
+  says *"update me"*, it reads `.cos-update.json`, lists this directory via the GitHub contents API,
+  applies every package **newer** than the home's version to the local personalized skills (same
+  discipline as above), bumps the recorded version, and commits to the owner's repo. The owner's
+  history and vault memory survive a studio re-compose.
+
+**Maintainer contract:** when you publish a new package here, also bump
+`chief-of-staff/SUBSTRATE_VERSION` to the package's version so freshly composed agents record the
+right baseline. Package filenames must stay in the `YYYY-MM-DD-cos-vX.Y.Z-upgrade.md` form —
+`cos-update` parses the `vX.Y.Z` from the name to decide what's newer.
+
 ## Rules
 
 - Packages describe **shipped** upstream changes (a version that landed on the upstream `main`).

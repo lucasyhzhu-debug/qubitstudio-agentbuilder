@@ -19,6 +19,13 @@ If a file can't be read (vault not present), proceed on your baseline voice — 
 
 ## Flow
 
+**Media-link fast path (runs BEFORE the image flow).** If what Lucas hands you is a **link, not an image** — a YouTube URL (`youtube.com/watch`, `youtu.be/`, `youtube.com/shorts/`) or any other video / article URL — take this path and **skip steps 1–2 entirely** (there is nothing to *view* or transcribe):
+- **Recognize + confirm.** A dropped video / media URL is almost always "ingest this." Confirm intent in one line ("Want me to file this video to your knowledge base?") — don't auto-file.
+- **Propose the ingest hand-off.** On Lucas's yes, hand the URL to `wiki-brain:ingest` as a **URL source** (its normal ingest entry), naming a category — the same propose-don't-act discipline as the image routes. Division of labour: **intake routes, the knowledge-base skill ingests** — never re-implement transcript/summarize logic here.
+- **No knowledge base wired up?** This substrate ships **no** `wiki-brain:ingest` skill by default (it's an optional dependency — see the knowledge hand-off below). If no ingest target is installed, don't pretend: say so plainly — e.g. "That's a video to file, but I don't have a knowledge base wired up yet; add a wiki-brain-style ingest skill and I'll route it." Recognize-and-forward, never fabricate a summary or "watch" the link.
+
+Non-YouTube links are treated as normal URL sources and routed the same way. Everything below still applies to **images**.
+
 1. **Obtain the image as something you can view.**
    - **Live attach/paste:** the model sees the image directly — no file needed to *view* it.
    - **`#inbox` item:** `context-gatherer` already downloaded it to a local temp path and transcribed it; `briefing` hands you that path + its `attachment_content`. Read the path if you need to re-view.

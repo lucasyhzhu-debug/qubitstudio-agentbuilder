@@ -5,7 +5,9 @@
 <link rel="stylesheet" href="/static/styles.css">
 <link rel="stylesheet" href="/static/shelf.css">
 <link rel="stylesheet" href="/static/cards.css">
-<link rel="stylesheet" href="/static/dossier.css"></head>
+<link rel="stylesheet" href="/static/dossier.css">
+<link rel="stylesheet" href="/static/chooser.css">
+<link rel="stylesheet" href="/static/journey.css"></head>
 <body>
   <!-- First-launch onboarding overlay (onboarding-cards spec §5.4) — onboard.js drives it. -->
   <div id="onboard-overlay" hidden>
@@ -36,6 +38,26 @@
         <input id="dz-input" autocomplete="off" placeholder="write your line…" disabled></form>
     </main>
     <button type="button" class="dz-skipper" id="dz-skip" hidden>SKIP ▸▸</button>
+  </div>
+  <!-- The launch chooser (Doors A/B/C) — chooser.js reveals it on a fresh launch. -->
+  <div id="chooser" hidden></div>
+  <!-- The architect journey — Door B (build any agent) / Door C (build one skill).
+       architect_journey.js drives it; hidden and inert unless activated. Door A (dossier)
+       and legacy chat never touch it. It renders from the ```spec channel, not ```studio. -->
+  <div id="journey" hidden>
+    <div id="jz-rail" class="dz-rail"></div>
+    <main class="dz-doc">
+      <div class="dz-kicker">qubit agent studio · <span id="jz-kicker">build any agent</span></div>
+      <h1 class="dz-h1" id="jz-h1">The agent you're building.</h1>
+      <p class="dz-lede" id="jz-lede">Describe what you want it to do. I'll architect it — skills,
+        tools, memory, routines — then build it into a working plugin.</p>
+      <div id="jz-blueprint"></div>
+      <div id="jz-chapters"></div>
+      <div id="jz-live"></div>
+      <form id="jz-writeline" class="writeline held"><span class="bar"></span>
+        <input id="jz-input" autocomplete="off" placeholder="describe the agent you want…" disabled></form>
+    </main>
+    <button type="button" class="dz-skipper" id="jz-skip" hidden>SKIP ▸▸</button>
   </div>
   <header>
     <span class="qmark"><i></i><i></i><i></i><i class="fill"></i></span>
@@ -89,6 +111,8 @@
   <script src="/static/cards.js"></script>
   <script src="/static/onboard.js"></script>
   <script src="/static/dossier.js"></script>
+  <script src="/static/chooser.js"></script>
+  <script src="/static/architect_journey.js"></script>
   <script src="/static/app.js"></script>
   <script src="/static/shelf.js"></script>
 </body></html>

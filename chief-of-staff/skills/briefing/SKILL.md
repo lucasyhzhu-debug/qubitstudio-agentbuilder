@@ -156,13 +156,44 @@ Follow the attendee-line formats from the format reference: stub marker for no p
 
 **No-events case:** if both today and tomorrow have no calendar events, still post a brief. Render `### Today — {Day}` with "No meetings scheduled today." and `### Tomorrow — {Day}` with "No meetings scheduled tomorrow." or omit Tomorrow if clear. Always include `### Proposed Focus` and any email/Linear/Discord backlog. Never skip the brief entirely because the calendar is empty.
 
-**Sections to include (daily):** `### Today`, `### Tomorrow` (if events exist), `### Emails Needing Reply`, `### Discord` (inbox backlog from `ch:*` Linear labels + drain-pending note if any), `### Linear`, `### CRM — Meeting Prep` (omit if no meetings), `### Proposed Focus`.
+**Sections to include (daily):** `### Today`, `### Tomorrow` (if events exist), `### Emails Needing Reply`, `### Discord` (inbox backlog from `ch:*` Linear labels + drain-pending note if any), `### Linear`, `### CRM — Meeting Prep` (omit if no meetings), `### Interests` (omit if no `interests.md` / no updates), `### Proposed Focus`.
 
 **Proposed Focus:** always include — 3–5 concrete actions ranked by impact + urgency, one-line rationale each. Flag decision dependencies with `(needs decision: <what>)`.
 
 **In-session feedback tuning:** if Lucas provides feedback during the session (cut something, surface more, override a priority), apply the correction immediately to the current brief and hold it for the rest of the session. Recurring corrections should be flagged for permanent format change.
 
 **Length:** daily briefs target 300–500 words of content (excluding headers). Cut aggressively — signal, not inventory. No filler phrases.
+
+### Step 5a — Interests module (optional, off by default)
+
+A small, reliable news pulse — 3–5 **source-linked** bullets per standing interest — that folds into
+the brief between Meeting Prep and Proposed Focus. It is **strictly additive and OFF by default**:
+zero new behaviour until the owner opts in. Read `chief-of-staff/skills/briefing/references/interest-beats.md`
+for the full contract; the essentials:
+
+- **The gate.** Look for `{{VAULT_PATH}}/meta/chief-of-staff/interests.md`. **If it is absent, skip
+  this step entirely** — omit the `### Interests` heading, do not guess interests, do not fabricate a
+  section. No file ⇒ no section ⇒ the brief is byte-for-byte what it is today. This is sacred.
+- **Pick the beats.** Parse the file (one interest per bullet; optional `— angle`, `— feed:<url>`,
+  and `[priority]` hints). Cap at the **top 3 interests**, preferring any marked `[priority]`.
+- **Gather candidates — deterministic first, headless-safe.** When `scripts/collect_updates.py` is
+  present (full substrate), run it — it is stdlib-only and safe under `claude -p`. Resolve
+  `{{VAULT_PATH}}` to the concrete path yourself and pass it as an argument (the placeholder is not
+  substituted inside a `.py`):
+  `python scripts/collect_updates.py --interests <path> --window-hours 24 --max-per-interest 5`.
+  It prints JSON candidates (`{interest, title, url, source, published}`) plus an `unreachable` list.
+  **When the script is not shipped in this home** (a composed home ships `references/` but not
+  `scripts/`), or when a feed is unreachable, **fall back to model-driven web search** for the same
+  kind of recent, on-beat, source-carrying candidates. Default window = last 24 hours.
+- **The model ranks, dedups, synthesizes — never invents.** Use the candidates only for source choice,
+  relevance ranking, cross-source dedup, and synthesis. Write 3–5 bullets per interest, **each ending
+  with its source link** `([Source](url))`. Never invent facts, dates, scores, quotes, or images; a
+  bullet with no real source is dropped, not guessed.
+- **Degrade quietly, yield first.** If every source is unreachable or nothing lands, omit the section
+  rather than emit a thin or made-up one — an unreachable feed degrades to "omit", never to an error.
+  This module is **read-only** (no vault / Linear / Google writes) and is the **first section trimmed**
+  when the brief nears the 2000-char Discord cap (Step 6) — trim its bullets, then the whole section,
+  before touching any owner-facing section.
 
 ### Step 6 — Post brief to #daily-briefs via Discord REST
 

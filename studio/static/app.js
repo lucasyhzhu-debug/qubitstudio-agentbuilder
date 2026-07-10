@@ -1,16 +1,22 @@
 const $ = (s) => document.querySelector(s);
 let sessionId = null, currentSpec = null, agentLive = false;
 
-// ?mode=architect keeps the generic plugin-design interview reachable (spec §4.1/§4.7).
-const MODE = new URLSearchParams(location.search).get('mode') === 'architect' ? 'architect' : 'workshop';
+const PARAMS = new URLSearchParams(location.search);
+// Two+ doors at launch (chooser.js): Door A = cos (the guided workshop), Door B = build
+// (any agent), Door C = skill (one standalone skill). Doors B/C run the general architect
+// backend under the journey skin (architect_journey.js).
+const DOOR = PARAMS.get('door');                 // 'cos' | 'build' | 'skill' | null
+const inJourneyMode = (DOOR === 'build' || DOOR === 'skill');
+// ?mode=architect keeps the generic plugin-design interview reachable (spec §4.1/§4.7);
+// Doors B/C use the same architect backend under the journey skin.
+const MODE = (PARAMS.get('mode') === 'architect' || inJourneyMode) ? 'architect' : 'workshop';
 const SEED = MODE === 'architect' ? 'Begin the agent-architect interview.' : 'Begin the workshop interview.';
-if (MODE === 'architect') { const a = $('#advanced'); if (a) a.open = true; }
+if (MODE === 'architect' && !inJourneyMode) { const a = $('#advanced'); if (a) a.open = true; }
 
 // The dossier is the workshop skin (dossier spec §1); ?ui=chat keeps the old workshop
 // chat reachable on the SAME backend (same session, extractor, endpoints) — the
 // in-room escape hatch until dossier parity is proven at a dress rehearsal.
-const UI = (MODE === 'workshop' && new URLSearchParams(location.search).get('ui') !== 'chat')
-  ? 'dossier' : 'chat';
+const UI = (MODE === 'workshop' && PARAMS.get('ui') !== 'chat') ? 'dossier' : 'chat';
 
 // ── Send queue ────────────────────────────────────────────────────────────
 // ALL sends — participant submit, seed, [card] answers, [studio event]s — go through
@@ -85,6 +91,22 @@ window.startWorkshopSession = async function (seed) {
   return queueSend(lastSeed);  // seed the first turn
 };
 
+// Doors B/C: create an architect session (mode:architect) and seed it. Stored under
+// 'architect-session' so a reload resumes the journey (architect_journey.tryReplay).
+window.startArchitectSession = async function (seed) {
+  const r = await fetch('/api/session/new', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: 'architect' }),
+  });
+  sessionId = (await r.json()).session_id;
+  sessionStorage.setItem('architect-session', sessionId);
+  setStatus('ready');
+  lastSeed = seed || SEED;
+  return queueSend(lastSeed);
+};
+// The journey drives streamBuild('/api/export', …) itself and needs the live session id.
+window.getSessionId = () => sessionId;
+
 // Beats replay (dossier spec §4.1): dossier.js restores a stored session on reload.
 window.resumeSession = function (sid) { sessionId = sid; setStatus('ready'); };
 
@@ -119,6 +141,35 @@ async function tryChatResume() {
 }
 
 async function start() {
+  // Launch chooser (Doors A/B/C): a truly fresh launch — no ?door=/?mode=/?ui=/?onboard=
+  // and no session to resume — shows the three doors. An explicit param or a stored session
+  // bypasses it, so a reload mid-journey never dumps back to the chooser. ?onboard=1 is an
+  // explicit entry too (it forces the workshop onboarding, so it must never surface the chooser).
+  const explicitEntry = DOOR || PARAMS.get('mode') || PARAMS.get('ui') || PARAMS.get('onboard');
+  // A stored architect session only suppresses the chooser when we also know its door (so we
+  // can actually resume the journey); without the door we'd suppress the chooser yet strand a
+  // returning Door-B/C participant in the COS workshop, so let the chooser show instead.
+  const storedArchitect = sessionStorage.getItem('architect-session');
+  const storedDoor = sessionStorage.getItem('architect-door');
+  const hasStored = sessionStorage.getItem('dossier-session') || (storedArchitect && storedDoor);
+  if (!explicitEntry && !hasStored && window.chooser) { window.chooser.show(); return; }
+
+  // Doors B/C — the general architect journey (no onboarding, no shelf). Reached by an
+  // explicit ?door=build|skill OR, on a bare URL, by resuming a stored architect session (a
+  // returning participant): resume the journey rather than dropping into the COS workshop.
+  // The dossier resume path (below) is unchanged, and a stored dossier session wins.
+  const resumeJourney = !explicitEntry && storedArchitect && storedDoor
+    && !sessionStorage.getItem('dossier-session');
+  if ((inJourneyMode || resumeJourney) && window.journey) {
+    const doorKind = inJourneyMode ? (DOOR === 'skill' ? 'skill' : 'build')
+                                   : (storedDoor === 'skill' ? 'skill' : 'build');
+    if (inJourneyMode) sessionStorage.setItem('architect-door', DOOR);   // remembered for bare-URL resume
+    await window.journey.activate(doorKind);
+    const resumed = await window.journey.tryReplay();
+    if (!resumed) await window.journey.begin();
+    return;
+  }
+
   let replayed = false;
   if (UI === 'dossier') {
     await window.dossier.activate();                 // resolves once the catalog is in (R7)
@@ -188,8 +239,12 @@ window.stripSpec = stripSpec;
 
 async function send(message) {
   const inDossier = UI === 'dossier';
-  if (!inDossier && message !== lastSeed && !HIDDEN_MSG.test(message)) addBubble('user', message);
-  const bubble = inDossier ? null : addBubble('assistant', '');
+  // Guard on window.journey like start() does — a Door-B send() must never throw if the
+  // journey module is somehow absent; it degrades to the plain chat renderer instead.
+  const inJourney = inJourneyMode && !!window.journey;
+  const inChat = !inDossier && !inJourney;
+  if (inChat && message !== lastSeed && !HIDDEN_MSG.test(message)) addBubble('user', message);
+  const bubble = inChat ? addBubble('assistant', '') : null;
   let acc = '';
   try {
     const r = await fetch('/api/chat', {
@@ -207,16 +262,22 @@ async function send(message) {
         if (ev.type === 'token') {
           if (!agentLive) { agentLive = true; setStatus('agent live', true); }  // verifiable handshake
           acc += ev.text;
-          if (inDossier) window.dossier.onToken(acc);
+          if (inJourney) window.journey.onToken(acc);
+          else if (inDossier) window.dossier.onToken(acc);
           else { bubble.innerHTML = renderMarkdown(stripSpec(acc)); scrollLog(); }
         }
         else if (ev.type === 'error') {
-          if (inDossier) window.dossier.onError(ev.message);
+          if (inJourney) window.journey.onError(ev.message);
+          else if (inDossier) window.dossier.onError(ev.message);
           else { acc += '\n\n**[error]** ' + ev.message; bubble.innerHTML = renderMarkdown(stripSpec(acc)); }
         }
         else if (ev.type === 'done') {
           // The shelf drawer stays truthful in BOTH skins (§4.4: it's the kept overlay).
           if (ev.studio && typeof window.shelfSync === 'function') window.shelfSync(ev.studio);
+          if (inJourney) {
+            window.journey.onDone(ev);
+            continue;
+          }
           if (inDossier) {
             window.dossier.onDone(ev);
             continue;
@@ -238,7 +299,8 @@ async function send(message) {
     // is NEVER touched on a network failure — only a beats 404 clears it (tryReplay),
     // so a reload after the server returns still resumes the same session.
     const msg = (e && e.message) || 'connection lost — is the studio still running?';
-    if (inDossier) window.dossier.onError(msg);
+    if (inJourney) window.journey.onError(msg);
+    else if (inDossier) window.dossier.onError(msg);
     else if (bubble) { acc += '\n\n**[error]** ' + msg; bubble.innerHTML = renderMarkdown(stripSpec(acc)); }
   }
 }

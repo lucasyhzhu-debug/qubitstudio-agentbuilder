@@ -199,6 +199,16 @@ The wrapper runs `claude -p --strict-mcp-config --mcp-config scripts\brief.mcp.j
 > ```
 > Token minting is handled by `scripts/mint-sa-token.py --label work` (called automatically by the precheck wrappers). Re-run `google-smoke.ps1` to confirm the work account returns `OK`. The personal account continues to use loopback OAuth (`google-consent.py --label personal`) — that path is unchanged.
 
+### 7. Grant "Log on as a batch job" (one-time, elevated)
+
+Both scheduled tasks above use an **S4U** logon (no stored password, no popup window). An S4U task can only start if the account holds the **"Log on as a batch job"** right (`SeBatchLogonRight`), which Windows does not always grant automatically. If a task fails to start with *"The operator or administrator has refused the request"* (HRESULT `0x800710E0` / decimal `-2147020576`) — and a busy drain can then silently stop processing with no other symptom — grant it once, from an **elevated** PowerShell, run **from the repo root**:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File chief-of-staff\scripts\grant-batch-logon-right.ps1
+```
+
+The helper is **idempotent and additive** — it appends your account's SID to the existing grantees (never overwriting the right, which would strip Administrators / IIS_IUSRS / others) and is a clean no-op if you already hold it. After granting, a `CoS Drain` run's *Last Result* should read `0`, not `-2147020576`.
+
 ## Verify installation
 
 Once installed, try: **"What's my day look like?"**

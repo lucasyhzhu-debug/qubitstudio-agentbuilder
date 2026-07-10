@@ -10,6 +10,17 @@ _CATALOG = _HERE / "catalog.json"
 _VAULT_TEMPLATE = _HERE / "templates" / "vault"
 _COS = _REPO / "chief-of-staff"
 
+# Every composed home is its own git repo stamped with the substrate version it was built from, so
+# the shipped cos-update skill can pull newer docs/upgrades packages from the public upstream and
+# apply them to the (personalized) skills. See docs/upgrades/README.md for the package channel.
+_SUBSTRATE_VERSION = (
+    (_COS / "SUBSTRATE_VERSION").read_text(encoding="utf-8").strip()
+    if (_COS / "SUBSTRATE_VERSION").exists() else "0.0.0")
+_INFRA_SKILLS = ["cos-update"]        # shipped with EVERY home regardless of picks
+_UPSTREAM_REPO_DEFAULT = "lucasyhzhu-debug/qubitstudio-agentbuilder"
+_UPSTREAM_BRANCH = "main"
+_PACKAGES_PATH = "docs/upgrades"
+
 class UnknownPickError(ValueError): ...
 
 @dataclass
@@ -101,6 +112,17 @@ def copy_home(tree: Path, picks: list[str]) -> None:
         dst.mkdir(parents=True, exist_ok=True)
         text = (_COS / "skills" / sk / "SKILL.md").read_text(encoding="utf-8")
         (dst / "SKILL.md").write_text(_rewrite_reference_paths(text, sk), encoding="utf-8")
+    # Infra skills (cos-update) ship with EVERY home regardless of picks — they are the agent's
+    # own machinery, not a chosen capability. Copied VERBATIM: they already speak the home layout
+    # (they aren't substrate skills carrying chief-of-staff/ reference paths), so the path rewrite
+    # would wrongly rewrite their generic `references/` mentions.
+    for sk in _INFRA_SKILLS:
+        src = _COS / "skills" / sk / "SKILL.md"
+        if not src.exists():
+            continue
+        dst = tree / ".claude" / "skills" / sk
+        dst.mkdir(parents=True, exist_ok=True)
+        (dst / "SKILL.md").write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
 
 _LINEAR_TEAM = "d885fd34-71e6-4e8b-8fc6-da4f6bbf1875"
 _LINEAR_PROJ = "504fb62b-28ba-4140-9031-1f03e189c70c"
@@ -194,6 +216,13 @@ reference material under `skills/` and `references/`.
 ## Your skills
 
 {roster}
+
+## Staying current
+
+- This home is chief-of-staff substrate **v{_SUBSTRATE_VERSION}**, and it is its own git repo.
+- Say **"update me"** any time to pull the latest improvements from the public QubitStudio upstream
+  into your skills (the `cos-update` skill) — your name, vault, and keys are always preserved, and
+  every update is a git commit you can revert.
 """, encoding="utf-8")
 
 
@@ -208,6 +237,60 @@ def assemble_manifests(tree: Path, integrations: set[str]) -> None:
                 mcp["mcpServers"] = {k: v for k, v in mcp.get("mcpServers", {}).items()
                                      if k != "discord"}
         _edit_json(mcp_path, _mcp)
+
+def _detect_upstream_repo() -> str:
+    """owner/repo for the public upstream, read from the studio repo's origin remote so a fork
+    self-heals to its own updates; falls back to the known public repo. Best-effort."""
+    try:
+        import subprocess
+        r = subprocess.run(["git", "-C", str(_REPO), "remote", "get-url", "origin"],
+                           capture_output=True, text=True, timeout=10)
+        m = re.search(r"github\.com[/:]([^/\s]+/[^/\s]+?)(?:\.git)?$", (r.stdout or "").strip())
+        if m:
+            return m.group(1)
+    except Exception:
+        pass
+    return _UPSTREAM_REPO_DEFAULT
+
+
+def stamp_update_meta(tree: Path, version: str = _SUBSTRATE_VERSION, repo: str | None = None) -> None:
+    """Record the substrate version + upstream coordinates so the shipped cos-update skill can pull
+    newer packages into THIS home. Written AFTER delucas so the repo handle survives the scrub."""
+    (Path(tree) / ".cos-update.json").write_text(json.dumps({
+        "substrate_version": version,
+        "upstream_repo": repo or _detect_upstream_repo(),
+        "upstream_branch": _UPSTREAM_BRANCH,
+        "packages_path": _PACKAGES_PATH,
+    }, indent=2) + "\n", encoding="utf-8")
+
+
+def write_home_gitignore(tree: Path) -> None:
+    """Every composed home is its own git repo; keep secrets and caches out of it (the vault IS
+    committed — versioned memory is a feature)."""
+    (Path(tree) / ".gitignore").write_text(
+        ".env\n.env.*\n.cache/\n__pycache__/\n*.pyc\n", encoding="utf-8")
+
+
+def git_init_home(tree: Path, message: str) -> bool:
+    """Make the composed home its own git repo (or commit into the one preserved across a rebuild),
+    so the owner can pull upstream updates via cos-update and revert them with git. Best-effort and
+    non-fatal — a missing git binary just leaves an un-versioned home. A fixed commit identity avoids
+    depending on the machine's global git config."""
+    try:
+        import subprocess
+        tree = Path(tree)
+        def run(*args):
+            return subprocess.run(["git", "-C", str(tree), *args],
+                                  capture_output=True, text=True, timeout=30)
+        if not (tree / ".git").exists() and run("init").returncode != 0:
+            return False
+        run("add", "-A")
+        run("-c", "user.name=QubitStudio", "-c", "user.email=studio@qubitstudio.local",
+            "commit", "-m", message)
+        return True
+    except Exception:
+        return False
+
 
 def _stage(name: str, status: str) -> dict:
     return {"type": "stage", "name": name, "status": status}
@@ -260,11 +343,16 @@ async def compose(picks, owner_name, outdir, vault_dir) -> AsyncIterator[dict]:
         write_claude_md(staging, owner_name, _onboarding_owner() or owner_name,
                         vault_dir, picks)
         assemble_manifests(staging, res.integrations)
+        # Stamp the update config AFTER delucas (so the upstream repo handle isn't scrubbed) and
+        # write the home's own .gitignore — this home becomes its own git repo in the package step.
+        stamp_update_meta(staging)
+        write_home_gitignore(staging)
         yield _stage("assemble", "ok")
 
         yield _stage("package", "running")
         outdir.mkdir(parents=True, exist_ok=True)
         kept_vault = None
+        kept_git = None
         if final.exists():
             # gate-2 I4: a REBUILD must not destroy the agent's memory — the in-home
             # vault moves aside, the home is rebuilt, then the vault rides back in
@@ -275,17 +363,30 @@ async def compose(picks, owner_name, outdir, vault_dir) -> AsyncIterator[dict]:
                 if kept_vault.exists():
                     shutil.rmtree(kept_vault, ignore_errors=True)
                 shutil.move(str(final / "vault"), str(kept_vault))
+            # The home is its own git repo — preserve its history (cos-update commits, the
+            # owner's own commits) across a rebuild, exactly like the vault memory.
+            if (final / ".git").exists():
+                kept_git = _HERE / ".cache" / "compose" / f"{slug}-git-keep"
+                if kept_git.exists():
+                    shutil.rmtree(kept_git, ignore_errors=True)
+                shutil.move(str(final / ".git"), str(kept_git))
             shutil.rmtree(final, ignore_errors=True)
             if final.exists():
                 # Windows lock (e.g. a terminal running inside the composed home):
                 # the old tree survived the rmtree. Moving staging in would silently
                 # NEST the new home at final/<slug>-cos — fail closed instead. First
-                # ride the kept vault back in (best-effort) so the participant's
-                # memories aren't stranded in .cache.
+                # ride the kept vault + git back in (best-effort) so the participant's
+                # memories and repo aren't stranded in .cache.
                 if kept_vault is not None:
                     try:
                         shutil.rmtree(str(final / "vault"), ignore_errors=True)
                         shutil.move(str(kept_vault), str(final / "vault"))
+                    except Exception:
+                        pass
+                if kept_git is not None:
+                    try:
+                        shutil.rmtree(str(final / ".git"), ignore_errors=True)
+                        shutil.move(str(kept_git), str(final / ".git"))
                     except Exception:
                         pass
                 raise RuntimeError(
@@ -296,6 +397,12 @@ async def compose(picks, owner_name, outdir, vault_dir) -> AsyncIterator[dict]:
         if kept_vault is not None:
             shutil.rmtree(str(final / "vault"), ignore_errors=True)
             shutil.move(str(kept_vault), str(final / "vault"))
+        if kept_git is not None:
+            shutil.rmtree(str(final / ".git"), ignore_errors=True)
+            shutil.move(str(kept_git), str(final / ".git"))
+        # Make the home its own git repo (or commit the rebuild into the preserved one) so the
+        # owner can pull upstream updates via cos-update and revert them. Non-fatal.
+        git_init_home(final, f"compose {slug} — chief-of-staff v{_SUBSTRATE_VERSION}")
         yield _stage("package", "ok")
         yield {"type": "done", "grade": "composed", "plugin_path": str(final),
                "vault_path": str(vault_dir), "integrations": sorted(res.integrations),
