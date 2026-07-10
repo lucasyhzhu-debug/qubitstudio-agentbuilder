@@ -161,7 +161,7 @@ With Priya's page loaded, the drain routes the correction to `crm`, which update
 |---|---|
 | Partial burst held until settled (2+ → newest ≥ 90s) | Settle check, Cycle A |
 | Contiguous owner run grouped into ONE issue | Step 2 |
-| Watermark advances once per run (crash barrier) | Step 2 |
+| Watermark advances once per committed issue-group (crash barrier) | Step 2 |
 | Kanban state mirrored on every move (Todo → In Progress → Done) | `stateId` in each mutation |
 | `## Meta` seeded, patched in place, never duplicated | Steps 2 & 4 |
 | `wiki_ref` written back when a route resolves a page | Step 4, Cycle A |

@@ -6,8 +6,12 @@ thinking out loud across several messages) is complete. This is what lets the dr
 **one accreting conversation** instead of acting mid-thought.
 
 The rule below is the single contract. `scripts/settle-lib.ps1` (`Test-SourceSettled`) is the
-executable copy used by `scripts/drain-precheck.ps1`; the drain SKILL applies the same rule in its
-Steps 2, 3, and 4. Keep the thresholds here and in `settle-lib.ps1` identical — change both together.
+executable copy used by `scripts/drain-precheck.ps1`; the drain SKILL applies the same rule where it
+**gates** — Step 2 (an `#inbox` channel; watermark = the channel watermark) and Step 4 (an issue's
+thread; watermark = **`lastActed`**, the act-boundary). Step 3 only *mirrors* replies to Linear and
+does **not** gate — mirroring is always safe, and it advances `lastSeen`, which is exactly why Step 4's
+gate must measure against `lastActed`, not the already-advanced `lastSeen`. Keep the thresholds here
+and in `settle-lib.ps1` identical — change both together.
 
 ## The rule (count-based, non-bot-scoped)
 

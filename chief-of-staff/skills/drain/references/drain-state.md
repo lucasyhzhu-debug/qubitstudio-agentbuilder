@@ -19,7 +19,7 @@ Path: `{{VAULT_PATH}}/meta/chief-of-staff/drain-state.json` (gitignored — loca
 ```
 
 Rules:
-- **Watermark** = the newest Discord message id the drain has turned into (or skipped past) for that channel. Step 1 of the cycle reads only messages with id > watermark; advance it after a successful sweep — **once per burst run**, never per message (Step 2 burst grouping is the crash barrier: a crash mid-run leaves the whole run "new" so a retry re-groups it identically).
+- **Watermark** = the newest Discord message id the drain has turned into (or skipped past) for that channel. Step 1 of the cycle reads only messages with id > watermark; advance it after each issue-group commits — **once per committed issue-group**, never per message (Step 2 burst grouping is the crash barrier: a crash mid-run leaves only the un-committed groups "new" so a retry re-does just those, re-grouping their messages identically and never re-creating a filed issue).
 - **lastSeen** = newest thread reply already mirrored to the issue's comments; advance after mirroring.
 - **lastActed** = newest issue comment the drain has acted on; advance after acting. Step 4 uses it as the **new-vs-old boundary**: a comment whose id > `lastActed` is NEW since the drain last acted; everything at or before it is prior context (the drain has no memory between cycles — the thread is its memory).
 - **lengthNudged** (per issue, default `false`) = whether the one-shot ~50-comment "start a fresh ticket?" nudge has been posted for this issue. Set `true` after posting so it never repeats.

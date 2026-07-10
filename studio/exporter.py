@@ -249,10 +249,13 @@ class Exporter:
             shutil.rmtree(workspace, ignore_errors=True)
         workspace.mkdir(parents=True, exist_ok=True)
         # Generators resolve each component's rel_path under plugin.output_root; the studio chat
-        # never emits it, so pin it to this build's workspace before writing the spec they read.
-        spec = force_output_root(spec, workspace)
+        # never emits it, so pin it to this build's workspace — but ONLY in the copy the
+        # generators read (workspace/spec.json). `spec` itself stays portable so the Option-C
+        # handoff/dist spec.json never leaks this transient .cache/builds path into a spec a
+        # participant would regenerate from later.
+        workspace_spec = force_output_root(spec, workspace)
         spec_path = workspace / "spec.json"
-        spec_path.write_text(json.dumps(spec, indent=2), encoding="utf-8")
+        spec_path.write_text(json.dumps(workspace_spec, indent=2), encoding="utf-8")
         _DIST.mkdir(parents=True, exist_ok=True)
 
         yield {"type": "stage", "name": "preflight", "status": "ok"}

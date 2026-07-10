@@ -141,17 +141,30 @@ async function tryChatResume() {
 }
 
 async function start() {
-  // Launch chooser (Doors A/B/C): a truly fresh launch — no ?door=/?mode=/?ui= and no
-  // session to resume — shows the three doors. An explicit param or a stored session
-  // bypasses it, so a reload mid-journey never dumps back to the chooser.
-  const explicitEntry = DOOR || PARAMS.get('mode') || PARAMS.get('ui');
-  const hasStored = sessionStorage.getItem('dossier-session') || sessionStorage.getItem('architect-session');
+  // Launch chooser (Doors A/B/C): a truly fresh launch — no ?door=/?mode=/?ui=/?onboard=
+  // and no session to resume — shows the three doors. An explicit param or a stored session
+  // bypasses it, so a reload mid-journey never dumps back to the chooser. ?onboard=1 is an
+  // explicit entry too (it forces the workshop onboarding, so it must never surface the chooser).
+  const explicitEntry = DOOR || PARAMS.get('mode') || PARAMS.get('ui') || PARAMS.get('onboard');
+  // A stored architect session only suppresses the chooser when we also know its door (so we
+  // can actually resume the journey); without the door we'd suppress the chooser yet strand a
+  // returning Door-B/C participant in the COS workshop, so let the chooser show instead.
+  const storedArchitect = sessionStorage.getItem('architect-session');
+  const storedDoor = sessionStorage.getItem('architect-door');
+  const hasStored = sessionStorage.getItem('dossier-session') || (storedArchitect && storedDoor);
   if (!explicitEntry && !hasStored && window.chooser) { window.chooser.show(); return; }
 
-  // Doors B/C — the general architect journey (no onboarding, no shelf). Its own resume
-  // path; on a fresh entry it creates the architect session and seeds the interview.
-  if (inJourneyMode && window.journey) {
-    await window.journey.activate(DOOR === 'skill' ? 'skill' : 'build');
+  // Doors B/C — the general architect journey (no onboarding, no shelf). Reached by an
+  // explicit ?door=build|skill OR, on a bare URL, by resuming a stored architect session (a
+  // returning participant): resume the journey rather than dropping into the COS workshop.
+  // The dossier resume path (below) is unchanged, and a stored dossier session wins.
+  const resumeJourney = !explicitEntry && storedArchitect && storedDoor
+    && !sessionStorage.getItem('dossier-session');
+  if ((inJourneyMode || resumeJourney) && window.journey) {
+    const doorKind = inJourneyMode ? (DOOR === 'skill' ? 'skill' : 'build')
+                                   : (storedDoor === 'skill' ? 'skill' : 'build');
+    if (inJourneyMode) sessionStorage.setItem('architect-door', DOOR);   // remembered for bare-URL resume
+    await window.journey.activate(doorKind);
     const resumed = await window.journey.tryReplay();
     if (!resumed) await window.journey.begin();
     return;
@@ -226,7 +239,9 @@ window.stripSpec = stripSpec;
 
 async function send(message) {
   const inDossier = UI === 'dossier';
-  const inJourney = inJourneyMode;
+  // Guard on window.journey like start() does — a Door-B send() must never throw if the
+  // journey module is somehow absent; it degrades to the plain chat renderer instead.
+  const inJourney = inJourneyMode && !!window.journey;
   const inChat = !inDossier && !inJourney;
   if (inChat && message !== lastSeed && !HIDDEN_MSG.test(message)) addBubble('user', message);
   const bubble = inChat ? addBubble('assistant', '') : null;

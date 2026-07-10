@@ -32,7 +32,7 @@ board column via the issue's workflow `stateId`, so the Linear board shows what 
 | Triage creates the issue (queued for agent) | `needs-agent` | **Todo** |
 | Step 4 starts acting on an issue | `needs-agent` | **In Progress** |
 | Parked for the owner (proposal or blocker) | `needs-owner` | **In Review** |
-| Re-armed (thread reply, or Step 3a confirm flip) | `needs-agent` | **Todo** |
+| Re-armed by a Step 3a scheduling confirm flip | `needs-agent` | **Todo** |
 | Completed | `done` | **Done** |
 
 **Resolve state ids at runtime — never hardcode UUIDs.** Workflow-state ids are workspace-specific,

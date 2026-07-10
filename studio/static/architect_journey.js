@@ -240,6 +240,11 @@
     refreshManifest();
     $('#jz-build').addEventListener('click', beginBuild);
     nudge();
+    // newSection just pinned `open` at the Sign & build ceremony. Release it so the NEXT
+    // turn's prose/fossils open a fresh design section instead of appending under the Build
+    // button — otherwise a live turn after "buildable/close" diverges from tryReplay (which
+    // fossilizes into design sections and only then renders the close).
+    open = null;
   }
 
   function refreshManifest() {
@@ -271,8 +276,13 @@
     await beatWait(1400);
 
     // beat 2 — assembly: one organ per component, ticked by exporter markers (key = <type>:<name>)
+    // Skip any component with neither name nor id: its key would be `<type>:undefined`, which no
+    // real exporter marker can match, so the organ would never tick and the stepper would stall.
+    // (The validator allows a nameless component.) Fall back to c.id — the same key the blueprint
+    // card uses — so a name-less-but-id'd component still ticks.
     const host = $('#jz-beat-host');
-    const organs = comps.map((c) => ({ key: `${c.type}:${c.name}`, ic: icon(c.type), name: c.name || c.id, sub: c.type }));
+    const organs = comps.filter((c) => c.name || c.id)
+      .map((c) => ({ key: `${c.type}:${c.name || c.id}`, ic: icon(c.type), name: c.name || c.id, sub: c.type }));
     host.innerHTML = `<div class="dz-beat on"><div class="beatcap">■ building ${esc(name)}</div>
       <div class="anatomy">${organs.map((o) => `<div class="organ" data-key="${esc(o.key)}">
         <span class="ic">${o.ic}</span><div><b>${esc(o.name)}</b><span>${esc(o.sub)}</span></div>

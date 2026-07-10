@@ -111,6 +111,27 @@ async def test_build_fail_marker_yields_error_and_handoff(monkeypatch, tmp_path)
     err = events[-1]
     assert err["type"] == "error" and err["stage"] == "validate" and "handoff" in err
 
+async def test_handoff_spec_excludes_transient_output_root(monkeypatch, tmp_path):
+    # The .cache/builds workspace is injected only into the copy the generators read
+    # (workspace/spec.json); the Option-C handoff/dist spec.json must stay portable and NEVER
+    # carry that transient build path — a participant regenerates from it later.
+    import studio.exporter as mod
+    mod._BUILDS = tmp_path / "builds"; mod._DIST = tmp_path / "dist"
+    ex = Exporter(claude_bin="claude", repo_root=tmp_path)
+    fake = _astream("[[studio:stage:validate:fail]]")
+    monkeypatch.setattr(ex, "_spawn_lines", lambda *a, **k: _aiter(fake))
+    events = [e async for e in ex.build({"plugin": {"name": "demo"}, "components": []}, run_evals=False)]
+    err = events[-1]
+    assert err["type"] == "error" and "handoff" in err
+    handoff_spec = json.loads(Path(err["handoff"]["spec_path"]).read_text(encoding="utf-8"))
+    # the transient workspace path never appears anywhere in the handoff spec
+    workspace = str(tmp_path / "builds" / "demo")
+    assert "output_root" not in handoff_spec.get("plugin", {})
+    assert workspace not in json.dumps(handoff_spec)
+    # the workspace copy the generators read still DOES carry it (regression guard)
+    written = json.loads((tmp_path / "builds" / "demo" / "spec.json").read_text(encoding="utf-8"))
+    assert written["plugin"]["output_root"] == workspace
+
 async def test_build_no_plugin_located_yields_error(monkeypatch, tmp_path):
     import studio.exporter as mod; mod._DIST = tmp_path / "dist"
     ex = Exporter(claude_bin="claude", repo_root=tmp_path)
