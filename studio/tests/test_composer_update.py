@@ -40,7 +40,7 @@ def test_stamp_update_meta_records_version_and_upstream(tmp_path):
 def test_substrate_version_matches_the_anchor_file():
     # The stamped default version is the single-source-of-truth SUBSTRATE_VERSION file.
     anchor = (composer._COS / "SUBSTRATE_VERSION").read_text(encoding="utf-8").strip()
-    assert composer._SUBSTRATE_VERSION == anchor == "0.9.0"
+    assert composer._SUBSTRATE_VERSION == anchor == "0.10.0"
 
 def test_write_home_gitignore_keeps_env_out(tmp_path):
     composer.write_home_gitignore(tmp_path)

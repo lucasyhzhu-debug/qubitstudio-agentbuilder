@@ -61,6 +61,8 @@ Both paths yield an `access_token` used identically as `Authorization: Bearer <a
 body: `{ "summary": "...", "start": {"dateTime": "..."}, "end": {"dateTime": "..."}, "attendees": [{"email": "..."}] }`
 `sendUpdates=all` emails the invite — **no `gmail.send` scope needed**.
 
+> **Known runtime limitation (a confirmed write may still need a live OK).** The drain's `confirmed-by-agent` gate is the plugin's own, correct, *sufficient-within-the-plugin* authorization for this write. It is **not** the only layer: Claude Code runs its own product-safety check on consequential external sends (a calendar invite reaching a real person), separate from the `permissions.allow`/`deny` Bash rules. So a confirmed `events.insert` may still need a live, explicit, same-turn instruction to actually go out — at minimum the first time from an attended session. Add a **narrowly-scoped** allow rule for this endpoint (`Bash(curl * https://www.googleapis.com/calendar/v3/calendars/*)`, deliberately narrower than a blanket `Bash(curl *)`) as correct hygiene, but treat it as *necessary, not sufficient* for a fully silent unattended send. This is a Claude Code product behavior, not a plugin bug — never weaken or route around the `confirmed-by-agent` gate to force automation around it.
+
 ## Read recent mail with a person (`gmail.readonly`)
 `GET https://gmail.googleapis.com/gmail/v1/users/me/messages?q=from:{email}%20OR%20to:{email}&maxResults=10`
 `GET https://gmail.googleapis.com/gmail/v1/users/me/messages/{id}?format=metadata` — headers + snippet.

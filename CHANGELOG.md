@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.7.0 — 2026-07-10 — Studio three doors, self-updating homes, substrate v0.10.0
+
+Reconciled onto `main`'s substrate-wide `needs-lucas` → `needs-owner` label rename, and bundled the
+three landed workstreams below with the newly-published v0.10.0 substrate port and a code-review pass.
+
+- **Studio de-restricted into three doors.** A launch chooser now fronts the studio: **Door A** —
+  the guided chief-of-staff workshop (dossier journey), behaviour-identical to before; **Door B** —
+  architect any agent from a description (net-new `architect_journey.js`, generalized blueprint
+  cards, add-a-skill, a compose-only build ceremony over `/api/export`); **Door C** — a single-skill
+  builder. New `static/{chooser,architect_journey}.js` + `{chooser,journey}.css`; `exporter.py` gains
+  a workspace `output_root`. All new logic sits behind the chooser/journey branches — Door A is
+  untouched.
+- **Composed agents are self-updating, own-repo homes.** Each `dist/<name>-cos/` is `git init`-ed as
+  its own repo with a recorded `SUBSTRATE_VERSION` and a `.cos-update.json` (upstream repo/branch/
+  packages path, auto-detected from the git remote). A new always-shipped **`cos-update`** skill
+  pulls any `docs/upgrades/*` package newer than the home's version, applies it to the home's own
+  personalized skills (preserving name/vault/ids), bumps the version, and commits — a true "update
+  me" that survives personalization. `.git` and the vault are preserved across rebuilds.
+- **Substrate ported to upstream v0.10.0** (`docs/upgrades/2026-07-04-cos-v0.10.0-upgrade.md`,
+  items 14–18): drain scheduled-task `ExecutionTimeLimit` 10 → 20 min (busy-cycle headroom); new
+  idempotent, additive **`grant-batch-logon-right.ps1`** (grants `SeBatchLogonRight` so the S4U
+  drain/brief tasks can start); a documented **calendar-write live-authorization limitation** (the
+  `confirmed-by-agent` gate is sufficient within the plugin, but Claude Code's own product-safety
+  check may still require a live, same-turn OK); an optional, **off-by-default `### Interests`**
+  daily-brief module (source-linked news beats gated on a vault `interests.md`, with a stdlib
+  `collect_updates.py` collector and a web-search fallback in lean homes); and an **intake media-link
+  fast path** (YouTube / video URLs are recognized and routed to ingest, or a forward-hook when no
+  knowledge base is wired up). `SUBSTRATE_VERSION` → **0.10.0**.
+- **Code-review hardening.** Drain: the Step-4 **settle-gate now measures thread quiet against
+  `lastActed`** (Step 3's mirroring had already advanced `lastSeen` past the burst, defeating the
+  gate); the channel **watermark advances per committed issue-group**, not once per run, so a mid-run
+  crash on a multi-group run no longer re-files already-created issues; calendar crash-recovery also
+  mirrors `stateId → Done`; the Kanban re-arm table row was corrected. Studio: the Door-B journey no
+  longer renders later Q&A **inside the build section** (the open section is released after close);
+  `?onboard=1` forces onboarding instead of the chooser; a stored architect-session on a bare URL now
+  **resumes the journey** instead of dropping into the workshop; and the transient `output_root` no
+  longer leaks into the failure handoff spec.
+
 ## 0.6.0 — 2026-07-07 — Drain conversational-ticket intelligence (substrate → upstream v0.9.0)
 
 - **The drain now treats an `#inbox` dictation burst as one accreting conversation.** Ported the

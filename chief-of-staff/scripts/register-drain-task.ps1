@@ -9,7 +9,12 @@
 #      every 5 minutes. (A bare `schtasks` interactive task pops a visible window
 #      on each run, which is jarring at a 5-minute cadence.)
 #   2. MultipleInstances IgnoreNew          -> runs never stack if one overruns.
-#   3. ExecutionTimeLimit 10 min            -> a wedged `claude -p` can't run forever.
+#   3. ExecutionTimeLimit 20 min            -> headroom for a BUSY cycle (many issues /
+#      long Discord threads accumulated over hours). IgnoreNew means a run that finishes
+#      early costs nothing, so a larger ceiling only protects against a genuinely wedged
+#      `claude -p` - it still can't run forever. Do NOT re-tighten to 10: a live busy drain
+#      hit the old 10-min limit and Task Scheduler killed it mid-run
+#      (SCHED_S_TASK_TERMINATED, last-result 267014).
 # Run from an ELEVATED PowerShell (creating a scheduled task needs admin).
 
 $ErrorActionPreference = 'Stop'
@@ -33,7 +38,7 @@ $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME `
 
 $settings = New-ScheduledTaskSettingsSet `
     -MultipleInstances IgnoreNew `
-    -ExecutionTimeLimit (New-TimeSpan -Minutes 10) `
+    -ExecutionTimeLimit (New-TimeSpan -Minutes 20) `
     -StartWhenAvailable `
     -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
 
